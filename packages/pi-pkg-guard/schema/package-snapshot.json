@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com/earendil-works/pi-mono/v0.11.0/packages/pi-pkg-guard/schema/package-snapshot.json",
+    "$id": "https://raw.githubusercontent.com/alexleekt/pi-extensions/v0.11.0/packages/pi-pkg-guard/schema/package-snapshot.json",
     "title": "Package Guard Package Snapshot",
     "description": "Schema for pi-pkg-guard snapshot files containing npm global package inventory",
     "type": "object",
@@ -11,19 +11,19 @@
             "description": "Reference to this JSON schema. Accepts any pi-pkg-guard version tag or main branch.",
             "anyOf": [
                 {
-                    "const": "https://raw.githubusercontent.com/earendil-works/pi-mono/v0.11.0/packages/pi-pkg-guard/schema/package-snapshot.json"
+                    "const": "https://raw.githubusercontent.com/alexleekt/pi-extensions/v0.11.0/packages/pi-pkg-guard/schema/package-snapshot.json"
                 },
                 {
-                    "pattern": "^https://raw\\.githubusercontent\\.com/earendil-works/pi-mono/v\\d+\\.\\d+\\.\\d+/packages/pi-pkg-guard/schema/package-snapshot\\.json$"
+                    "pattern": "^https://raw\\.githubusercontent\\.com/alexleekt/pi-extensions/v\\d+\\.\\d+\\.\\d+/packages/pi-pkg-guard/schema/package-snapshot\\.json$"
                 },
                 {
-                    "pattern": "^https://raw\\.githubusercontent\\.com/earendil-works/pi-mono/refs/tags/v\\d+\\.\\d+\\.\\d+/packages/pi-pkg-guard/schema/package-snapshot\\.json$"
+                    "pattern": "^https://raw\\.githubusercontent\\.com/alexleekt/pi-extensions/refs/tags/v\\d+\\.\\d+\\.\\d+/packages/pi-pkg-guard/schema/package-snapshot\\.json$"
                 },
                 {
-                    "const": "https://raw.githubusercontent.com/earendil-works/pi-mono/refs/heads/main/packages/pi-pkg-guard/schema/package-snapshot.json"
+                    "const": "https://raw.githubusercontent.com/alexleekt/pi-extensions/refs/heads/main/packages/pi-pkg-guard/schema/package-snapshot.json"
                 },
                 {
-                    "const": "https://raw.githubusercontent.com/earendil-works/pi-mono/main/packages/pi-pkg-guard/schema/package-snapshot.json"
+                    "const": "https://raw.githubusercontent.com/alexleekt/pi-extensions/main/packages/pi-pkg-guard/schema/package-snapshot.json"
                 }
             ]
         },

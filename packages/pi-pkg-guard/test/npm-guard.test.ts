@@ -8,9 +8,9 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
 import {
+    isGlobalPiInstall,
     NPM_GLOBAL_PATTERN,
     PI_PACKAGE_PATTERN,
-    isGlobalPiInstall,
 } from "../extensions/index.js";
 
 describe("NPM_GLOBAL_PATTERN", () => {

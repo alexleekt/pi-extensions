@@ -39,52 +39,39 @@
  * ```
  */
 
-// Type Guards - Runtime validation
-export {
-    isPackageSnapshot,
-    isBashToolInput,
-    isExtensionSettings,
-    isPiSettings,
-} from "./index.js";
-
-// Validation utilities
-export {
-    extractGistId,
-    isValidGistId,
-    isValidBackupPath,
-} from "./index.js";
-
-// Package utilities
-export {
-    normalizePackageName,
-    hasPiExtensionKeyword,
-} from "./index.js";
-
-// Package analysis
-export {
-    getNpmGlobalPackages,
-    readPiSettings,
-    checkRegistrationStatus,
-    registerPackages,
-} from "./index.js";
-
-// Gist operations
-export {
-    isGhInstalled,
-    syncGistBackup,
-    createGist,
-    deleteGist,
-    getGistContent,
-} from "./index.js";
-
 // Types
 export type {
-    PackageStatus,
-    PiSettings,
+    BackupData,
     ExtensionSettings,
-    PackageSnapshot,
+    GuardConfig,
     // Legacy type aliases for backward compatibility
     PackageDiff,
-    GuardConfig,
-    BackupData,
+    PackageSnapshot,
+    PackageStatus,
+    PiSettings,
+} from "./index.js";
+// Type Guards - Runtime validation
+// Validation utilities
+// Package utilities
+// Package analysis
+// Gist operations
+export {
+    checkRegistrationStatus,
+    createGist,
+    deleteGist,
+    extractGistId,
+    getGistContent,
+    getNpmGlobalPackages,
+    hasPiExtensionKeyword,
+    isBashToolInput,
+    isExtensionSettings,
+    isGhInstalled,
+    isPackageSnapshot,
+    isPiSettings,
+    isValidBackupPath,
+    isValidGistId,
+    normalizePackageName,
+    readPiSettings,
+    registerPackages,
+    syncGistBackup,
 } from "./index.js";

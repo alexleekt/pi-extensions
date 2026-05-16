@@ -1,17 +1,17 @@
 {
-    "name": "pi-pkg-guard",
-    "version": "0.12.0",
+    "name": "@alexleekt/pi-pkg-guard",
+    "version": "0.13.0",
     "description": "Guards against unregistered pi packages — installed via npm but not registered in pi's settings",
     "type": "module",
     "license": "MIT",
     "author": "Alex Lee <657215+alexleekt@users.noreply.github.com>",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/alexleekt/pi-pkg-guard.git"
+        "url": "git+https://github.com/alexleekt/pi-extensions.git"
     },
-    "homepage": "https://github.com/alexleekt/pi-pkg-guard#readme",
+    "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-pkg-guard#readme",
     "bugs": {
-        "url": "https://github.com/alexleekt/pi-pkg-guard/issues"
+        "url": "https://github.com/alexleekt/pi-extensions/issues"
     },
     "keywords": [
         "pi-package",
@@ -26,7 +26,6 @@
         "extensions/",
         "test/",
         "justfile",
-        "biome.json",
         "tsconfig.json",
         "README.md",
         "LICENSE"

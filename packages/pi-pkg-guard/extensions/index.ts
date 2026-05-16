@@ -17,6 +17,7 @@ const execAsync = promisify(exec);
 // Load version from package.json for schema URL
 const require = createRequire(import.meta.url);
 const { version: EXTENSION_VERSION } = require("../package.json");
+
 import type {
     ExtensionAPI,
     ExtensionCommandContext,

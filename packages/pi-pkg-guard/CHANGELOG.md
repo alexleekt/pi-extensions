@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-05-16
+
+### Changed
+
+- **Renamed package**: `pi-pkg-guard` → `@alexleekt/pi-pkg-guard` for consistency with sibling packages
+- Updated repository URLs to `alexleekt/pi-extensions` monorepo
+- Updated schema URLs to point to monorepo location
+
 ## [0.12.0] - 2026-05-09
 
 ### Added

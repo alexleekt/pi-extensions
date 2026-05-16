@@ -1,8 +1,8 @@
-# pi-pkg-guard
+# @alexleekt/pi-pkg-guard
 
 > Guards against unregistered pi packages — installed via npm but not registered in pi's settings.
 
-[![npm version](https://badge.fury.io/js/pi-pkg-guard.svg)](https://www.npmjs.com/package/pi-pkg-guard)
+[![npm version](https://badge.fury.io/js/%40alexleekt%2Fpi-pkg-guard.svg)](https://www.npmjs.com/package/@alexleekt/pi-pkg-guard)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
@@ -10,7 +10,7 @@
 ## Quick Start
 
 ```bash
-pi install npm:pi-pkg-guard
+pi install npm:@alexleekt/pi-pkg-guard
 ```
 
 Then in pi: `/package-guard`
@@ -100,7 +100,7 @@ Menu items are numbered for quick selection:
 ## Development
 
 ```bash
-git clone https://github.com/earendil-works/pi-mono.git
+git clone https://github.com/alexleekt/pi-extensions.git
 cd packages/pi-pkg-guard
 cd pi-pkg-guard
 npm install

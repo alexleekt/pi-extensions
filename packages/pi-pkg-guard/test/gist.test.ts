@@ -5,15 +5,14 @@
  */
 
 import assert from "node:assert";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
     extractGistId,
     isValidBackupPath,
     isValidGistId,
 } from "../extensions/index.js";
-
-import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
 
 describe("extractGistId", () => {
     it("extracts ID from full URL with username", () => {
