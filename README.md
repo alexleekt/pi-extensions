@@ -5,6 +5,29 @@
 
 A Pi extension that replaces `ask_user` with rich native WebView dialogs powered by [glimpseui](https://npmjs.com/package/glimpseui) and styled with shadcn/ui design tokens.
 
+> **Stop reading terminal walls of text.** This extension turns every `ask_user` call into a beautiful, searchable, keyboard-navigable dialog — complete with markdown context panels, inline descriptions, and dark mode. Your agent asks better questions. You answer faster.
+
+### Use Case: Scoping a New Project
+
+Instead of the agent dumping a wall of questions into the terminal, it opens a native dialog:
+
+```
+┌──────────────────────────────────────────────┐
+│  Which database should we use?                 │
+│  ─────────────────────────────────────────   │
+│  Context: We need something reliable for       │
+│  production.                                  │
+│                                              │
+│  ○ PostgreSQL  · Relational, proven            │
+│  ○ SQLite     · Zero-config, embedded          │
+│  ○ Custom...                                 │
+│                                              │
+│                     [Cancel]  [Submit]        │
+└──────────────────────────────────────────────┘
+```
+
+The agent gets a clean selection back. You get a decision made in seconds, not minutes of scrolling.
+
 ## Features
 
 - **Single-select** — searchable option list with inline descriptions
