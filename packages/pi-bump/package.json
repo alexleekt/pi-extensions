@@ -20,14 +20,14 @@
     ],
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/alexleekt/pi-bump.git"
+        "url": "git+https://github.com/alexleekt/pi-extensions.git"
     },
     "publishConfig": {
         "access": "public"
     },
-    "homepage": "https://github.com/alexleekt/pi-bump#readme",
+    "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-bump#readme",
     "bugs": {
-        "url": "https://github.com/alexleekt/pi-bump/issues"
+        "url": "https://github.com/alexleekt/pi-extensions/issues"
     },
     "engines": {
         "node": ">=18.0.0"

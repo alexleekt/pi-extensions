@@ -14,12 +14,12 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/alexleekt/pi-ask-user-glimpse.git"
+        "url": "git+https://github.com/alexleekt/pi-extensions.git"
     },
     "bugs": {
-        "url": "https://github.com/alexleekt/pi-ask-user-glimpse/issues"
+        "url": "https://github.com/alexleekt/pi-extensions/issues"
     },
-    "homepage": "https://github.com/alexleekt/pi-ask-user-glimpse#readme",
+    "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-ask-user-glimpse#readme",
     "publishConfig": {
         "access": "public"
     },

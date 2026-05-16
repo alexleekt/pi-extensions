@@ -13,7 +13,7 @@ A Pi extension that sends a **"Bump"** message when the user presses **Enter twi
   2. Ignore non-Enter keystrokes.
   3. Ignore when the editor has text.
   4. First empty Enter arms a 300 ms timer (keystroke passes through).
-  5. Second empty Enter within threshold fires `pi.sendUserMessage("Bump")` and consumes the keystroke.
+  5. Second empty Enter within threshold fires `pi.sendUserMessage(pickNudge())` and consumes the keystroke.
   6. Only fire when the agent is idle with no pending messages.
 
 ## Key APIs
