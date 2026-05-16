@@ -47,6 +47,25 @@ just fmt
 just publish pi-bump
 ```
 
+## Publishing
+
+Releases are automated via GitHub Actions. To publish:
+
+```bash
+just release pi-bump 0.3.0
+```
+
+This bumps the version, commits, tags (`@alexleekt/pi-bump@0.3.0`), and pushes — triggering `.github/workflows/publish.yml`.
+
+### Authentication (choose one)
+
+| Method | Setup | Speed |
+|---|---|---|
+| **NPM Token** | Add `NPM_TOKEN` secret to repo settings | Works immediately |
+| **Trusted Publishing** | Configure package on npm to allow `alexleekt/pi-extensions` | Zero secrets |
+
+With Trusted Publishing, npm uses GitHub OIDC — no token needed. See [npm docs](https://docs.npmjs.com/generating-provenance-statements).
+
 See [`AGENT.md`](./AGENT.md) for contributor guidelines, monorepo structure, and CI details.
 
 ## License

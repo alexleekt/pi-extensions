@@ -61,8 +61,10 @@ jobs:
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
               run: |
-                  if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+                  if [ -n "$NODE_AUTH_TOKEN" ]; then
+                      echo "Publishing with NPM_TOKEN..."
                       npm publish --access public
                   else
+                      echo "Publishing with npm provenance (Trusted Publishing / OIDC)..."
                       npm publish --provenance --access public
                   fi
