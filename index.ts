@@ -196,6 +196,95 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
+	// ── Ask the last assistant message's questions ──
+	pi.registerCommand("ask-last", {
+		description: "Extract questions from the last assistant message and ask them via ask_user",
+		handler: async (_args, ctx) => {
+			if (!ctx.hasUI) {
+				console.warn("[pi-ask-user-glimpse] ask-last requires interactive mode");
+				return;
+			}
+
+			// Find the last assistant message entry
+			const entries = ctx.sessionManager.getEntries();
+			const assistantEntries = entries.filter(
+				(e): e is any => e.type === "message" && (e as any).message?.role === "assistant",
+			);
+
+			if (assistantEntries.length === 0) {
+				ctx.ui.notify("No assistant messages found in this session", "warning");
+				return;
+			}
+
+			const lastEntry = assistantEntries[assistantEntries.length - 1];
+			const message = (lastEntry as any).message;
+
+			// Extract text content (handle both string and array formats)
+			let fullText = "";
+			if (typeof message.content === "string") {
+				fullText = message.content;
+			} else if (Array.isArray(message.content)) {
+				fullText = message.content
+					.filter((c: any) => c.type === "text")
+					.map((c: any) => c.text)
+					.join("\n");
+			}
+
+			if (!fullText.trim()) {
+				ctx.ui.notify("Last assistant message has no text content", "warning");
+				return;
+			}
+
+			// Extract questions (sentences ending with ?)
+			const sentences = fullText.split(/(?<=[.!?])\s+/);
+			const questions = sentences
+				.map((s) => s.trim())
+				.filter((s) => s.length > 0 && s.endsWith("?"));
+
+			if (questions.length === 0) {
+				ctx.ui.notify("No questions found in the last assistant message", "warning");
+				return;
+			}
+
+			// Build ask_user params based on question count
+			let params: Parameters<typeof askUserHandler>[0];
+			if (questions.length === 1) {
+				params = {
+					question: questions[0],
+					context: fullText,
+					allowFreeform: true,
+				};
+			} else {
+				params = {
+					question: "The assistant asked multiple questions",
+					context: fullText,
+					questions: questions.map((q) => ({
+						title: q.length > 60 ? q.slice(0, 57) + "..." : q,
+						description: q,
+					})),
+					allowComment: true,
+				};
+			}
+
+			const result = await askUserHandler(params, undefined, ctx);
+
+			// Check if user cancelled
+			if ((result.details as any)?.cancelled) {
+				ctx.ui.notify("Cancelled — no answer sent", "info");
+				return;
+			}
+
+			// Send the answer back as a user message so the agent can continue
+			const textContent = result.content[0];
+			const answer = textContent?.type === "text" ? textContent.text : "";
+			if (answer) {
+				pi.sendUserMessage(
+					`Answering the question${questions.length > 1 ? "s" : ""} from your last message:\n\n${answer}`,
+				);
+			}
+		},
+	});
+
 	pi.registerCommand("ask-debug", {
 		description: "Open a debug prompt to test each ask_user dialog type",
 		handler: async (_args, ctx) => {

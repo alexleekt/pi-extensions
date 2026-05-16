@@ -69,7 +69,7 @@ When any signal triggers, the extension appends a mandate to the system prompt:
 
 ## Cons
 
-- If content is pasted anonymously (bypassing `systemPromptOptions.skills` and not matching regex patterns), detection fails. Use `/ask-force` as a manual override.
+- If content is pasted anonymously (bypassing `systemPromptOptions.skills` and not matching regex patterns), detection fails. Use `/ask-force` as a manual override, or `/ask-last` to retroactively answer a question the agent already wrote as plain text.
 - The LLM could theoretically ignore the mandate, though in practice system-prompt overrides are highly effective.
 
 ## Legacy: Separate Middleware File

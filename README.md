@@ -197,6 +197,27 @@ The setting is persisted in the session and survives restarts.
 
 The injected mandate is ~100 tokens. It is only appended when detection triggers, so normal conversations pay nothing extra.
 
+## Slash Command: `/ask-last`
+
+When the assistant writes a question as free-form text (bypassing `ask_user`), use this command to retroactively open the rich dialog:
+
+```
+/ask-last
+```
+
+### How it works
+
+1. Finds the last assistant message in the session
+2. Extracts all sentences ending with `?`
+3. If one question → opens a **freeform** dialog with the full message as context
+4. If multiple questions → opens a **questionnaire** with each question as an item
+5. Sends your answer back into the conversation as a user message
+
+This is useful when:
+- A skill or the agent itself wrote a question as plain text
+- You want to answer via the rich WebView instead of typing inline
+- The agent asked multiple things and you want to answer them all at once
+
 ## Slash Command: `/ask-debug`
 
 Open a debug prompt that lets you manually test each dialog type:
