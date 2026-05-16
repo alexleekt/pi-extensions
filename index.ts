@@ -4,7 +4,29 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const THRESHOLD_MS = 300;
-const DEFAULT_NUDGE_MESSAGE = "Bump"; // TODO: make configurable via config file
+
+const NUDGE_MESSAGES = [
+  "Continue",
+  "Keep going",
+  "What's next?",
+  "Onward!",
+  "And then?",
+  "Build on that",
+  "More please",
+  "Next step?",
+  "Keep the momentum",
+  "Let's see it",
+  "Expand on this",
+  "Go deeper",
+  "Proceed",
+  "Keep building",
+  "Show me where this leads",
+  "Run it",
+];
+
+function pickNudge(): string {
+  return NUDGE_MESSAGES[Math.floor(Math.random() * NUDGE_MESSAGES.length)];
+}
 
 export default function bumpExtension(pi: ExtensionAPI) {
   let unsubscribe: (() => void) | null = null;
@@ -26,7 +48,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
       if (now - lastEmptyEnter < THRESHOLD_MS) {
         lastEmptyEnter = 0;
         if (ctx.isIdle() && !ctx.hasPendingMessages()) {
-          pi.sendUserMessage(DEFAULT_NUDGE_MESSAGE);
+          pi.sendUserMessage(pickNudge());
         }
         return { consume: true };
       }

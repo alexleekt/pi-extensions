@@ -5,7 +5,7 @@
 
 **The quickest way to say "keep going".**
 
-> Double-tap **Enter** on an empty chat input to nudge the Pi agent with a **"Bump"** message.
+> Double-tap **Enter** on an empty chat input to nudge the Pi agent with a randomized **nudge** from a curated set of 16 variations.
 
 ## Why
 
@@ -15,7 +15,7 @@ The Pi agent sometimes pauses waiting for more input. Instead of typing "continu
 
 1. Install the extension.
 2. In Pi's interactive mode, make sure the editor is empty.
-3. Press **Enter twice** within ~300 ms to send "Bump".
+3. Press **Enter twice** within ~300 ms to send a nudge.
 
 The extension only fires when the agent is idle and no messages are queued.
 

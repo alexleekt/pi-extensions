@@ -1,7 +1,7 @@
 {
   "name": "@alexleekt/pi-bump",
   "version": "0.1.0",
-  "description": "Double-Enter on empty chat to send 'bump' to the Pi agent.",
+  "description": "Double-Enter on empty chat to send a randomized nudge to the Pi agent.",
   "type": "module",
   "license": "MIT",
   "author": "Alex Lee <657215+alexleekt@users.noreply.github.com>",
