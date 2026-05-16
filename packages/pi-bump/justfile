@@ -17,6 +17,6 @@ publish:
     npm publish
 
 release version:
-    git tag -a "v{{version}}" -m "Release v{{version}}"
-    git push origin "v{{version}}"
-    @echo "Tag v{{version}} pushed. GitHub Actions will publish to npm."
+    git tag -a "@alexleekt/pi-bump@{{version}}" -m "Release @alexleekt/pi-bump@{{version}}"
+    git push origin "@alexleekt/pi-bump@{{version}}"
+    @echo "Tag @alexleekt/pi-bump@{{version}} pushed. GitHub Actions will publish to npm."

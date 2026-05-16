@@ -29,3 +29,13 @@ A Pi extension that sends a **"Bump"** message when the user presses **Enter twi
 - **Type-check**: `npm run check`
 - **Integration**: `node test-integration.mjs`
 - **Manual**: Install, open Pi interactive mode, and double-tap Enter on an empty editor.
+
+## Releasing
+
+Use scoped package tags (not bare `vX.Y.Z`):
+
+```bash
+just release 0.2.4   # creates @alexleekt/pi-bump@0.2.4
+```
+
+This matches the monorepo convention used for all packages in this repo.
