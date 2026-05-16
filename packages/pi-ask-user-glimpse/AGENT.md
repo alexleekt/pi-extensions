@@ -1,4 +1,4 @@
-# AGENTS.md — pi-ask-user-glimpse
+# AGENT.md — pi-ask-user-glimpse
 
 > Project-specific guidelines for AI agents working on this codebase.
 > This file is authoritative for this repository. If it conflicts with general agent guidelines, this file wins.
