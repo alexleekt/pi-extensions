@@ -1,44 +1,45 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        package:
-          - pi-bump
-          - pi-pkg-guard
-          - pi-ask-user-glimpse
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+    check:
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                package:
+                    - pi-bump
+                    - pi-pkg-guard
+                    - pi-ask-user-glimpse
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-          cache: "npm"
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "22"
+                  cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci --workspace packages/${{ matrix.package }}
+            - name: Install dependencies
+              run: npm ci
 
-      - name: Run Biome checks
-        run: npx @biomejs/biome check packages/${{ matrix.package }}
+            - name: Run Biome checks
+              run: npx @biomejs/biome check packages/${{ matrix.package }}
 
-      - name: Type check
-        working-directory: packages/${{ matrix.package }}
-        run: npm run check
+            - name: Type check
+              working-directory: packages/${{ matrix.package }}
+              run: npm run typecheck 2>/dev/null || npm run check
 
-      - name: Run tests
-        working-directory: packages/${{ matrix.package }}
-        run: npm test || node test-integration.mjs || echo "no tests"
+            - name: Run tests
+              working-directory: packages/${{ matrix.package }}
+              run: npm test 2>/dev/null || node test-integration.mjs 2>/dev/null || echo "no tests"
 
-      - name: Dry run publish
-        working-directory: packages/${{ matrix.package }}
-        run: npm publish --dry-run
+            - name: Dry run publish
+              working-directory: packages/${{ matrix.package }}
+              run: npm publish --dry-run

@@ -44,6 +44,7 @@
         "build": "npm run build:css && npm run build:webview",
         "build:css": "cd webview && npx tailwindcss -i ./src/index.css -o ./src/index.generated.css --content './index.html,./src/**/*.{js,ts,jsx,tsx}'",
         "build:webview": "cd webview && npx vite build --config ./vite.config.ts",
+        "typecheck": "tsc --noEmit",
         "check": "npm pack --dry-run",
         "prepack": "npm run build",
         "dev:webview": "cd webview && npx vite --config ./vite.config.ts",

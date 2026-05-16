@@ -48,9 +48,10 @@ async function questionnaireFallback(
             if (q.allowMultiple) {
                 const selections: string[] = [];
                 while (true) {
-                    const remaining = labels.filter(
-                        (_, i) => !selections.includes(q.options?.[i].title),
-                    );
+                    const remaining = labels.filter((_, i) => {
+                        const title = q.options?.[i]?.title;
+                        return title ? !selections.includes(title) : false;
+                    });
                     if (remaining.length === 0) break;
 
                     const choice = await ui.select(

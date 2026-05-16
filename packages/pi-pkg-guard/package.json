@@ -31,6 +31,8 @@
         "LICENSE"
     ],
     "scripts": {
+        "typecheck": "tsc --noEmit",
+        "check": "tsc --noEmit",
         "test": "tsx --test test/**/*.test.ts"
     },
     "devDependencies": {

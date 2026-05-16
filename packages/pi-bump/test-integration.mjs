@@ -104,75 +104,72 @@ function runTests() {
             "First Enter NOT consumed",
             result1 === undefined || !result1?.consume,
         );
-        pass += p; fail += f;
+        pass += p;
+        fail += f;
         [p, f] = assert("Second Enter consumed", result2?.consume === true);
-        pass += p; fail += f;
+        pass += p;
+        fail += f;
         [p, f] = assert(
             "Message sent is a nudge",
             sentMessages.length === 1 && isNudge(sentMessages[0].content),
         );
-        pass += p; fail += f;
+        pass += p;
+        fail += f;
     }
 
     // Test 2: Double Enter ignored when not idle
-    {
-        reset();
-        idle = false;
-        console.log("\nTest 2: Double Enter while streaming (not idle)");
-        terminalHandler("\r");
-        terminalHandler("\r");
-        [p, f] = assert(
-            "No message sent while streaming",
-            sentMessages.length === 0,
-        );
-        pass += p; fail += f;
-    }
+    reset();
+    idle = false;
+    console.log("\nTest 2: Double Enter while streaming (not idle)");
+    terminalHandler("\r");
+    terminalHandler("\r");
+    [p, f] = assert(
+        "No message sent while streaming",
+        sentMessages.length === 0,
+    );
+    pass += p;
+    fail += f;
 
     // Test 3: Double Enter ignored when pending messages exist
-    {
-        reset();
-        hasPending = true;
-        console.log("\nTest 3: Double Enter with pending messages");
-        terminalHandler("\r");
-        terminalHandler("\r");
-        [p, f] = assert(
-            "No message sent when pending messages exist",
-            sentMessages.length === 0,
-        );
-        pass += p; fail += f;
-    }
+    reset();
+    hasPending = true;
+    console.log("\nTest 3: Double Enter with pending messages");
+    terminalHandler("\r");
+    terminalHandler("\r");
+    [p, f] = assert(
+        "No message sent when pending messages exist",
+        sentMessages.length === 0,
+    );
+    pass += p;
+    fail += f;
 
     // Test 4: Enter with text in editor is ignored
-    {
-        reset();
-        editorText = "some text";
-        console.log("\nTest 4: Enter with text in editor");
-        const r1 = terminalHandler("\r");
-        const r2 = terminalHandler("\r");
-        [p, f] = assert(
-            "No message sent when editor has text",
-            sentMessages.length === 0,
-        );
-        pass += p; fail += f;
-        [p, f] = assert(
-            "Input not consumed when editor has text",
-            (r1 === undefined || !r1?.consume) &&
-                (r2 === undefined || !r2?.consume),
-        );
-        pass += p; fail += f;
-    }
+    reset();
+    editorText = "some text";
+    console.log("\nTest 4: Enter with text in editor");
+    const r1 = terminalHandler("\r");
+    const r2 = terminalHandler("\r");
+    [p, f] = assert(
+        "No message sent when editor has text",
+        sentMessages.length === 0,
+    );
+    pass += p;
+    fail += f;
+    [p, f] = assert(
+        "Input not consumed when editor has text",
+        (r1 === undefined || !r1?.consume) &&
+            (r2 === undefined || !r2?.consume),
+    );
+    pass += p;
+    fail += f;
 
     // Test 5: Single Enter on empty editor does not send message
-    {
-        reset();
-        console.log("\nTest 5: Single Enter on empty editor");
-        terminalHandler("\r");
-        [p, f] = assert(
-            "No message after single Enter",
-            sentMessages.length === 0,
-        );
-        pass += p; fail += f;
-    }
+    reset();
+    console.log("\nTest 5: Single Enter on empty editor");
+    terminalHandler("\r");
+    [p, f] = assert("No message after single Enter", sentMessages.length === 0);
+    pass += p;
+    fail += f;
 
     // Test 6: Slow second Enter (>300ms) does not trigger
     {
@@ -199,7 +196,8 @@ function runTests() {
             "No message after slow second Enter",
             sentMessages.length === beforeCount,
         );
-        pass += p; fail += f;
+        pass += p;
+        fail += f;
     }
 
     console.log(`\n${pass} passed, ${fail} failed`);
