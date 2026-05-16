@@ -37,7 +37,6 @@ The agent gets a clean selection back. You get a decision made in seconds, not m
 - **Native WebView** — renders in a real window (macOS WKWebView / Linux GTK4 / Windows WebView2)
 - **Terminal fallback** — gracefully degrades to TUI prompts when glimpseui is unavailable
 
-
 ## Install
 
 ```bash
