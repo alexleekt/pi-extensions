@@ -8,59 +8,59 @@ const THRESHOLD_MS = 300;
 
 // Randomly selected prompts to avoid repetition and version-bump ambiguity.
 const NUDGE_MESSAGES = [
-  "Continue",
-  "Keep going",
-  "What's next?",
-  "Onward!",
-  "And then?",
-  "Build on that",
-  "More please",
-  "Next step?",
-  "Keep the momentum",
-  "Let's see it",
-  "Expand on this",
-  "Go deeper",
-  "Proceed",
-  "Keep building",
-  "Show me where this leads",
-  "Run it",
+    "Continue",
+    "Keep going",
+    "What's next?",
+    "Onward!",
+    "And then?",
+    "Build on that",
+    "More please",
+    "Next step?",
+    "Keep the momentum",
+    "Let's see it",
+    "Expand on this",
+    "Go deeper",
+    "Proceed",
+    "Keep building",
+    "Show me where this leads",
+    "Run it",
 ];
 
 function pickNudge(): string {
-  return NUDGE_MESSAGES[Math.floor(Math.random() * NUDGE_MESSAGES.length)];
+    return NUDGE_MESSAGES[Math.floor(Math.random() * NUDGE_MESSAGES.length)];
 }
 
 export default function bumpExtension(pi: ExtensionAPI) {
-  let unsubscribe: (() => void) | null = null;
+    let unsubscribe: (() => void) | null = null;
 
-  pi.on("session_start", (_event, ctx) => {
-    if (!ctx.hasUI) return;
+    pi.on("session_start", (_event, ctx) => {
+        if (!ctx.hasUI) return;
 
-    unsubscribe?.();
+        unsubscribe?.();
 
-    let lastEmptyEnter = 0;
+        let lastEmptyEnter = 0;
 
-    unsubscribe = ctx.ui.onTerminalInput((data) => {
-      if (data !== "\r" && data !== "\n") return;
+        unsubscribe = ctx.ui.onTerminalInput((data) => {
+            if (data !== "\r" && data !== "\n") return;
 
-      const editorText = ctx.ui.getEditorText().trim();
-      if (editorText.length > 0) return;
+            const editorText = ctx.ui.getEditorText().trim();
+            if (editorText.length > 0) return;
 
-      const now = Date.now();
-      if (now - lastEmptyEnter < THRESHOLD_MS) {
-        lastEmptyEnter = 0;
-        if (ctx.isIdle() && !ctx.hasPendingMessages()) {
-          pi.sendUserMessage(pickNudge());
-        }
-        return { consume: true };
-      }
+            const now = Date.now();
+            if (now - lastEmptyEnter < THRESHOLD_MS) {
+                lastEmptyEnter = 0;
+                if (ctx.isIdle() && !ctx.hasPendingMessages()) {
+                    pi.sendUserMessage(pickNudge());
+                }
+                return { consume: true };
+            }
 
-      lastEmptyEnter = now;
+            lastEmptyEnter = now;
+        });
     });
-  });
 
-  pi.on("session_shutdown", () => {
-    unsubscribe?.();
-    unsubscribe = null;
-  });
+    pi.on("session_shutdown", () => {
+        unsubscribe?.();
+        unsubscribe = null;
+    });
 }
