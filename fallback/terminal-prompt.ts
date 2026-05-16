@@ -11,7 +11,7 @@ export async function terminalPrompt(
 
 	// Questionnaire mode: structured questions with per-question options
 	if (payload.questions && payload.questions.length > 0) {
-		return questionnaireFallback(payload.questions, payload.allowComment, ui);
+		return questionnaireFallback(payload.questions, payload.allowComment, ui, payload.context);
 	}
 
 	// Legacy flat options mode
@@ -22,10 +22,14 @@ async function questionnaireFallback(
 	questions: Question[],
 	allowComment: boolean,
 	ui: ExtensionUIContext,
+	context?: string,
 ): Promise<Record<string, unknown> | null> {
 	const answers: { question: string; answer: string; kind: "selection" | "freeform"; comment?: string }[] = [];
 
 	for (const q of questions) {
+		const prompt = context
+			? `${q.title}\n\nContext: ${context}`
+			: q.title;
 		let answer: string | undefined;
 
 		if (q.options && q.options.length > 0) {
@@ -39,7 +43,7 @@ async function questionnaireFallback(
 					if (remaining.length === 0) break;
 
 					const choice = await ui.select(
-						`${q.title}\nSelected: ${selections.join(", ") || "none"}\nChoose one (or cancel to finish)`,
+						`${prompt}\nSelected: ${selections.join(", ") || "none"}\nChoose one (or cancel to finish)`,
 						remaining,
 					);
 					if (choice === undefined) break;
@@ -53,14 +57,14 @@ async function questionnaireFallback(
 				answer = selections.join(", ");
 			} else {
 				// Single select
-				const choice = await ui.select(q.title, labels);
+				const choice = await ui.select(prompt, labels);
 				if (choice === undefined) return null;
 				const idx = labels.indexOf(choice);
 				answer = q.options[idx]?.title;
 			}
 		} else {
 			// Freeform text input
-			answer = await ui.input(q.title + (q.description ? `\n${q.description}` : ""));
+			answer = await ui.input(prompt + (q.description ? `\n${q.description}` : ""));
 		}
 
 		if (answer === undefined) return null;
@@ -89,11 +93,13 @@ async function flatOptionsFallback(
 	payload: AskUserPayload,
 	ui: ExtensionUIContext,
 ): Promise<Record<string, unknown> | null> {
-	const { question, options, allowMultiple, allowFreeform, allowComment } = payload;
+	const { question, context, options, allowMultiple, allowFreeform, allowComment } = payload;
 
-	if (options.length === 0 || (!allowMultiple && !allowFreeform)) {
+	const prompt = context ? `${question}\n\nContext: ${context}` : question;
+
+	if (options.length === 0) {
 		// Single text input
-		const text = await ui.input(question);
+		const text = await ui.input(prompt);
 		if (text === undefined) return null;
 		return { kind: "freeform", text };
 	}
@@ -114,19 +120,19 @@ async function flatOptionsFallback(
 			if (remaining.length === 0) break;
 
 			const choice = await ui.select(
-				`${question}\nSelected: ${selections.join(", ") || "none"}\nChoose one (or cancel to finish)`,
+				`${prompt}\nSelected: ${selections.join(", ") || "none"}\nChoose one (or cancel to finish)`,
 				remaining,
 			);
 			if (choice === undefined) break;
 
 			const idx = optionLabels.indexOf(choice);
 			if (idx >= options.length) {
-				// Freeform option selected
+				// Freeform option selected — add as a custom selection and continue
 				const text = await ui.input("Enter your answer:");
-				if (text !== undefined) {
-					return { kind: "freeform", text };
+				if (text !== undefined && text.trim()) {
+					selections.push(`Other: ${text.trim()}`);
 				}
-				break;
+				continue;
 			}
 			const title = options[idx]?.title;
 			if (title && !selections.includes(title)) {
@@ -142,7 +148,7 @@ async function flatOptionsFallback(
 		return { kind: "selection", selections, comment };
 	} else {
 		// Single select
-		const choice = await ui.select(question, optionLabels);
+		const choice = await ui.select(prompt, optionLabels);
 		if (choice === undefined) return null;
 
 		const idx = optionLabels.indexOf(choice);

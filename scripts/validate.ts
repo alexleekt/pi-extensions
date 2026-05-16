@@ -69,8 +69,8 @@ async function main() {
 		console.log("\n🖥️  Opening test WebView...");
 		try {
 			const result = await prompt(testHtml, {
-				width: 640,
-				height: 480,
+				width: 1200,
+				height: 900,
 				title: "Validation Test",
 			});
 			console.log("✅ WebView closed with result:", result);

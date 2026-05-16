@@ -76,23 +76,11 @@ const scenarios = [
 			type: "questionnaire" as const,
 			question: "Project scoping questionnaire",
 			context: "Answer each question to help us scope the project accurately.",
-			options: [
-				{
-					title: "Timeline",
-					description: "What's your target launch date?",
-				},
-				{
-					title: "Budget",
-					description: "Approximate budget range (USD)",
-				},
-				{
-					title: "Team size",
-					description: "How many engineers are available?",
-				},
-				{
-					title: "Existing stack",
-					description: "What technologies are you already using?",
-				},
+			questions: [
+				{ title: "Timeline", description: "What's your target launch date?" },
+				{ title: "Budget", description: "Approximate budget range (USD)" },
+				{ title: "Team size", description: "How many engineers are available?" },
+				{ title: "Existing stack", description: "What technologies are you already using?" },
 			],
 			allowMultiple: false,
 			allowFreeform: true,
@@ -164,8 +152,8 @@ async function showDialog(name: string, payload: unknown): Promise<void> {
 	return new Promise((resolve) => {
 		const injected = injectPayload(html, payload);
 		const win = open(injected, {
-			width: 700,
-			height: 500,
+			width: 1200,
+			height: 900,
 			title: `QA: ${name}`,
 		});
 
@@ -204,7 +192,7 @@ async function showDialog(name: string, payload: unknown): Promise<void> {
 async function main() {
 	console.log("=== Visual QA: pi-ask-user-glimpse ===\n");
 	console.log("Each dialog will open for 5 seconds or until you interact.");
-	console.log("Check: colors, layout, search, scroll, buttons, preview pane.\n");
+	console.log("Check: colors, layout, search, scroll, buttons, options.\n");
 
 	for (const scenario of scenarios) {
 		console.log(`▶️  Opening: ${scenario.name}`);

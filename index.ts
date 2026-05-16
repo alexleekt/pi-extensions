@@ -6,8 +6,6 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type, StringEnum } from "@earendil-works/pi-ai";
 import { askUserHandler } from "./tool/ask-user.js";
-import { detectConflict } from "./util/detect-conflict.js";
-import { safe } from "./util/safe-callback.js";
 
 const askUserTool = defineTool({
 	name: "ask_user",
@@ -103,16 +101,11 @@ const askUserTool = defineTool({
 export default function (pi: ExtensionAPI) {
 	pi.registerTool(askUserTool);
 
-	// Defensive: run conflict check inside session_start so the runtime
-	// is fully bound. Never use setTimeout/setImmediate in extension factories
-	// — unhandled errors in deferred callbacks crash Pi.
-	pi.on("session_start", safe("conflict-check", () => detectConflict(pi)));
-
 	pi.registerCommand("ask-debug", {
 		description: "Open a debug prompt to test each ask_user dialog type",
-		handler: safe("ask-debug-command", async (_args, ctx) => {
+		handler: async (_args, ctx) => {
 			if (!ctx.hasUI) {
-				ctx.ui.notify("ask-debug requires interactive mode", "error");
+				console.warn("[pi-ask-user-glimpse] ask-debug requires interactive mode");
 				return;
 			}
 
@@ -196,6 +189,6 @@ export default function (pi: ExtensionAPI) {
 			const textContent = result.content[0];
 			const text = textContent.type === "text" ? textContent.text : "No response";
 			ctx.ui.notify(`Result: ${text}`, "info");
-		}),
+		},
 	});
 }

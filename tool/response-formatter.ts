@@ -47,7 +47,7 @@ export function formatResponse(
 
 	const response: AskResponse =
 		kind === "freeform"
-			? { kind, text: String(result.text ?? "") }
+			? { kind, text: String(result.text ?? "").trim() }
 			: kind === "questionnaire"
 				? {
 						kind,
@@ -72,7 +72,10 @@ export function formatResponse(
 						kind,
 						selections: Array.isArray(result.selections)
 							? result.selections.map(String)
-							: [String(result.selection ?? "")],
+							: (() => {
+									const selection = result.selection ?? "";
+									return selection ? [String(selection)] : [];
+								})(),
 						comment: result.comment ? String(result.comment) : undefined,
 					};
 

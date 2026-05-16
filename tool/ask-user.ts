@@ -26,8 +26,7 @@ const STOPWORDS = new Set([
 	"them","he","him","his","she","her","i","me","my","mine","us",
 	"any","both","either","neither","one","two","first","last","another","every",
 	"many","much","several",
-	"s","t","don","doesn","didn","won","wouldn","couldn","shouldn","isn","aren",
-	"wasn","weren","hasn","haven","hadn","let","lets","new","use","using",
+	"let","new","use","using",
 	"make","made","get","got","go","going","want","wanted","like","liked",
 	"know","knew","known","think","thought","see","saw","seen","come","came",
 	"give","gave","given","take","took","taken","find","found","say","said",
@@ -142,12 +141,6 @@ export async function askUserHandler(
 		payloadType = "single-select";
 	}
 
-	if (params.displayMode) {
-		console.warn(
-			"[pi-ask-user-glimpse] displayMode parameter is ignored; Glimpse always opens a centered dialog.",
-		);
-	}
-
 	const payload: AskUserPayload = {
 		type: payloadType,
 		question: params.question,
@@ -174,8 +167,8 @@ export async function askUserHandler(
 		);
 
 		const options: Record<string, unknown> = {
-			width: 640,
-			height: 480,
+			width: 1200,
+			height: 900,
 			title: summarizeTitle(params.question),
 		};
 

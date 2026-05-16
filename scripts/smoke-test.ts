@@ -36,13 +36,9 @@ async function main() {
 	console.log(`Native host: ${host.platform} → ${host.path}`);
 
 	const win = open(injected, {
-		width: 640,
-		height: 480,
+		width: 1200,
+		height: 900,
 		title: "pi-ask-user-glimpse smoke test",
-	});
-
-	win.on("ready", (info) => {
-		console.log("✅ WebView ready", JSON.stringify(info, null, 2).slice(0, 200));
 	});
 
 	win.on("message", (data) => {

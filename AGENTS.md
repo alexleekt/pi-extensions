@@ -29,8 +29,7 @@ webview/              → Vite + React + Tailwind app
 1. **Self-contained bundle** — `dist/index.html` must have zero external network requests. All JS, CSS, and assets are inlined by `vite-plugin-singlefile`.
 2. **Payload injection contract** — The placeholder `/*ASK_USER_PAYLOAD*/` in `index.html` is replaced at runtime with JSON-serialized payload. The replacement string MUST escape `<`, `>`, and `&` as `\u003c`, `\u003e`, `\u0026` to prevent HTML injection.
 3. **Terminal fallback** — If `glimpseui.prompt()` throws (native host unavailable), the extension must fall back to `fallback/terminal-prompt.ts` using `ctx.ui` TUI methods. Never crash the Pi process.
-4. **No setTimeout in extension factory** — The extension factory function (`export default function (pi: ExtensionAPI)`) must never use `setTimeout`, `setImmediate`, or deferred callbacks. Unhandled errors in deferred callbacks crash Pi. Use `pi.on("session_start", ...)` with `safe()` wrapper instead.
-5. **Conflict detection deferred** — `detectConflict()` reads `pi.getAllTools()` which fails if called before the extension runtime is initialized. Always defer it to the `session_start` event.
+4. **No setTimeout in extension factory** — The extension factory function (`export default function (pi: ExtensionAPI)`) must never use `setTimeout`, `setImmediate`, or deferred callbacks. Unhandled errors in deferred callbacks crash Pi.
 
 ## File Responsibilities
 
@@ -90,7 +89,6 @@ This is a Pi extension — Pi loads `.ts` files directly. `tsconfig.json` uses `
 
 - **Indentation:** 2 spaces (TypeScript), tabs (not enforced but existing code uses 2-space)
 - **Imports:** Use `.js` extensions on relative imports (NodeNext module resolution)
-- **Error handling:** All deferred callbacks must be wrapped with `safe()` from `util/safe-callback.ts`
 - **Console output:** Use `[pi-ask-user-glimpse]` prefix for all `console.warn`/`console.error` calls
 - **Peer deps:** Only list `@earendil-works/pi-coding-agent` in `peerDependencies`. Do NOT add `@earendil-works/pi-tui` — it's not used.
 

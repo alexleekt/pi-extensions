@@ -9,6 +9,6 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": true
   },
-  "include": ["index.ts", "tool/**/*.ts", "util/**/*.ts", "fallback/**/*.ts", "types/**/*.d.ts", "shared/**/*.ts"],
+  "include": ["index.ts", "tool/**/*.ts", "fallback/**/*.ts", "types/**/*.d.ts", "shared/**/*.ts"],
   "exclude": ["node_modules", "webview"]
 }

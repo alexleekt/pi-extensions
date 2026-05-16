@@ -4,13 +4,13 @@ A Pi extension that replaces `ask_user` with rich native WebView dialogs powered
 
 ## Features
 
-- **Single-select** — searchable option list with split-pane details preview
+- **Single-select** — searchable option list with inline descriptions
 - **Multi-select** — checkbox-style selection with submit/cancel
 - **Freeform** — textarea input for open-ended responses
 - **Questionnaire** — cards in a vertical list for structured questions, each with its own options
 - **Native WebView** — renders in a real window (macOS WKWebView / Linux GTK4 / Windows WebView2)
 - **Terminal fallback** — gracefully degrades to TUI prompts when glimpseui is unavailable
-- **Conflict detection** — warns if `pi-ask-user` or `rpiv-ask-user-question` is also loaded
+
 
 ## Install
 
@@ -42,7 +42,7 @@ Ask the user to pick exactly one option:
 }
 ```
 
-The dialog shows a searchable list. Typing in the search box filters options by title and description. Clicking an option shows its full description in a side preview pane. The "Other" button at the bottom lets the user type a freeform answer instead.
+The dialog shows a full-width question header and a two-panel layout. When `context` is provided, the left panel renders it as markdown for reference while the right panel shows the searchable option list. Option descriptions appear inline below each title. The "Custom" button under the search box lets the user submit a freeform answer.
 
 ### Multi Select
 
@@ -63,7 +63,7 @@ Ask the user to pick multiple options:
 }
 ```
 
-Each option has a checkbox. Selected items are tracked at the bottom. Submit is disabled until at least one item is selected.
+Each option has a checkbox. A "Clear all" link resets selections. Submit is disabled until at least one item is selected.
 
 ### Freeform
 
@@ -77,7 +77,7 @@ Ask an open-ended question with no predefined options:
 }
 ```
 
-Shows a full-height textarea. Submit is disabled until text is entered.
+Shows a full-height textarea with platform-aware keyboard hints (⌘+Enter on macOS, Ctrl+Enter elsewhere). Submit is disabled until text is entered.
 
 ### Questionnaire
 
@@ -115,20 +115,20 @@ Ask multiple structured questions in one dialog:
 }
 ```
 
-Each question is shown as a card. Questions with `options` render as single-select (radio) or multi-select (checkbox) depending on `allowMultiple`. Questions without `options` render as a text input. The "Add comment" toggle per question is controlled by the top-level `allowComment` parameter. Submit is disabled until all questions have an answer.
+Each question is shown as a card with a progress bar at the top. Questions with `options` render as single-select (radio) or multi-select (checkbox) depending on `allowMultiple`. Questions without `options` render as a textarea. The dialog auto-scrolls to the first unanswered question on open. The comment button shows "Edit comment" when text exists. Submit is disabled until all questions have a non-empty answer.
 
 ### Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `question` | `string` | *(required)* | The question to ask |
-| `context` | `string` | — | Additional context shown below the question |
+| `context` | `string` | — | Additional context shown in a left-side markdown panel |
 | `options` | `Array<string \| {title, description?}>` | — | Options for flat single/multi-select mode |
 | `questions` | `Array<{title, description?, options?, allowMultiple?}>` | — | Questions for questionnaire mode. When present, `options` is ignored. |
 | `allowMultiple` | `boolean` | `false` | Allow selecting multiple options |
-| `allowFreeform` | `boolean` | `true` | Show a freeform "Other" option |
+| `allowFreeform` | `boolean` | `true` | Show a freeform "Custom" option |
 | `allowComment` | `boolean` | `false` | Collect an optional comment after selection |
-| `followCursor` | `boolean` | `false` | Make the dialog follow the terminal cursor |
+| `followCursor` | `boolean` | `false` | Make the 1200×900 dialog follow the terminal cursor |
 | `displayMode` | `"overlay" \| "inline"` | — | Legacy option; ignored (always centered dialog) |
 
 ## Development
@@ -173,7 +173,7 @@ Options: `single-select`, `multi-select`, `freeform`, `questionnaire`. The resul
 
 - **Title bar** — shows a condensed version of the question text (up to 3 content words)
 - **Centered dialog** — normal stacking, not floating
-- **Size** — 640×480 by default
+- **Size** — 1200×900 by default
 - **Cursor follow** — off by default; enable with `followCursor: true`
 - **Dark mode** — automatically follows the system `prefers-color-scheme` setting
 
@@ -183,8 +183,7 @@ Options: `single-select`, `multi-select`, `freeform`, `questionnaire`. The resul
 index.ts              → Pi extension entrypoint (tool + command registration)
 tool/ask-user.ts      → constructs payload, injects into HTML, calls glimpseui.prompt()
 tool/response-formatter.ts → normalizes WebView response for Pi
-util/detect-conflict.ts   → warns about overlapping ask_user tools
-util/safe-callback.ts      → error-swallowing wrapper for deferred work
+webview/src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform, ContextPanel, ErrorBoundary
 fallback/terminal-prompt.ts → readline fallback when WebView unavailable
 webview/              → Vite + React + Tailwind app
   src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform
@@ -200,18 +199,6 @@ Run `npm run build` to generate `dist/index.html`. The extension cannot work wit
 ### WebView does not open (terminal fallback instead)
 
 The extension falls back to TUI prompts when the glimpseui native host is unavailable. This is normal on headless systems or if the native binary is missing. Check `npm run validate` to see if the binary is detected.
-
-### Conflicting tool warning
-
-If you see a warning about `pi-ask-user` or `rpiv-ask-user-question`, uninstall the conflicting package:
-
-```bash
-pi uninstall pi-ask-user
-# or
-pi uninstall rpiv-ask-user-question
-```
-
-Only one `ask_user` implementation can be active at a time.
 
 ### Dialog shows "Missing or invalid ask_user payload"
 
