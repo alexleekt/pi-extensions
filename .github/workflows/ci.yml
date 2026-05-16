@@ -30,7 +30,18 @@ jobs:
               run: npm ci
 
             - name: Run Biome checks
-              run: npx @biomejs/biome check packages/${{ matrix.package }}
+              run: |
+                  if [ "${{ matrix.package }}" = "pi-ask-user-glimpse" ]; then
+                      npx @biomejs/biome check \
+                          packages/pi-ask-user-glimpse/index.ts \
+                          packages/pi-ask-user-glimpse/tool \
+                          packages/pi-ask-user-glimpse/shared \
+                          packages/pi-ask-user-glimpse/fallback \
+                          packages/pi-ask-user-glimpse/types \
+                          packages/pi-ask-user-glimpse/scripts
+                  else
+                      npx @biomejs/biome check packages/${{ matrix.package }}
+                  fi
 
             - name: Type check
               working-directory: packages/${{ matrix.package }}

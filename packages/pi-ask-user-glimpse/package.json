@@ -42,12 +42,12 @@
     ],
     "scripts": {
         "build": "npm run build:css && npm run build:webview",
-        "build:css": "cd webview && npx tailwindcss -i ./src/index.css -o ./src/index.generated.css --content './index.html,./src/**/*.{js,ts,jsx,tsx}'",
-        "build:webview": "cd webview && npx vite build --config ./vite.config.ts",
+        "build:css": "npx tailwindcss -c ./webview/tailwind.config.js -i ./webview/src/index.css -o ./webview/src/index.generated.css --content './webview/index.html,./webview/src/**/*.{js,ts,jsx,tsx}'",
+        "build:webview": "npx vite build --config ./webview/vite.config.ts",
         "typecheck": "tsc --noEmit",
         "check": "npm pack --dry-run",
         "prepack": "npm run build",
-        "dev:webview": "cd webview && npx vite --config ./vite.config.ts",
+        "dev:webview": "npx vite --config ./webview/vite.config.ts",
         "validate": "npx tsx scripts/validate.ts",
         "validate:gui": "npx tsx scripts/validate.ts --gui"
     },
