@@ -1,6 +1,6 @@
 {
     "name": "@alexleekt/pi-bump",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "Double-Enter on empty chat to send a randomized nudge to the Pi agent.",
     "type": "module",
     "license": "MIT",
