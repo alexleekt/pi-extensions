@@ -3,4 +3,8 @@ packages/*/node_modules/
 dist/
 *.log
 .DS_Store
+.env
+.env.*
+*.tsbuildinfo
+coverage/
 packages/*/.a5c/

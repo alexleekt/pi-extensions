@@ -58,4 +58,11 @@ jobs:
 
             - name: Publish to npm
               working-directory: packages/${{ steps.pkg.outputs.dir }}
-              run: npm publish --provenance --access public
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: |
+                  if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+                      npm publish --access public
+                  else
+                      npm publish --provenance --access public
+                  fi

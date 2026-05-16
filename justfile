@@ -32,7 +32,7 @@ publish pkg:
 # Usage: just release pi-bump 0.3.0
 release pkg version:
     cd packages/{{pkg}} && npm version --no-git-tag-version {{version}}
-    git add packages/{{pkg}}/package.json
+    git add packages/{{pkg}}/package.json package-lock.json
     git commit -m "chore({{pkg}}): release v{{version}}"
     git tag "@alexleekt/{{pkg}}@{{version}}"
     git push origin main "@alexleekt/{{pkg}}@{{version}}"
