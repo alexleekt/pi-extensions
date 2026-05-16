@@ -52,6 +52,7 @@
         "validate:gui": "npx tsx scripts/validate.ts --gui"
     },
     "dependencies": {
+        "@alexleekt/pi-shared": "*",
         "glimpseui": "^0.8.1"
     },
     "devDependencies": {

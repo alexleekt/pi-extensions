@@ -1,0 +1,36 @@
+{
+    "name": "@alexleekt/pi-shared",
+    "version": "0.1.0",
+    "description": "Shared types and utilities for Pi extensions",
+    "type": "module",
+    "license": "MIT",
+    "author": "Alex Lee <657215+alexleekt@users.noreply.github.com>",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/alexleekt/pi-extensions.git"
+    },
+    "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/shared#readme",
+    "bugs": {
+        "url": "https://github.com/alexleekt/pi-extensions/issues"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "types",
+        "session.ts"
+    ],
+    "exports": {
+        "./session": "./session.ts",
+        "./types": "./types/pi.d.ts"
+    },
+    "scripts": {
+        "typecheck": "tsc --noEmit"
+    },
+    "peerDependencies": {
+        "@earendil-works/pi-coding-agent": "*"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

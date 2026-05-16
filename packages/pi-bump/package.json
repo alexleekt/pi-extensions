@@ -37,6 +37,9 @@
             "./index.ts"
         ]
     },
+    "dependencies": {
+        "@alexleekt/pi-shared": "*"
+    },
     "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*"
     },

@@ -2,6 +2,10 @@
  * pi-ask-user-glimpse — Pi extension that replaces ask_user with native WebView dialogs via glimpseui.
  */
 
+import {
+    type CustomJournalEntry,
+    isCustomEntry,
+} from "@alexleekt/pi-shared/types";
 import { StringEnum, Type } from "@earendil-works/pi-ai";
 import type {
     BuildSystemPromptOptions,
@@ -57,22 +61,26 @@ function isQuestionSession(
     return hasQuestionSkill || hasQuestionLanguage;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Pi journal entry types not exported by host API
-function getStyleMode(entries: any[]): boolean | null {
+function getStyleMode(entries: unknown[]): boolean | null {
     const entry = entries.find(
-        (e) => e.type === "custom" && e.customType === "ask-user-style",
+        (e): e is CustomJournalEntry =>
+            isCustomEntry(e) && e.customType === "ask-user-style",
     );
-    // biome-ignore lint/suspicious/noExplicitAny: Pi journal entry types not exported by host API
-    return (entry as any)?.data?.enabled ?? null;
+    const enabled = entry?.data?.enabled;
+    return typeof enabled === "boolean" ? enabled : null;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Pi journal entry types not exported by host API
-function extractTextFromAssistantEntry(entry: any): string {
-    const content = entry.message?.content;
+function extractTextFromAssistantEntry(entry: unknown): string {
+    const message = (entry as unknown as Record<string, unknown>)?.message;
+    const content = (message as unknown as Record<string, unknown>)?.content;
     if (typeof content === "string") return content;
     if (!Array.isArray(content)) return "";
     return content
-        .filter((c) => c.type === "text")
+        .filter(
+            (c): c is { type: string; text: string } =>
+                typeof (c as Record<string, unknown>)?.type === "string" &&
+                typeof (c as Record<string, unknown>)?.text === "string",
+        )
         .map((c) => c.text)
         .join("\n");
 }
@@ -465,12 +473,14 @@ export default function (pi: ExtensionAPI) {
             }
 
             const entries = ctx.sessionManager.getEntries();
-            const lastAssistant = [...entries].reverse().find(
-                (e) =>
-                    e.type === "message" &&
-                    // biome-ignore lint/suspicious/noExplicitAny: Pi journal entry types not exported by host API
-                    (e as any).message?.role === "assistant",
-            );
+            const lastAssistant = [...entries].reverse().find((e) => {
+                const msg = (e as unknown as Record<string, unknown>).message;
+                return (
+                    typeof msg === "object" &&
+                    msg !== null &&
+                    (msg as Record<string, unknown>).role === "assistant"
+                );
+            });
 
             if (!lastAssistant) {
                 ctx.ui.notify(
@@ -497,8 +507,7 @@ export default function (pi: ExtensionAPI) {
                 ctx,
             );
 
-            // biome-ignore lint/suspicious/noExplicitAny: Pi askUser result types not exported by host API
-            if ((result.details as any)?.cancelled) {
+            if (result.details.cancelled) {
                 ctx.ui.notify("Cancelled — no answer sent", "info");
                 return;
             }

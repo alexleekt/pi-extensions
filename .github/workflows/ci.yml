@@ -43,7 +43,11 @@ jobs:
                       npx @biomejs/biome check packages/${{ matrix.package }}
                   fi
 
-            - name: Type check
+            - name: Type check shared
+              working-directory: packages/shared
+              run: npm run typecheck
+
+            - name: Type check package
               working-directory: packages/${{ matrix.package }}
               run: npm run typecheck 2>/dev/null || npm run check
 

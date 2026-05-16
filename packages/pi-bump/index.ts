@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
+import { manageSessionSubscription } from "@alexleekt/pi-shared/session";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 // Double-tap detection window (ms).
@@ -31,36 +32,31 @@ function pickNudge(): string {
 }
 
 export default function bumpExtension(pi: ExtensionAPI) {
-    let unsubscribe: (() => void) | null = null;
+    const sub = manageSessionSubscription(pi);
 
     pi.on("session_start", (_event, ctx) => {
         if (!ctx.hasUI) return;
 
-        unsubscribe?.();
-
         let lastEmptyEnter = 0;
 
-        unsubscribe = ctx.ui.onTerminalInput((data) => {
-            if (data !== "\r" && data !== "\n") return;
+        sub.set(
+            ctx.ui.onTerminalInput((data) => {
+                if (data !== "\r" && data !== "\n") return;
 
-            const editorText = ctx.ui.getEditorText().trim();
-            if (editorText.length > 0) return;
+                const editorText = ctx.ui.getEditorText().trim();
+                if (editorText.length > 0) return;
 
-            const now = Date.now();
-            if (now - lastEmptyEnter < THRESHOLD_MS) {
-                lastEmptyEnter = 0;
-                if (ctx.isIdle() && !ctx.hasPendingMessages()) {
-                    pi.sendUserMessage(pickNudge());
+                const now = Date.now();
+                if (now - lastEmptyEnter < THRESHOLD_MS) {
+                    lastEmptyEnter = 0;
+                    if (ctx.isIdle() && !ctx.hasPendingMessages()) {
+                        pi.sendUserMessage(pickNudge());
+                    }
+                    return { consume: true };
                 }
-                return { consume: true };
-            }
 
-            lastEmptyEnter = now;
-        });
-    });
-
-    pi.on("session_shutdown", () => {
-        unsubscribe?.();
-        unsubscribe = null;
+                lastEmptyEnter = now;
+            }),
+        );
     });
 }
