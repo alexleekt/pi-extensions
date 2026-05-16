@@ -11,12 +11,12 @@ Monorepo for Pi coding agent extensions. All packages are published under the `@
 
 ## Packages
 
-| Package | Version | Description |
-|---------|---------|-------------|
-| [`@alexleekt/pi-ask-user-glimpse`](./packages/pi-ask-user-glimpse) | 0.2.1 | Rich native WebView dialogs via glimpseui |
-| [`@alexleekt/pi-bump`](./packages/pi-bump) | 0.2.4 | Double-Enter nudge with randomized prompts |
-| [`@alexleekt/pi-pkg-guard`](./packages/pi-pkg-guard) | 0.13.0 | Package management guard for pi extensions |
-| [`@alexleekt/pi-shared`](./packages/pi-shared) | 0.1.1 | Shared types and utilities for Pi extensions |
+| Package | Description |
+|---------|-------------|
+| [`@alexleekt/pi-ask-user-glimpse`](./packages/pi-ask-user-glimpse) | Rich native WebView dialogs via glimpseui |
+| [`@alexleekt/pi-bump`](./packages/pi-bump) | Double-Enter nudge with randomized prompts |
+| [`@alexleekt/pi-pkg-guard`](./packages/pi-pkg-guard) | Package management guard for pi extensions |
+| [`@alexleekt/pi-shared`](./packages/pi-shared) | Shared types and utilities for Pi extensions |
 
 ## Installation
 
