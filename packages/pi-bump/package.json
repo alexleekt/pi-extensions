@@ -38,7 +38,7 @@
         ]
     },
     "dependencies": {
-        "@alexleekt/pi-shared": "*"
+        "@alexleekt/pi-shared": "^0.1.0"
     },
     "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*"

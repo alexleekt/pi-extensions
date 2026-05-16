@@ -44,7 +44,7 @@ jobs:
                   fi
 
             - name: Type check shared
-              working-directory: packages/shared
+              working-directory: packages/pi-shared
               run: npm run typecheck
 
             - name: Type check package

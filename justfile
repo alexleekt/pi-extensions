@@ -9,7 +9,7 @@ fmt:
 
 # Lint all packages (extension code only; webview has its own build toolchain)
 lint:
-    npx @biomejs/biome check packages/shared/session.ts \
+    npx @biomejs/biome check packages/pi-shared/session.ts \
         packages/pi-bump packages/pi-pkg-guard \
         packages/pi-ask-user-glimpse/index.ts \
         packages/pi-ask-user-glimpse/tool \

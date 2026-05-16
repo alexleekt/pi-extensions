@@ -9,7 +9,7 @@
         "type": "git",
         "url": "git+https://github.com/alexleekt/pi-extensions.git"
     },
-    "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/shared#readme",
+    "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-shared#readme",
     "bugs": {
         "url": "https://github.com/alexleekt/pi-extensions/issues"
     },
