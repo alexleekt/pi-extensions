@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
+import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { modKey } from "../util/platform";
-import { sendToGlimpse, sendCancelled } from "../util/glimpse";
 
 interface FreeformProps {
     payload: AskUserPayload;
@@ -40,7 +40,7 @@ export default function Freeform({
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [text]);
+    }, [text, handleSubmit]);
 
     return (
         <div className="flex h-full flex-col">
@@ -63,7 +63,6 @@ export default function Freeform({
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Type your answer…"
                     className="h-full w-full resize-none rounded-md border border-input bg-background p-3 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
-                    autoFocus
                 />
             </div>
 

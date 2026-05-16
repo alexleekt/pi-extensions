@@ -49,7 +49,7 @@ async function questionnaireFallback(
                 const selections: string[] = [];
                 while (true) {
                     const remaining = labels.filter(
-                        (_, i) => !selections.includes(q.options![i].title),
+                        (_, i) => !selections.includes(q.options?.[i].title),
                     );
                     if (remaining.length === 0) break;
 
@@ -145,7 +145,7 @@ async function flatOptionsFallback(
             const idx = optionLabels.indexOf(choice);
             if (idx >= options.length) {
                 const text = await ui.input("Enter your answer:");
-                if (text !== undefined && text.trim()) {
+                if (text?.trim()) {
                     selections.push(`Other: ${text.trim()}`);
                 }
                 continue;

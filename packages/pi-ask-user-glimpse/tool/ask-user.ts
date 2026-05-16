@@ -1,12 +1,12 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { prompt } from "glimpseui";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { prompt } from "glimpseui";
 import { terminalPrompt } from "../fallback/terminal-prompt.js";
-import { formatResponse } from "./response-formatter.js";
 import type { AskUserPayload, Question } from "../shared/ask-user.js";
+import { formatResponse } from "./response-formatter.js";
 
 const _require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -320,7 +320,7 @@ function summarizeTitle(question: string, maxWords = 3): string {
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
 
-    return contentWords.length > maxWords ? result + "…" : result;
+    return contentWords.length > maxWords ? `${result}…` : result;
 }
 
 function resolveWebviewHtml(): string {

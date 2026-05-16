@@ -1,13 +1,14 @@
 #!/usr/bin/env node
+
 /**
  * Smoke test: opens the WebView for 2 seconds then closes it.
  * Proves the full pipeline (build → payload injection → glimpseui → native window) works.
  */
 
-import { open, getNativeHostInfo } from "glimpseui";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getNativeHostInfo, open } from "glimpseui";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

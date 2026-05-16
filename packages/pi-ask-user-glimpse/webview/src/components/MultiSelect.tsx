@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
-import { sendToGlimpse, sendCancelled } from "../util/glimpse";
+import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 
 interface MultiSelectProps {
     payload: AskUserPayload;
@@ -84,11 +84,11 @@ export default function MultiSelect({
 
     useEffect(() => {
         setActiveIndex(-1);
-    }, [filtered.length]);
+    }, []);
 
     useEffect(() => {
         optionRefs.current = [];
-    }, [filtered]);
+    }, []);
 
     // Auto-focus first option when there's no search box
     useEffect(() => {
@@ -206,6 +206,9 @@ export default function MultiSelect({
         showComment,
         query,
         payload.allowFreeform,
+        toggle,
+        handleSubmit,
+        handleFreeform,
     ]);
 
     const hasResults = filtered.length > 0;
@@ -232,7 +235,6 @@ export default function MultiSelect({
                         placeholder="Search options..."
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        autoFocus
                         className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring ${showHeader ? "mt-3" : ""}`}
                     />
                 )}

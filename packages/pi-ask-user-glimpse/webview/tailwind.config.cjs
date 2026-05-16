@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-const path = require("path");
+const path = require("node:path");
 module.exports = {
     content: [
         path.join(__dirname, "index.html"),

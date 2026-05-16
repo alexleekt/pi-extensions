@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AskUserPayload, Question } from "../../../shared/ask-user";
+import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { modKey } from "../util/platform";
-import { sendToGlimpse, sendCancelled } from "../util/glimpse";
 
 interface QuestionnaireProps {
     payload: AskUserPayload;
@@ -106,7 +106,7 @@ export default function Questionnaire({
                 }
             }
         }
-    }, []);
+    }, [answers, questions.find]);
 
     const setSingleAnswer = (questionTitle: string, value: string) => {
         setAnswers((prev) => ({ ...prev, [questionTitle]: value }));
@@ -257,7 +257,7 @@ export default function Questionnaire({
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [showCommentFor, canSubmit, questions]);
+    }, [showCommentFor, canSubmit, questions, toggleMultiAnswer, handleSubmit]);
 
     return (
         <div className="flex h-full flex-col">

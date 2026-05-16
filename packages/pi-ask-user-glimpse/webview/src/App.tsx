@@ -1,10 +1,10 @@
 import type { AskUserPayload } from "../../shared/ask-user";
-import SingleSelect from "./components/SingleSelect";
-import MultiSelect from "./components/MultiSelect";
-import Freeform from "./components/Freeform";
-import Questionnaire from "./components/Questionnaire";
 import ContextPanel from "./components/ContextPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
+import Freeform from "./components/Freeform";
+import MultiSelect from "./components/MultiSelect";
+import Questionnaire from "./components/Questionnaire";
+import SingleSelect from "./components/SingleSelect";
 
 function getPayload(): AskUserPayload {
     const raw = (window as unknown as Record<string, unknown>)

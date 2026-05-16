@@ -2,13 +2,13 @@
  * pi-ask-user-glimpse — Pi extension that replaces ask_user with native WebView dialogs via glimpseui.
  */
 
+import { StringEnum, Type } from "@earendil-works/pi-ai";
 import type {
     BuildSystemPromptOptions,
     ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
-import { Type, StringEnum } from "@earendil-works/pi-ai";
-import { askUserHandler, type AskUserParams } from "./tool/ask-user.js";
+import { type AskUserParams, askUserHandler } from "./tool/ask-user.js";
 
 /* ── Generic question-session detection ── */
 
@@ -174,7 +174,7 @@ function extractQuestions(text: string): string[] {
 }
 
 function truncate(str: string, max: number): string {
-    return str.length > max ? str.slice(0, max - 3) + "..." : str;
+    return str.length > max ? `${str.slice(0, max - 3)}...` : str;
 }
 
 function buildAskLastParams(

@@ -1,13 +1,14 @@
 #!/usr/bin/env node
+
 /**
  * Visual QA: opens each prompt type in sequence so you can inspect the UI.
  * Press any key or wait 5 seconds to advance to the next dialog.
  */
 
-import { open } from "glimpseui";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { open } from "glimpseui";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(__dirname, "..", "dist", "index.html"), "utf-8");

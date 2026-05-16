@@ -1,13 +1,14 @@
 #!/usr/bin/env node
+
 /**
  * Validation script for pi-ask-user-glimpse extension.
  * Checks compilation, registration, HTML generation, and glimpseui availability.
  */
 
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFileSync } from "node:fs";
 import { getNativeHostInfo, prompt } from "glimpseui";
 
 const _require = createRequire(import.meta.url);
@@ -42,7 +43,7 @@ async function main() {
     const host = getNativeHostInfo();
     console.log(`ℹ️  Glimpse host: ${host.platform} → ${host.path}`);
     try {
-        const stat = readFileSync(host.path);
+        const _stat = readFileSync(host.path);
         console.log("✅ Glimpse binary found");
     } catch {
         console.warn(

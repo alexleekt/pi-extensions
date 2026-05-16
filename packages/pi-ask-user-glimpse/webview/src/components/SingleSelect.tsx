@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
-import { sendToGlimpse, sendCancelled } from "../util/glimpse";
+import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 
 interface SingleSelectProps {
     payload: AskUserPayload;
@@ -72,11 +72,11 @@ export default function SingleSelect({
 
     useEffect(() => {
         setActiveIndex(-1);
-    }, [filtered.length]);
+    }, []);
 
     useEffect(() => {
         optionRefs.current = [];
-    }, [filtered]);
+    }, []);
 
     // Auto-focus first option when there's no search box
     useEffect(() => {
@@ -189,6 +189,8 @@ export default function SingleSelect({
         sendResult,
         query,
         payload.allowFreeform,
+        isSubmitting,
+        handleFreeform,
     ]);
 
     const hasResults = filtered.length > 0;
@@ -215,7 +217,6 @@ export default function SingleSelect({
                         placeholder="Search options..."
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        autoFocus
                         className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring ${showHeader ? "mt-3" : ""}`}
                     />
                 )}
