@@ -4,11 +4,6 @@
 
 Monorepo for Pi coding agent extensions. All packages are published under the `@alexleekt/` scope on npm.
 
-> **Previous standalone repos have been archived on GitHub.** All development now happens here.
-> - `alexleekt/pi-bump` → `packages/pi-bump` ✅ archived
-> - `alexleekt/pi-pkg-guard` → `packages/pi-pkg-guard` ✅ archived
-> - `alexleekt/pi-ask-user-glimpse` → `packages/pi-ask-user-glimpse` ✅ archived
-
 ## Packages
 
 | Package | Description |
