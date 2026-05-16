@@ -1,0 +1,23 @@
+{
+  "name": "@alexleekt/pi-bump",
+  "version": "0.1.0",
+  "description": "Double-Enter on empty chat to send 'bump' to the Pi agent.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Alex Lee",
+  "keywords": ["pi-package", "pi-extension", "pi", "bump", "nudge", "continue"],
+  "files": ["index.ts", "README.md", "LICENSE"],
+  "pi": {
+    "extensions": ["./index.ts"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.74.0",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "check": "tsc --noEmit"
+  }
+}
