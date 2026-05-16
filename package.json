@@ -4,12 +4,15 @@
   "description": "Double-Enter on empty chat to send 'bump' to the Pi agent.",
   "type": "module",
   "license": "MIT",
-  "author": "Alex Lee",
+  "author": "Alex Lee <657215+alexleekt@users.noreply.github.com>",
   "keywords": ["pi-package", "pi-extension", "pi", "bump", "nudge", "continue"],
   "files": ["index.ts", "README.md", "LICENSE"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/alexleekt/pi-bump.git"
+    "url": "git+https://github.com/alexleekt/pi-bump.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "homepage": "https://github.com/alexleekt/pi-bump#readme",
   "bugs": {
