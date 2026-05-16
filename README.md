@@ -159,30 +159,38 @@ npm run validate:gui # same + opens actual WebView for visual check
 npm run check        # dry-run npm pack
 ```
 
-## Companion Extension: `grill-with-docs` Middleware
+## Auto-Force: When to Use `ask_user` Automatically
 
-The `grill-with-docs` skill instructs the agent to "ask questions one at a time" but never tells it to **use a tool** — so the agent writes free-form text instead of calling `ask_user`.
+By default, Pi lets the LLM decide whether to write a question as free-form text or call the `ask_user` tool. Some skills (like `grill-with-docs`) instruct the agent to "ask questions one at a time" but never tell it to **use a tool** — so the agent defaults to writing plain text, bypassing the rich WebView dialog.
 
-This package includes a companion extension that auto-detects when `grill-with-docs` is active and injects a system-prompt mandate forcing the LLM to use `ask_user` for every question.
+This extension auto-detects question-oriented sessions and injects a system-prompt mandate that forces the LLM to use `ask_user` for every question.
 
-### Enable it
+### Auto-detection
 
-If you installed via `pi install npm:@alexleekt/pi-ask-user-glimpse`, both extensions are already loaded. If you installed manually, also load the middleware:
+The extension checks each turn before the LLM starts:
 
-```bash
-pi -e ./grill-with-docs-middleware.ts
+1. **Known question skills** — `grill-with-docs`, `questionnaire`, `interview`, `grill`
+2. **Language patterns** in the system prompt — phrases like "ask the questions one at a time", "interview me", "grilling session", "wait for feedback"
+3. **Manual toggle** — `/ask-force` to force it on or off for the current session
+
+If any condition matches, it appends a mandate: "You MUST use `ask_user` for every question. Do NOT write free-form text."
+
+### Manual toggle: `/ask-force`
+
+Override auto-detection for the current session:
+
+```
+/ask-force
 ```
 
-Or place it in `~/.pi/agent/extensions/grill-with-docs-middleware.ts` for auto-discovery.
+Toggles forced mode ON or OFF. The setting is persisted in the session and survives restarts.
 
-### How it works
+- **ON** — Every question the agent wants to ask goes through `ask_user` (WebView or terminal fallback).
+- **OFF** — The agent uses its own judgment (default Pi behavior).
 
-- Hooks `before_agent_start` — fires before every LLM call.
-- Detects the `grill-with-docs` skill via Pi's structured `systemPromptOptions.skills`.
-- Verifies `ask_user` is in `selectedTools` (safety check).
-- Appends a mandate: "You MUST use `ask_user` for every question. Do NOT write free-form text."
+### Token cost
 
-This adds zero extra round-trips and costs ~100 tokens of system prompt.
+The injected mandate is ~100 tokens. It is only appended when detection triggers, so normal conversations pay nothing extra.
 
 ## Slash Command: `/ask-debug`
 

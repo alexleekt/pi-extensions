@@ -1,13 +1,21 @@
 /**
- * Grill-with-docs → ask_user middleware
+ * DEPRECATED — This logic is now built into the main extension (index.ts).
+ *
+ * This file is kept as a reference implementation. The main extension
+ * auto-detects question sessions skill-agnostically and also supports
+ * a manual `/ask-force` toggle.
+ *
+ * If you install pi-ask-user-glimpse via `pi install`, you do NOT need
+ * to copy this file anywhere.
+ */
+
+/**
+ * Grill-with-docs → ask_user middleware (legacy reference)
  *
  * A companion extension for pi-ask-user-glimpse.
  * Detects when the grill-with-docs skill is active and injects a system-prompt
  * instruction that forces the LLM to use the `ask_user` tool instead of
  * writing free-form text questions.
- *
- * Install: copy to ~/.pi/agent/extensions/grill-with-docs-middleware.ts
- * Requires: pi-ask-user-glimpse (or any ask_user tool override) must be loaded.
  */
 
 import type { BuildSystemPromptOptions, ExtensionAPI } from "@earendil-works/pi-coding-agent";

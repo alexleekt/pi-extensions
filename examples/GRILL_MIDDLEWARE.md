@@ -1,8 +1,12 @@
-# Middleware: Auto-convert grill-with-docs questions to `ask_user`
+# Auto-Force: Built-in Question-Session Detection
+
+> This document describes the built-in detection logic in `pi-ask-user-glimpse`.
+> As of the latest version, this behavior is **merged into the main extension**
+> and activates automatically. You do not need to install a separate middleware file.
 
 ## The Problem
 
-The `grill-with-docs` skill instructs the agent to "ask the questions one at a time, waiting for feedback on each question before continuing." However, it never tells the agent to **use a tool** for this — the agent defaults to writing questions as free-form assistant text. Because no `ask_user` tool call is made, `pi-ask-user-glimpse` never activates.
+Some skills (like `grill-with-docs`) instruct the agent to "ask the questions one at a time, waiting for feedback on each question before continuing." However, they never tell the agent to **use a tool** for this — the agent defaults to writing questions as free-form assistant text. Because no `ask_user` tool call is made, `pi-ask-user-glimpse` never activates.
 
 ## Why You Can't Intercept the Assistant Message
 
@@ -12,77 +16,72 @@ Pi extensions cannot convert a **completed assistant text message** into a tool 
 2. `message_end` fires — you can **replace** the message, but the replacement must keep the same `role`
 3. If the message was text, it stays text. You cannot retroactively turn it into a `tool_call`.
 
-Therefore, middleware must influence the LLM **before** generation — via prompt injection.
+Therefore, the only reliable way to force tool usage is to influence the LLM **before** generation — via prompt injection.
 
-## Approach A: `before_agent_start` + System Prompt Injection (Recommended)
+## Built-in Detection (Now in `index.ts`)
 
-**File:** [`grill-with-docs-middleware.ts`](./grill-with-docs-middleware.ts)
+The main extension (`index.ts`) hooks `before_agent_start` and auto-detects question sessions using three signals:
 
-### How it works
+### 1. Known question-oriented skills
+
+Checks `systemPromptOptions.skills` for:
+- `grill-with-docs`
+- `questionnaire`
+- `interview`
+- `grill`
+
+### 2. Language patterns in the system prompt
+
+Regex patterns such as:
+- "ask the questions one at a time"
+- "interview me"
+- "grilling session"
+- "wait for feedback"
+- "questionnaire mode"
+- "one question per call"
+
+### 3. Manual override: `/ask-force`
+
+The user can toggle forced mode on or off for the current session. The setting is persisted via `pi.appendEntry("ask-user-force", { enabled: boolean })`.
+
+When any signal triggers, the extension appends a mandate to the system prompt:
+
+> "When you need to ask the user a question, you MUST use the `ask_user` tool. Do NOT write questions as free-form assistant text."
+
+## How It Works
 
 1. Hook `before_agent_start` — fires after user submits a prompt, before the LLM sees it.
-2. Check `systemPromptOptions.skills` for `grill-with-docs`.
-3. If active, append a mandate to the system prompt: "You MUST use `ask_user` for every question."
-4. Also verify `ask_user` is in `selectedTools` so we don't break sessions where the tool is missing.
+2. Verify `ask_user` is in `selectedTools` (safety check — don't break sessions without the tool).
+3. Check the three signals above.
+4. If any match, append the mandate to the system prompt.
 
-### Pros
+## Pros
 
-- **Reliable** — detects the skill via Pi's structured metadata, not regex on user text.
-- **Non-invasive** — only activates when the skill is loaded.
-- **Tool-aware** — checks that `ask_user` exists before mandating its use.
+- **Skill-agnostic** — works for any skill or prompt template that uses question-session language.
+- **Non-invasive** — only appends tokens when detection triggers.
+- **User-controllable** — `/ask-force` lets the user override auto-detection.
+- **Zero round-trips** — no extra LLM calls needed.
 
-### Cons
+## Cons
 
-- If the skill is invoked anonymously (e.g., copied inline into the prompt without being loaded as a named skill), it won't be detectable via `systemPromptOptions.skills`.
-- The LLM could theoretically ignore the mandate (though in practice system-prompt overrides usually work).
+- If content is pasted anonymously (bypassing `systemPromptOptions.skills` and not matching regex patterns), detection fails. Use `/ask-force` as a manual override.
+- The LLM could theoretically ignore the mandate, though in practice system-prompt overrides are highly effective.
 
-### Install
+## Legacy: Separate Middleware File
 
-```bash
-cp examples/grill-with-docs-middleware.ts ~/.pi/agent/extensions/
-```
+Earlier versions shipped a standalone `grill-with-docs-middleware.ts` companion extension. This has been **removed** — the logic is now unified in the main extension. If you previously installed the middleware separately, you can delete it from `~/.pi/agent/extensions/`.
 
-No `/reload` needed if you place it in the auto-discovered path — Pi loads it on the next session start. If Pi is already running, use `/reload`.
-
-## Approach B: `input` Event Transform (Fallback)
+## Fallback: `input` Event Transform
 
 **File:** [`grill-with-docs-input-transform.ts`](./grill-with-docs-input-transform.ts)
 
-### How it works
-
-1. Hook `input` — fires before skill/template expansion.
-2. Regex-match the raw user input for grill-with-docs invocation patterns.
-3. If matched, append an instruction to the user prompt text.
-
-### Pros
-
-- Works even if the skill isn't formally loaded (e.g., user pasted skill content manually).
-
-### Cons
-
-- **Fragile** — depends on detecting `/grill-with-docs`, `/skill: grill-with-docs`, or the phrase in free-form text. False positives/negatives are likely.
-- Appends text to the **user message**, consuming context window tokens.
-- Must be re-evaluated on every input event, not just once per agent turn.
-
-## Approach C: Generic Question Detector (Not Recommended)
-
-An extension could hook `message_end`, parse every assistant message for question patterns, and then:
-- Hide the original message
-- Inject a user message echoing the question
-- Hope the LLM uses `ask_user` on the next turn
-
-This is unreliable, requires an extra round-trip, and often feels janky to the user. It also can't force the use of the rich WebView if the LLM still chooses to respond with text.
+This is an *example* of an alternative approach, not a recommended one. It hooks the `input` event and regex-matches the raw user input. It is fragile and consumes user-message tokens, but works when content is pasted manually without being loaded as a named skill. Use `/ask-force` instead.
 
 ## Decision Matrix
 
-| Approach | Detects Skill Reliably | Forces Tool Usage | Extra Round-trip | Token Cost |
-|----------|----------------------|-------------------|------------------|------------|
-| A (`before_agent_start`) | ✅ High | ✅ System prompt | ❌ No | Low (~100 chars) |
-| B (`input` transform) | ⚠️ Regex | ✅ Injected text | ❌ No | Medium (appendix per prompt) |
-| C (`message_end` hack) | ❌ Post-hoc | ❌ Hope-based | ✅ Yes | High |
-
-## Recommendation
-
-Use **Approach A** (`before_agent_start` + system prompt injection) as the primary middleware. It is the only approach that reliably detects the skill and mandates tool usage without extra round-trips or fragile regex.
-
-If you find that the skill is sometimes loaded anonymously (bypassing `systemPromptOptions.skills`), combine both A and B for defense in depth.
+| Approach | Detects Reliably | Forces Tool Usage | Extra Round-trip | Token Cost | Status |
+|----------|------------------|-------------------|------------------|------------|--------|
+| Built-in `before_agent_start` | ✅ Skills + patterns | ✅ System prompt | ❌ No | Low (~100 chars) | **Active** |
+| `/ask-force` manual toggle | ✅ Always | ✅ System prompt | ❌ No | Low (~100 chars) | **Active** |
+| `input` transform (example) | ⚠️ Regex | ✅ Injected text | ❌ No | Medium | Legacy example |
+| `message_end` post-hoc hack | ❌ Post-hoc | ❌ Hope-based | ✅ Yes | High | Not implemented |

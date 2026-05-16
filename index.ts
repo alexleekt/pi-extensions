@@ -2,10 +2,52 @@
  * pi-ask-user-glimpse — Pi extension that replaces ask_user with native WebView dialogs via glimpseui.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { BuildSystemPromptOptions, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type, StringEnum } from "@earendil-works/pi-ai";
 import { askUserHandler } from "./tool/ask-user.js";
+
+/* ── Generic question-session detection ── */
+
+const QUESTION_SESSION_PATTERNS = [
+	/ask the questions? one at a time/i,
+	/interview me/i,
+	/grilling session/i,
+	/ask questions? (one at a time|sequentially|individually)/i,
+	/wait for feedback/i,
+	/questionnaire mode/i,
+	/one question per call/i,
+];
+
+const QUESTION_SKILL_NAMES = new Set(["grill-with-docs", "questionnaire", "interview", "grill"]);
+
+const ASK_USER_MANDATE = `
+## Tool Usage Mandate — Auto-injected by pi-ask-user-glimpse
+
+When you need to ask the user a question, you MUST use the \`ask_user\`
+tool. Do NOT write questions as free-form assistant text. Each question
+should be a separate \`ask_user\` tool call.
+
+Rules:
+- One question per \`ask_user\` call.
+- Provide concise options when the question has discrete choices.
+- Set \`allowMultiple: true\` when more than one choice is valid.
+- Set \`allowFreeform: true\` when the user might want to answer in their own words.
+- Wait for the tool result before continuing to the next question.
+`;
+
+function isQuestionSession(systemPrompt: string, options: BuildSystemPromptOptions): boolean {
+	// Known question-oriented skills
+	const hasQuestionSkill =
+		options.skills?.some((s) => QUESTION_SKILL_NAMES.has(s.name.toLowerCase())) ?? false;
+	if (hasQuestionSkill) return true;
+
+	// Question-session language patterns in the system prompt
+	const hasQuestionLanguage = QUESTION_SESSION_PATTERNS.some((p) => p.test(systemPrompt));
+	if (hasQuestionLanguage) return true;
+
+	return false;
+}
 
 const askUserTool = defineTool({
 	name: "ask_user",
@@ -100,6 +142,39 @@ const askUserTool = defineTool({
 
 export default function (pi: ExtensionAPI) {
 	pi.registerTool(askUserTool);
+
+	// ── Auto-detect question sessions and force ask_user usage ──
+	pi.on("before_agent_start", async (event, ctx) => {
+		const hasAskUser = event.systemPromptOptions.selectedTools?.includes("ask_user");
+		if (!hasAskUser) return;
+
+		// Check session-persisted force toggle
+		const entries = ctx.sessionManager.getEntries();
+		const forceEntry = entries.find(
+			(e) => e.type === "custom" && e.customType === "ask-user-force",
+		);
+		const forceMode = (forceEntry as any)?.data?.enabled ?? false;
+
+		if (forceMode || isQuestionSession(event.systemPrompt, event.systemPromptOptions)) {
+			return {
+				systemPrompt: event.systemPrompt + ASK_USER_MANDATE,
+			};
+		}
+	});
+
+	// ── Manual toggle for forced ask_user mode ──
+	pi.registerCommand("ask-force", {
+		description: "Toggle forced ask_user mode for this session",
+		handler: async (_args, ctx) => {
+			const entries = ctx.sessionManager.getEntries();
+			const current = entries.find(
+				(e) => e.type === "custom" && e.customType === "ask-user-force",
+			);
+			const enabled = !((current as any)?.data?.enabled ?? false);
+			pi.appendEntry("ask-user-force", { enabled });
+			ctx.ui.notify(`Forced ask_user mode: ${enabled ? "ON" : "OFF"}`, "info");
+		},
+	});
 
 	pi.registerCommand("ask-debug", {
 		description: "Open a debug prompt to test each ask_user dialog type",
