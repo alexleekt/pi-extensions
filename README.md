@@ -5,7 +5,7 @@
 
 **The quickest way to say "keep going".**
 
-> Double-tap **Enter** on an empty chat input to send the Pi agent a randomized prompt from a curated set of 16 variations.
+> Double-tap **Enter** on an empty chat input to nudge the Pi agent with a randomized prompt.
 
 ## Why
 
@@ -17,7 +17,7 @@ The Pi agent sometimes pauses waiting for more input. Instead of typing "continu
 2. In Pi's interactive mode, make sure the editor is empty.
 3. Press **Enter twice** within ~300 ms to send a randomized prompt.
 
-The extension only fires when the agent is idle and no messages are queued. Each nudge is randomly selected from 16 variations to avoid repetition and keep the conversation fresh.
+The extension only fires when the agent is idle and no messages are queued. Prompts are randomly selected from 16 variations to avoid repetition.
 
 ## Installation
 
