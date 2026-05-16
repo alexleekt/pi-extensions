@@ -1,5 +1,8 @@
 # @alexleekt/pi-bump
 
+[![npm](https://img.shields.io/npm/v/@alexleekt/pi-bump)](https://www.npmjs.com/package/@alexleekt/pi-bump)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 **The quickest way to say "keep going".**
 
 > Double-tap **Enter** on an empty chat input to nudge the Pi agent with a **"Bump"** message.
