@@ -56,15 +56,18 @@ jobs:
                       npm run build
                   fi
 
-            - name: Publish to npm
+            - name: Publish to npm (Trusted Publishing / OIDC)
+              if: ${{ secrets.NPM_TOKEN == '' }}
+              working-directory: packages/${{ steps.pkg.outputs.dir }}
+              run: |
+                  echo "Using npm Trusted Publishing (OIDC provenance)..."
+                  npm publish --provenance --access public
+
+            - name: Publish to npm (NPM_TOKEN fallback)
+              if: ${{ secrets.NPM_TOKEN != '' }}
               working-directory: packages/${{ steps.pkg.outputs.dir }}
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
               run: |
-                  if [ -n "$NODE_AUTH_TOKEN" ]; then
-                      echo "Publishing with NPM_TOKEN..."
-                      npm publish --access public
-                  else
-                      echo "Publishing with npm provenance (Trusted Publishing / OIDC)..."
-                      npm publish --provenance --access public
-                  fi
+                  echo "Using NPM_TOKEN for authentication..."
+                  npm publish --access public
