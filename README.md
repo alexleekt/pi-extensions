@@ -2,7 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Monorepo for Pi coding agent extensions. All packages are published under the `@alexleekt/` scope on npm.
+Monorepo for [Pi](https://github.com/earendil-works/pi-coding-agent) coding agent extensions.
+All packages are published under the `@alexleekt/` scope on npm.
 
 ## Packages
 
@@ -13,55 +14,13 @@ Monorepo for Pi coding agent extensions. All packages are published under the `@
 | [`@alexleekt/pi-pkg-guard`](./packages/pi-pkg-guard) | Package management guard for pi extensions |
 | [`@alexleekt/pi-shared`](./packages/pi-shared) | Shared types and utilities for Pi extensions |
 
-## Installation
-
-Install any package via the Pi agent:
+## Install
 
 ```bash
 pi install @alexleekt/pi-bump
 pi install @alexleekt/pi-pkg-guard
 pi install @alexleekt/pi-ask-user-glimpse
 ```
-
-## Development
-
-```bash
-# Install all workspace dependencies
-npm install
-
-# Type-check all packages
-just typecheck
-
-# Lint all extension code
-just lint
-
-# Format all extension code
-just fmt
-
-# Publish a package
-just publish pi-bump
-```
-
-## Publishing
-
-Releases are automated via GitHub Actions. To publish:
-
-```bash
-just release pi-bump 0.3.0
-```
-
-This bumps the version, commits, tags (`@alexleekt/pi-bump@0.3.0`), and pushes — triggering `.github/workflows/publish.yml`.
-
-### Authentication (choose one)
-
-| Method | Setup | Speed |
-|---|---|---|
-| **NPM Token** | Add `NPM_TOKEN` secret to repo settings | Works immediately |
-| **Trusted Publishing** | Configure package on npm to allow `alexleekt/pi-extensions` | Zero secrets |
-
-With Trusted Publishing, npm uses GitHub OIDC — no token needed. See [npm docs](https://docs.npmjs.com/generating-provenance-statements).
-
-See [`AGENT.md`](./AGENT.md) for contributor guidelines, monorepo structure, and CI details.
 
 ## License
 

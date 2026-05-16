@@ -3,13 +3,6 @@
 > Project-specific guidelines for AI agents working on this codebase.
 > This file is authoritative for this repository. If it conflicts with general agent guidelines, this file wins.
 
-## What This Project Is
-
-A **Pi extension** that replaces the built-in `ask_user` tool with rich native WebView dialogs powered by [`glimpseui`](https://npmjs.com/package/glimpseui). The webview is a React + Tailwind app bundled as a single inlined HTML file (`dist/index.html`).
-
-**Repository:** `alexleekt/pi-ask-user-glimpse`  
-**Published as:** `@alexleekt/pi-ask-user-glimpse` on npm
-
 ## Architecture
 
 ```
