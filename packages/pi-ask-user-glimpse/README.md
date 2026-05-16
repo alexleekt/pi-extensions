@@ -160,8 +160,8 @@ Each question is shown as a card with a progress bar at the top. Questions with 
 ## Development
 
 ```bash
-git clone https://github.com/alexleekt/pi-ask-user-glimpse.git
-cd pi-ask-user-glimpse
+git clone https://github.com/alexleekt/pi-extensions.git
+cd pi-extensions/packages/pi-ask-user-glimpse
 npm install
 ```
 

@@ -171,7 +171,7 @@ If issues persist:
 1. **Check pi version:** Update to latest
 2. **Check extension version:** `cat ~/.pi/agent/extensions/pi-pkg-guard/package.json | grep version`
 3. **Review pi logs:** Check startup messages for errors
-4. **File an issue:** https://github.com/earendil-works/pi-mono/issues
+4. **File an issue:** https://github.com/alexleekt/pi-extensions/issues
 
 ---
 

@@ -226,9 +226,9 @@ just release
 # Or specify version explicitly
 just release 0.3.0
 
-# Or manually create tag
-git tag -a v0.3.0 -m "Release v0.3.0"
-git push origin v0.3.0
+# Or manually create tag (always use scoped package format)
+git tag -a "@alexleekt/pi-pkg-guard@0.3.0" -m "Release @alexleekt/pi-pkg-guard@0.3.0"
+git push origin "@alexleekt/pi-pkg-guard@0.3.0"
 ```
 
 **What happens automatically:**
@@ -239,7 +239,7 @@ git push origin v0.3.0
 
 **Note:** Manual GitHub Release creation is not needed - it's automated when you push the tag.
 
-Monitor at: https://github.com/earendil-works/pi-mono/actions
+Monitor at: https://github.com/alexleekt/pi-extensions/actions
 
 **Fallback:** If Trusted Publishing isn't available, use classic token-based auth by adding `NPM_TOKEN` secret and uncommenting `NODE_AUTH_TOKEN` in publish.yml.
 
@@ -288,8 +288,8 @@ When preparing a release:
    ```bash
    just release 0.9.0
    # or manually:
-   git tag -a v0.9.0 -m "Release v0.9.0: naming refactor, docs reorg, test coverage"
-   git push origin v0.9.0
+   git tag -a "@alexleekt/pi-pkg-guard@0.9.0" -m "Release @alexleekt/pi-pkg-guard@0.9.0: naming refactor, docs reorg, test coverage"
+   git push origin "@alexleekt/pi-pkg-guard@0.9.0"
    ```
 
 ### Pre-Release Verification (CRITICAL)
@@ -324,12 +324,12 @@ just fix
 jj commit -m "style: fix biome formatting"
 
 # 2. Move tag to fixed commit
-git tag -d vX.Y.X
-git tag -a vX.Y.X -m "Release vX.Y.X" <new-commit-hash>
-git push --force origin vX.Y.X
+git tag -d "@alexleekt/pi-pkg-guard@X.Y.X"
+git tag -a "@alexleekt/pi-pkg-guard@X.Y.X" -m "Release @alexleekt/pi-pkg-guard@X.Y.X" <new-commit-hash>
+git push --force origin "@alexleekt/pi-pkg-guard@X.Y.X"
 
 # 3. Monitor new workflow run
-gh run list --repo earendil-works/pi-mono
+gh run list --repo alexleekt/pi-extensions
 ```
 
 **Why this matters:** Force-pushing tags is messy and can confuse npm registry caching. Better to catch issues before tagging.

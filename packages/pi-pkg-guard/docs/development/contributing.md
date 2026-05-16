@@ -129,7 +129,7 @@ See [i18n Guide](../reference/i18n-guide.md) for details.
 
 ## Questions?
 
-- Open an issue: https://github.com/earendil-works/pi-mono/issues
+- Open an issue: https://github.com/alexleekt/pi-extensions/issues
 - Check existing documentation
 
 ---

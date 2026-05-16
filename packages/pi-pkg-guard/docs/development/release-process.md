@@ -45,8 +45,8 @@ git add -A
 git commit -m "chore(release): v0.3.0"
 
 # 4. Create and push tag
-git tag -a v0.3.0 -m "Release v0.3.0"
-git push origin v0.3.0
+git tag -a "@alexleekt/pi-pkg-guard@0.3.0" -m "Release @alexleekt/pi-pkg-guard@0.3.0"
+git push origin "@alexleekt/pi-pkg-guard@0.3.0"
 ```
 
 ---

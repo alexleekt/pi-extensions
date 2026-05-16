@@ -5,8 +5,8 @@ Thanks for your interest in improving `@alexleekt/pi-ask-user-glimpse`!
 ## Development Setup
 
 ```bash
-git clone https://github.com/alexleekt/pi-ask-user-glimpse.git
-cd pi-ask-user-glimpse
+git clone https://github.com/alexleekt/pi-extensions.git
+cd pi-extensions/packages/pi-ask-user-glimpse
 npm install
 ```
 

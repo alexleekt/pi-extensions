@@ -29,7 +29,7 @@ interface MigrationResult {
 // =============================================================================
 
 const EXTENSION_VERSION = "0.11.0";
-const PACKAGE_SNAPSHOT_SCHEMA_URL = `https://raw.githubusercontent.com/earendil-works/pi-mono/v${EXTENSION_VERSION}/packages/pi-pkg-guard/schema/package-snapshot.json`;
+const PACKAGE_SNAPSHOT_SCHEMA_URL = `https://raw.githubusercontent.com/alexleekt/pi-extensions/v${EXTENSION_VERSION}/packages/pi-pkg-guard/schema/package-snapshot.json`;
 
 function isLegacyBackup(data: unknown): boolean {
     if (typeof data !== "object" || data === null) return false;

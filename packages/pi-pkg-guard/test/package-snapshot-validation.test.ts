@@ -17,11 +17,17 @@ import { describe, it } from "node:test";
 // =============================================================================
 
 const EXTENSION_VERSION = "0.11.0";
-const PACKAGE_SNAPSHOT_SCHEMA_URL = `https://raw.githubusercontent.com/earendil-works/pi-mono/v${EXTENSION_VERSION}/packages/pi-pkg-guard/schema/package-snapshot.json`;
+const PACKAGE_SNAPSHOT_SCHEMA_URL = `https://raw.githubusercontent.com/alexleekt/pi-extensions/v${EXTENSION_VERSION}/packages/pi-pkg-guard/schema/package-snapshot.json`;
 
 // Accept schema URLs from any version tag, main branch, or refs/tags pattern
+// NOTE: Old earendil-works/pi-mono URLs kept for backward compatibility with existing backups
 const ALLOWED_SNAPSHOT_SCHEMA_PATTERNS = [
     PACKAGE_SNAPSHOT_SCHEMA_URL,
+    /^https:\/\/raw\.githubusercontent\.com\/alexleekt\/pi-extensions\/v\d+\.\d+\.\d+\/packages\/pi-pkg-guard\/schema\/package-snapshot\.json$/,
+    /^https:\/\/raw\.githubusercontent\.com\/alexleekt\/pi-extensions\/refs\/tags\/v\d+\.\d+\.\d+\/packages\/pi-pkg-guard\/schema\/package-snapshot\.json$/,
+    "https://raw.githubusercontent.com/alexleekt/pi-extensions/refs/heads/main/packages/pi-pkg-guard/schema/package-snapshot.json",
+    "https://raw.githubusercontent.com/alexleekt/pi-extensions/main/packages/pi-pkg-guard/schema/package-snapshot.json",
+    // Legacy earendil-works/pi-mono URLs (backward compatibility)
     /^https:\/\/raw\.githubusercontent\.com\/earendil-works\/pi-mono\/v\d+\.\d+\.\d+\/packages\/pi-pkg-guard\/schema\/package-snapshot\.json$/,
     /^https:\/\/raw\.githubusercontent\.com\/earendil-works\/pi-mono\/refs\/tags\/v\d+\.\d+\.\d+\/packages\/pi-pkg-guard\/schema\/package-snapshot\.json$/,
     "https://raw.githubusercontent.com/earendil-works/pi-mono/refs/heads/main/packages/pi-pkg-guard/schema/package-snapshot.json",

@@ -43,7 +43,7 @@ npm install -g pi-pkg-guard
 For contributing or testing changes:
 
 ```bash
-git clone https://github.com/earendil-works/pi-mono.git
+git clone https://github.com/alexleekt/pi-extensions.git
 cd pi-pkg-guard
 npm install
 

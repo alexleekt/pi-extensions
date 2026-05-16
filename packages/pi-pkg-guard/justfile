@@ -199,14 +199,15 @@ release version="":
     # Detect semantic version bump needed from conventional commits
     echo "🔍 Checking conventional commits for semantic version bump..."
     
-    # Get the last tag
+    # Get the last tag (strip @alexleekt/pi-pkg-guard@ prefix if present)
     LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
     if [ -z "$LAST_TAG" ]; then
         echo "⚠️  No previous tag found. Assuming this is the first release."
         SUGGESTED_BUMP="none"
     else
-        # Remove 'v' prefix if present for comparison
-        LAST_VERSION=${LAST_TAG#v}
+        # Remove scoped package prefix and 'v' prefix if present for comparison
+        LAST_VERSION=${LAST_TAG##*@}
+        LAST_VERSION=${LAST_VERSION#v}
         
         # Get commits since last tag
         COMMITS=$(git log "$LAST_TAG"..HEAD --pretty=format:"%s" 2>/dev/null || echo "")
@@ -254,7 +255,7 @@ release version="":
             echo ""
             echo "   Last tag:     $LAST_TAG ($LAST_VERSION)"
             echo "   Package.json: v$PKG_VERSION"
-            echo "   Should be:    v$SUGGESTED_VERSION ($BUMP_REASON)"
+            echo "   Should be:    @alexleekt/pi-pkg-guard@$SUGGESTED_VERSION ($BUMP_REASON)"
             echo ""
             echo "   Run semantic release first:"
             echo "      - Update package.json version to $SUGGESTED_VERSION"
@@ -264,7 +265,7 @@ release version="":
             echo "   Or skip this check with: RELEASE_FORCE=1 just release"
             exit 1
         fi
-        echo "✅ Version bump matches conventional commits ($BUMP_REASON → v$SUGGESTED_VERSION)"
+        echo "✅ Version bump matches conventional commits ($BUMP_REASON → @alexleekt/pi-pkg-guard@$SUGGESTED_VERSION)"
     else
         echo "ℹ️  No version bump detected from commits"
     fi
@@ -272,33 +273,33 @@ release version="":
     # Auto-detect version from package.json if not provided
     if [ -z "{{version}}" ]; then
         VERSION=$PKG_VERSION
-        echo "📦 Using version from package.json: v$VERSION"
+        echo "📦 Using version from package.json: @alexleekt/pi-pkg-guard@$VERSION"
     else
         VERSION="{{version}}"
-        echo "📦 Using specified version: v$VERSION"
+        echo "📦 Using specified version: @alexleekt/pi-pkg-guard@$VERSION"
     fi
     
     # Check if tag already exists
-    if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-        echo "❌ Error: Tag v$VERSION already exists"
-        echo "   Use: git tag -d v$VERSION  # to delete locally"
-        echo "   Then: git push --delete origin v$VERSION  # to delete remotely"
+    if git rev-parse "@alexleekt/pi-pkg-guard@$VERSION" >/dev/null 2>&1; then
+        echo "❌ Error: Tag @alexleekt/pi-pkg-guard@$VERSION already exists"
+        echo "   Use: git tag -d @alexleekt/pi-pkg-guard@$VERSION  # to delete locally"
+        echo "   Then: git push --delete origin @alexleekt/pi-pkg-guard@$VERSION  # to delete remotely"
         exit 1
     fi
     
     
-    echo "🏷️  Creating release v$VERSION..."
-    git tag -a "v$VERSION" -m "Release v$VERSION"
-    git push origin "v$VERSION"
+    echo "🏷️  Creating release @alexleekt/pi-pkg-guard@$VERSION..."
+    git tag -a "@alexleekt/pi-pkg-guard@$VERSION" -m "Release @alexleekt/pi-pkg-guard@$VERSION"
+    git push origin "@alexleekt/pi-pkg-guard@$VERSION"
     echo ""
-    echo "✅ Tag v$VERSION pushed!"
+    echo "✅ Tag @alexleekt/pi-pkg-guard@$VERSION pushed!"
     echo ""
     echo "GitHub Actions will now automatically:"
     echo "  1. ✅ Run all checks (biome, tests, typecheck)"
     echo "  2. ✅ Publish to npm with provenance"
     echo "  3. ✅ Create GitHub Release with auto-generated notes"
     echo ""
-    echo "Monitor progress at: https://github.com/earendil-works/pi-mono/actions"
+    echo "Monitor progress at: https://github.com/alexleekt/pi-extensions/actions"
 
 # Alias for release (backward compatibility)
 # GitHub Releases are now created automatically by the workflow

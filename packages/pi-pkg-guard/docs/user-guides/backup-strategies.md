@@ -164,7 +164,7 @@ All new backups include a `$schema` field for version tracking:
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/earendil-works/pi-mono/v0.9.0/packages/pi-pkg-guard/schema/package-snapshot.json",
+  "$schema": "https://raw.githubusercontent.com/alexleekt/pi-extensions/v0.9.0/packages/pi-pkg-guard/schema/package-snapshot.json",
   "timestamp": "2026-04-23T10:30:00.000Z",
   "npmPackages": ["pi-foo", "pi-bar"]
 }
