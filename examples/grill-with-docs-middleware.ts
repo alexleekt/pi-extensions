@@ -1,21 +1,12 @@
 /**
  * DEPRECATED — This logic is now built into the main extension (index.ts).
  *
- * This file is kept as a reference implementation. The main extension
- * auto-detects question sessions skill-agnostically and also supports
- * a manual `/ask-style` toggle.
+ * The main extension auto-detects question sessions skill-agnostically
+ * and supports a manual `/ask-style` toggle. You do not need to copy
+ * this file anywhere if you installed pi-ask-user-glimpse via `pi install`.
  *
- * If you install pi-ask-user-glimpse via `pi install`, you do NOT need
- * to copy this file anywhere.
- */
-
-/**
- * Grill-with-docs → ask_user middleware (legacy reference)
- *
- * A companion extension for pi-ask-user-glimpse.
- * Detects when the grill-with-docs skill is active and injects a system-prompt
- * instruction that forces the LLM to use the `ask_user` tool instead of
- * writing free-form text questions.
+ * Kept as a reference implementation of a single-skill `before_agent_start`
+ * hook using `systemPromptOptions.skills` detection.
  */
 
 import type { BuildSystemPromptOptions, ExtensionAPI } from "@earendil-works/pi-coding-agent";

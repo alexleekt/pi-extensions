@@ -5,7 +5,7 @@
 import type { BuildSystemPromptOptions, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type, StringEnum } from "@earendil-works/pi-ai";
-import { askUserHandler } from "./tool/ask-user.js";
+import { askUserHandler, type AskUserParams } from "./tool/ask-user.js";
 
 /* ── Generic question-session detection ── */
 
@@ -37,16 +37,10 @@ Rules:
 `;
 
 function isQuestionSession(systemPrompt: string, options: BuildSystemPromptOptions): boolean {
-	// Known question-oriented skills
 	const hasQuestionSkill =
 		options.skills?.some((s) => QUESTION_SKILL_NAMES.has(s.name.toLowerCase())) ?? false;
-	if (hasQuestionSkill) return true;
-
-	// Question-session language patterns in the system prompt
 	const hasQuestionLanguage = QUESTION_SESSION_PATTERNS.some((p) => p.test(systemPrompt));
-	if (hasQuestionLanguage) return true;
-
-	return false;
+	return hasQuestionSkill || hasQuestionLanguage;
 }
 
 const askUserTool = defineTool({
@@ -157,10 +151,12 @@ export default function (pi: ExtensionAPI) {
 		const hasExplicitStyle = styleData && typeof styleData.enabled === "boolean";
 		const styleMode = hasExplicitStyle ? styleData.enabled : null;
 
-		if (styleMode === true || (styleMode === null && isQuestionSession(event.systemPrompt, event.systemPromptOptions))) {
-			return {
-				systemPrompt: event.systemPrompt + ASK_USER_MANDATE,
-			};
+		const shouldInject =
+			styleMode === true ||
+			(styleMode === null && isQuestionSession(event.systemPrompt, event.systemPromptOptions));
+
+		if (shouldInject) {
+			return { systemPrompt: event.systemPrompt + ASK_USER_MANDATE };
 		}
 	});
 
@@ -174,24 +170,21 @@ export default function (pi: ExtensionAPI) {
 			);
 			const data = (current as any)?.data;
 
-			let enabled: boolean | null;
+			let nextMode: boolean | null;
 			let label: string;
 
 			if (!data || typeof data.enabled !== "boolean") {
-				// Auto → Always Dialog
-				enabled = true;
+				nextMode = true;
 				label = "Always Dialog (auto-detection overridden)";
 			} else if (data.enabled === true) {
-				// Always Dialog → Plain Text
-				enabled = false;
+				nextMode = false;
 				label = "Plain Text (no dialog injection)";
 			} else {
-				// Plain Text → Auto
-				enabled = null;
+				nextMode = null;
 				label = "Auto (skill + pattern detection)";
 			}
 
-			pi.appendEntry("ask-user-style", { enabled });
+			pi.appendEntry("ask-user-style", { enabled: nextMode });
 			ctx.ui.notify(`ask_user style: ${label}`, "info");
 		},
 	});
@@ -205,26 +198,29 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
-			// Find the last assistant message entry
 			const entries = ctx.sessionManager.getEntries();
-			const assistantEntries = entries.filter(
-				(e): e is any => e.type === "message" && (e as any).message?.role === "assistant",
-			);
+			let lastAssistant: any = null;
+			for (let i = entries.length - 1; i >= 0; i--) {
+				const e = entries[i] as any;
+				if (e.type === "message" && e.message?.role === "assistant") {
+					lastAssistant = e;
+					break;
+				}
+			}
 
-			if (assistantEntries.length === 0) {
+			if (!lastAssistant) {
 				ctx.ui.notify("No assistant messages found in this session", "warning");
 				return;
 			}
 
-			const lastEntry = assistantEntries[assistantEntries.length - 1];
-			const message = (lastEntry as any).message;
+			const msg: any = lastAssistant.message;
+			const content: any = msg.content;
 
-			// Extract text content (handle both string and array formats)
 			let fullText = "";
-			if (typeof message.content === "string") {
-				fullText = message.content;
-			} else if (Array.isArray(message.content)) {
-				fullText = message.content
+			if (typeof content === "string") {
+				fullText = content;
+			} else if (Array.isArray(content)) {
+				fullText = content
 					.filter((c: any) => c.type === "text")
 					.map((c: any) => c.text)
 					.join("\n");
@@ -235,19 +231,17 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
-			// Extract questions (sentences ending with ?)
-			const sentences = fullText.split(/(?<=[.!?])\s+/);
-			const questions = sentences
-				.map((s) => s.trim())
-				.filter((s) => s.length > 0 && s.endsWith("?"));
+			const questions = fullText
+				.split(/(?<=[.!?])\s+/)
+				.map((s: string) => s.trim())
+				.filter((s: string) => s.length > 0 && s.endsWith("?"));
 
 			if (questions.length === 0) {
 				ctx.ui.notify("No questions found in the last assistant message", "warning");
 				return;
 			}
 
-			// Build ask_user params based on question count
-			let params: Parameters<typeof askUserHandler>[0];
+			let params: AskUserParams;
 			if (questions.length === 1) {
 				params = {
 					question: questions[0],
@@ -258,7 +252,7 @@ export default function (pi: ExtensionAPI) {
 				params = {
 					question: "The assistant asked multiple questions",
 					context: fullText,
-					questions: questions.map((q) => ({
+					questions: questions.map((q: string) => ({
 						title: q.length > 60 ? q.slice(0, 57) + "..." : q,
 						description: q,
 					})),
@@ -299,7 +293,7 @@ export default function (pi: ExtensionAPI) {
 			);
 			if (!mode) return;
 
-			let params: Parameters<typeof askUserHandler>[0];
+			let params: AskUserParams;
 			switch (mode) {
 				case "single-select":
 					params = {

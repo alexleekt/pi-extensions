@@ -1,4 +1,4 @@
-# Auto-Force: Built-in Question-Session Detection
+# Auto-Detection: Question-Session Detection
 
 > This document describes the built-in detection logic in `pi-ask-user-glimpse`.
 > As of the latest version, this behavior is **merged into the main extension**
@@ -18,7 +18,7 @@ Pi extensions cannot convert a **completed assistant text message** into a tool 
 
 Therefore, the only reliable way to force tool usage is to influence the LLM **before** generation — via prompt injection.
 
-## Built-in Detection (Now in `index.ts`)
+## Built-in Detection
 
 The main extension (`index.ts`) hooks `before_agent_start` and auto-detects question sessions using three signals:
 
@@ -42,12 +42,12 @@ Regex patterns such as:
 
 ### 3. Manual override: `/ask-style`
 
-The user can override auto-detection for the current session. The setting is persisted via `pi.appendEntry("ask-user-style", { enabled: boolean | null })`.
+Overrides auto-detection for the current session. Persisted via `pi.appendEntry("ask-user-style", { enabled: boolean | null })`.
 
 Cycles through three states:
 - **AUTO** *(default)* — auto-detect by skill name + language patterns
-- **Always Dialog** — always use `ask_user` for every question, regardless of detection
-- **Plain Text** — disable everything; let the agent write questions as plain text
+- **Always Dialog** — always use `ask_user` for every question
+- **Plain Text** — disable all dialog injection
 
 When any signal triggers, the extension appends a mandate to the system prompt:
 
@@ -55,8 +55,8 @@ When any signal triggers, the extension appends a mandate to the system prompt:
 
 ## How It Works
 
-1. Hook `before_agent_start` — fires after user submits a prompt, before the LLM sees it.
-2. Verify `ask_user` is in `selectedTools` (safety check — don't break sessions without the tool).
+1. Hook `before_agent_start` — fires before the LLM sees the prompt.
+2. Verify `ask_user` is in `selectedTools` (safety check).
 3. Check the three signals above.
 4. If any match, append the mandate to the system prompt.
 
@@ -64,7 +64,7 @@ When any signal triggers, the extension appends a mandate to the system prompt:
 
 - **Skill-agnostic** — works for any skill or prompt template that uses question-session language.
 - **Non-invasive** — only appends tokens when detection triggers.
-- **User-controllable** — `/ask-style` lets the user override auto-detection.
+- **User-controllable** — `/ask-style` overrides auto-detection.
 - **Zero round-trips** — no extra LLM calls needed.
 
 ## Cons

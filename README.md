@@ -159,21 +159,21 @@ npm run validate:gui # same + opens actual WebView for visual check
 npm run check        # dry-run npm pack
 ```
 
-## Auto-Force: When to Use `ask_user` Automatically
+## Auto-Detection: When `ask_user` Is Used Automatically
 
-By default, Pi lets the LLM decide whether to write a question as free-form text or call the `ask_user` tool. Some skills (like `grill-with-docs`) instruct the agent to "ask questions one at a time" but never tell it to **use a tool** — so the agent defaults to writing plain text, bypassing the rich WebView dialog.
+Some skills instruct the agent to "ask questions one at a time" but never tell it to **use a tool** — so the agent writes plain text, bypassing the rich WebView dialog.
 
-This extension auto-detects question-oriented sessions and injects a system-prompt mandate that forces the LLM to use `ask_user` for every question.
+This extension auto-detects question-oriented sessions and injects a system-prompt mandate that tells the LLM to use `ask_user` for every question.
 
 ### Auto-detection
 
-The extension checks each turn before the LLM starts:
+Before each LLM turn, the extension checks:
 
 1. **Known question skills** — `grill-with-docs`, `questionnaire`, `interview`, `grill`
-2. **Language patterns** in the system prompt — phrases like "ask the questions one at a time", "interview me", "grilling session", "wait for feedback"
-3. **Manual toggle** — `/ask-style` to override the behavior for the current session
+2. **Language patterns** in the system prompt — "ask the questions one at a time", "interview me", "grilling session", "wait for feedback"
+3. **Manual toggle** — `/ask-style` overrides the behavior for the current session
 
-If any condition matches, it appends a mandate: "You MUST use `ask_user` for every question. Do NOT write free-form text."
+When triggered, it appends: "You MUST use `ask_user` for every question. Do NOT write free-form text."
 
 ### Manual toggle: `/ask-style`
 
