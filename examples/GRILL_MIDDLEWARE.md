@@ -42,7 +42,12 @@ Regex patterns such as:
 
 ### 3. Manual override: `/ask-force`
 
-The user can toggle forced mode on or off for the current session. The setting is persisted via `pi.appendEntry("ask-user-force", { enabled: boolean })`.
+The user can override auto-detection for the current session. The setting is persisted via `pi.appendEntry("ask-user-force", { enabled: boolean | null })`.
+
+Cycles through three states:
+- **AUTO** *(default)* — auto-detect by skill name + language patterns
+- **ON** — force `ask_user` for every question, regardless of detection
+- **OFF** — disable everything; no mandate injected, no auto-detection
 
 When any signal triggers, the extension appends a mandate to the system prompt:
 

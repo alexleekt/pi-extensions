@@ -153,9 +153,11 @@ export default function (pi: ExtensionAPI) {
 		const forceEntry = entries.find(
 			(e) => e.type === "custom" && e.customType === "ask-user-force",
 		);
-		const forceMode = (forceEntry as any)?.data?.enabled ?? false;
+		const forceData = (forceEntry as any)?.data;
+		const hasExplicitToggle = forceData && typeof forceData.enabled === "boolean";
+		const forceMode = hasExplicitToggle ? forceData.enabled : null;
 
-		if (forceMode || isQuestionSession(event.systemPrompt, event.systemPromptOptions)) {
+		if (forceMode === true || (forceMode === null && isQuestionSession(event.systemPrompt, event.systemPromptOptions))) {
 			return {
 				systemPrompt: event.systemPrompt + ASK_USER_MANDATE,
 			};
@@ -164,15 +166,33 @@ export default function (pi: ExtensionAPI) {
 
 	// ── Manual toggle for forced ask_user mode ──
 	pi.registerCommand("ask-force", {
-		description: "Toggle forced ask_user mode for this session",
+		description: "Toggle forced ask_user mode for this session (auto-detect → ON → OFF → auto-detect)",
 		handler: async (_args, ctx) => {
 			const entries = ctx.sessionManager.getEntries();
 			const current = entries.find(
 				(e) => e.type === "custom" && e.customType === "ask-user-force",
 			);
-			const enabled = !((current as any)?.data?.enabled ?? false);
+			const data = (current as any)?.data;
+
+			let enabled: boolean | null;
+			let label: string;
+
+			if (!data || typeof data.enabled !== "boolean") {
+				// Auto-detect → ON (forced)
+				enabled = true;
+				label = "ON (auto-detection overridden)";
+			} else if (data.enabled === true) {
+				// ON → OFF (disabled)
+				enabled = false;
+				label = "OFF (auto-detection disabled)";
+			} else {
+				// OFF → auto-detect (clear toggle)
+				enabled = null;
+				label = "AUTO (skill + pattern detection active)";
+			}
+
 			pi.appendEntry("ask-user-force", { enabled });
-			ctx.ui.notify(`Forced ask_user mode: ${enabled ? "ON" : "OFF"}`, "info");
+			ctx.ui.notify(`ask_user force mode: ${label}`, "info");
 		},
 	});
 

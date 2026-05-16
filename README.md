@@ -183,10 +183,15 @@ Override auto-detection for the current session:
 /ask-force
 ```
 
-Toggles forced mode ON or OFF. The setting is persisted in the session and survives restarts.
+Cycles through three states:
 
-- **ON** — Every question the agent wants to ask goes through `ask_user` (WebView or terminal fallback).
-- **OFF** — The agent uses its own judgment (default Pi behavior).
+| State | Behavior |
+|-------|----------|
+| **AUTO** *(default)* | Auto-detect question sessions by skill name + language patterns |
+| **ON** | Force `ask_user` for every question, regardless of detection |
+| **OFF** | Disable everything — no mandate injected, no auto-detection |
+
+The setting is persisted in the session and survives restarts.
 
 ### Token cost
 
