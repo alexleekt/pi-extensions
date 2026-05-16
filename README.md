@@ -5,7 +5,7 @@
 
 **The quickest way to say "keep going".**
 
-> Double-tap **Enter** on an empty chat input to nudge the Pi agent with a randomized **nudge** from a curated set of 16 variations.
+> Double-tap **Enter** on an empty chat input to send the Pi agent a randomized prompt from a curated set of 16 variations.
 
 ## Why
 

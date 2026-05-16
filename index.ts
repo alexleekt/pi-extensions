@@ -54,7 +54,6 @@ export default function bumpExtension(pi: ExtensionAPI) {
       }
 
       lastEmptyEnter = now;
-      return;
     });
   });
 
