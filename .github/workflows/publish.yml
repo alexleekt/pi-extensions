@@ -56,15 +56,46 @@ jobs:
                       npm run build
                   fi
 
+            - name: Check if package exists on npm
+              id: exists
+              run: |
+                  if npm view "${{ steps.pkg.outputs.name }}" version >/dev/null 2>&1; then
+                      echo "exists=true" >> "$GITHUB_OUTPUT"
+                      echo "✅ Package exists on npm"
+                  else
+                      echo "exists=false" >> "$GITHUB_OUTPUT"
+                      echo "⚠️ Package does NOT exist on npm — first publish requires manual bootstrap or NPM_TOKEN"
+                  fi
+
             - name: Publish to npm
               working-directory: packages/${{ steps.pkg.outputs.dir }}
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
               run: |
-                  if [ -n "$NODE_AUTH_TOKEN" ]; then
-                      echo "Publishing with NPM_TOKEN (no provenance)..."
+                  PKG_EXISTS="${{ steps.exists.outputs.exists }}"
+                  HAS_TOKEN="$( [ -n "$NODE_AUTH_TOKEN" ] && echo true || echo false )"
+
+                  echo "Package exists: ${PKG_EXISTS}"
+                  echo "NPM_TOKEN configured: ${HAS_TOKEN}"
+
+                  if [ "$PKG_EXISTS" == "true" ] && [ "$HAS_TOKEN" == "false" ]; then
+                      echo "→ Publishing with npm Trusted Publishing (OIDC provenance)..."
+                      npm publish --provenance --access public
+                  elif [ "$HAS_TOKEN" == "true" ]; then
+                      if [ "$PKG_EXISTS" == "true" ]; then
+                          echo "→ Publishing with NPM_TOKEN (Trusted Publishing available but token override active)..."
+                      else
+                          echo "→ Publishing first version with NPM_TOKEN (configure Trusted Publishing after this)..."
+                      fi
                       npm publish --access public
                   else
-                      echo "Publishing with npm Trusted Publishing (OIDC provenance)..."
-                      npm publish --provenance --access public
+                      echo "❌ Cannot publish: package does not exist on npm and no NPM_TOKEN is configured."
+                      echo ""
+                      echo "Bootstrap this package first:"
+                      echo "  1. Locally: cd packages/${{ steps.pkg.outputs.dir }} && npm login && npm publish --access public"
+                      echo "  2. On npmjs.com: link the package to alexleekt/pi-extensions for Trusted Publishing"
+                      echo "  3. Re-tag and push to trigger this workflow again"
+                      echo ""
+                      echo "Or add NPM_TOKEN to repo secrets for automatic first-time publishing."
+                      exit 1
                   fi

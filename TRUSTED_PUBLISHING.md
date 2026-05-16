@@ -55,13 +55,36 @@ just release pi-bump 0.3.0
 
 Published packages will show a **green "Provenance"** badge on npm, proving they were built and published by GitHub Actions in this repository.
 
+## First-Time Package Bootstrap
+
+**Trusted Publishing can only be configured for packages that already exist on npm.**
+
+If a package has never been published (e.g. `@alexleekt/pi-shared`), the workflow will fail with `ENEEDAUTH` because npm has no package to link the repository to.
+
+### Bootstrap Steps
+
+1. **Publish manually from your machine:**
+   ```bash
+   cd packages/<pkg>
+   npm login
+   npm publish --access public
+   ```
+
+2. **Configure Trusted Publishing on npmjs.com** (Step 2–3 above)
+
+3. **Future releases will use Trusted Publishing automatically**
+
+### Alternative: Add NPM_TOKEN Secret
+
+If you prefer to bootstrap from CI, add a `NPM_TOKEN` secret to the repo settings. The workflow will use it for first-time publishes and fall back to Trusted Publishing for subsequent releases.
+
 ## Troubleshooting
 
 | Error | Cause | Fix |
 |---|---|---|
 | `ENEEDAUTH` | Package not linked to repo | Complete Step 3 above |
 | `E403` | Wrong workflow file path | Ensure `.github/workflows/publish.yml` is exact |
-| `E404` | Package doesn't exist | Publish first via `npm publish --access public` manually |
+| `E404` | Package doesn't exist | Bootstrap via manual publish or NPM_TOKEN |
 
 ## Fallback: NPM_TOKEN
 

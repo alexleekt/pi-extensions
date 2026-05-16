@@ -29,6 +29,12 @@ typecheck:
 publish pkg:
     cd packages/{{pkg}} && npm publish --access public
 
+# Bootstrap a NEW package on npm (first-time publish from local machine)
+# Usage: just bootstrap pi-shared
+# Requires: npm login (local auth) + Trusted Publishing setup on npmjs.com after
+bootstrap pkg:
+    cd packages/{{pkg}} && npm publish --access public
+
 # Release a package: bump version, commit, tag, push (triggers publish.yml)
 # Usage: just release pi-bump 0.3.0
 release pkg version:
