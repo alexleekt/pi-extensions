@@ -3,3 +3,4 @@ packages/*/node_modules/
 dist/
 *.log
 .DS_Store
+packages/*/.a5c/
