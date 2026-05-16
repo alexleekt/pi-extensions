@@ -1,6 +1,7 @@
 node_modules/
 packages/*/node_modules/
 dist/
+*.tgz
 *.log
 .DS_Store
 .env
@@ -8,3 +9,4 @@ dist/
 *.tsbuildinfo
 coverage/
 packages/*/.a5c/
+.jj/
