@@ -37,8 +37,9 @@ Rules:
 `;
 
 function isQuestionSession(systemPrompt: string, options: BuildSystemPromptOptions): boolean {
-	const hasQuestionSkill =
-		options.skills?.some((s) => QUESTION_SKILL_NAMES.has(s.name.toLowerCase())) ?? false;
+	const hasQuestionSkill = !!options.skills?.some((s) =>
+		QUESTION_SKILL_NAMES.has(s.name.toLowerCase()),
+	);
 	const hasQuestionLanguage = QUESTION_SESSION_PATTERNS.some((p) => p.test(systemPrompt));
 	return hasQuestionSkill || hasQuestionLanguage;
 }
@@ -51,16 +52,98 @@ function getStyleMode(entries: any[]): boolean | null {
 function extractTextFromAssistantEntry(entry: any): string {
 	const content = entry.message?.content;
 	if (typeof content === "string") return content;
-	if (Array.isArray(content)) {
-		return content
-			.filter((c) => c.type === "text")
-			.map((c) => c.text)
-			.join("\n");
+	if (!Array.isArray(content)) return "";
+	return content
+		.filter((c) => c.type === "text")
+		.map((c) => c.text)
+		.join("\n");
+}
+
+/* ── /ask-last: extract questions & implicit requests ── */
+
+const PROTECTED_ABBREVIATIONS = new Set([
+	"etc", "vs", "fig", "dr", "mr", "mrs", "ms",
+	"prof", "jr", "sr", "inc", "ltd", "corp", "co", "llc", "al",
+	"et", "vol", "vols", "pg", "pp", "ch", "chap", "sec", "secs",
+]);
+
+function splitSentences(text: string): string[] {
+	const PLACEHOLDER = "\x00";
+
+	let buffer = text.replace(
+		/\b(e\.g\.|i\.e\.)\b/gi,
+		(m) => m.replace(/\./g, PLACEHOLDER),
+	);
+
+	buffer = buffer.replace(
+		/\b([a-zA-Z]{1,4})\./g,
+		(match, abbr) => (PROTECTED_ABBREVIATIONS.has(abbr.toLowerCase()) ? match.replace(".", PLACEHOLDER) : match),
+	);
+
+	buffer = buffer.replace(/\d+\.\d+/g, (m) => m.replace(/\./g, PLACEHOLDER));
+	buffer = buffer.replace(/https?:\/\/\S+/g, (m) => m.replace(/\./g, PLACEHOLDER));
+	buffer = buffer.replace(/\b\w\.\w\./g, (m) => m.replace(/\./g, PLACEHOLDER));
+
+	return buffer
+		.split(/(?<=[.!?])\s+/)
+		.map((s) => s.trim().replace(new RegExp(PLACEHOLDER, "g"), "."))
+		.filter((s) => s.length > 0);
+}
+
+const IMPLICIT_REQUEST_PATTERNS = [
+	/\b(let me know|let us know)\b/i,
+	/\b(tell me|tell us)\b/i,
+	/\b(share your|share any)\b/i,
+	/\b(what do you think|what are your thoughts)\b/i,
+	/\b(which\b.*\b(would you|do you|should we)\b)/i,
+	/\b(should we|can you confirm|please confirm|could you confirm)\b/i,
+	/\b(i need your (input|feedback|thoughts|opinion))\b/i,
+	/\b(your (thoughts|opinion|preference|feedback))\b/i,
+	/\b(please provide|could you provide|can you provide)\b/i,
+	/\b(would you like|do you want|do you prefer)\b/i,
+];
+
+function hasQuotedQuestion(sentence: string): boolean {
+	return /["'`].*\?.*["'`]/.test(sentence) && !sentence.endsWith("?");
+}
+
+function looksLikeTernary(sentence: string): boolean {
+	return /\?\s*[:;]/.test(sentence) || /=\s*\S+\s*\?/.test(sentence);
+}
+
+function extractQuestions(text: string): string[] {
+	const explicit: string[] = [];
+	const implicit: string[] = [];
+
+	for (const sentence of splitSentences(text)) {
+		if (sentence.endsWith("?")) {
+			if (hasQuotedQuestion(sentence)) continue;
+			if (looksLikeTernary(sentence)) continue;
+			if (sentence.length < 10) continue;
+			explicit.push(sentence);
+			continue;
+		}
+
+		if (IMPLICIT_REQUEST_PATTERNS.some((p) => p.test(sentence))) {
+			implicit.push(sentence);
+		}
 	}
-	return "";
+
+	return [...explicit, ...implicit];
+}
+
+function truncate(str: string, max: number): string {
+	return str.length > max ? str.slice(0, max - 3) + "..." : str;
 }
 
 function buildAskLastParams(questions: string[], fullText: string): AskUserParams {
+	if (questions.length === 0) {
+		return {
+			question: "The assistant would like your input on the following:",
+			context: fullText,
+			allowFreeform: true,
+		};
+	}
 	if (questions.length === 1) {
 		return {
 			question: questions[0],
@@ -72,10 +155,11 @@ function buildAskLastParams(questions: string[], fullText: string): AskUserParam
 		question: "The assistant asked multiple questions",
 		context: fullText,
 		questions: questions.map((q) => ({
-			title: q.length > 60 ? q.slice(0, 57) + "..." : q,
+			title: truncate(q, 60),
 			description: q,
 		})),
 		allowComment: true,
+		allowSkip: true,
 	};
 }
 
@@ -304,15 +388,7 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
-			const questions = fullText
-				.split(/(?<=[.!?])\s+/)
-				.map((s) => s.trim())
-				.filter((s) => s.endsWith("?"));
-
-			if (questions.length === 0) {
-				ctx.ui.notify("No questions found in the last assistant message", "warning");
-				return;
-			}
+			const questions = extractQuestions(fullText);
 
 			const result = await askUserHandler(buildAskLastParams(questions, fullText), undefined, ctx);
 
@@ -323,11 +399,16 @@ export default function (pi: ExtensionAPI) {
 
 			const textContent = result.content[0];
 			const answer = textContent?.type === "text" ? textContent.text : "";
-			if (answer) {
-				pi.sendUserMessage(
-					`Answering the question${questions.length > 1 ? "s" : ""} from your last message:\n\n${answer}`,
-				);
+			if (!answer) return;
+
+			let prefix: string;
+			if (questions.length === 0) {
+				prefix = "Responding to your last message:";
+			} else {
+				const plural = questions.length > 1 ? "s" : "";
+				prefix = `Answering the question${plural} from your last message:`;
 			}
+			pi.sendUserMessage(`${prefix}\n\n${answer}`);
 		},
 	});
 

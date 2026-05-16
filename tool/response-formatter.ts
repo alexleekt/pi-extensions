@@ -17,6 +17,59 @@ export interface AskToolDetails {
 	error?: string;
 }
 
+function normalizeKind(raw: unknown): AskResponse["kind"] {
+	if (raw === "freeform" || raw === "questionnaire") return raw;
+	return "selection";
+}
+
+function buildResponse(result: Record<string, unknown>, kind: AskResponse["kind"]): AskResponse {
+	if (kind === "freeform") {
+		return { kind, text: String(result.text ?? "").trim() };
+	}
+
+	if (kind === "questionnaire") {
+		return {
+			kind,
+			selections: Array.isArray(result.selections) ? result.selections.map(String) : [],
+			questionnaireDetails: Array.isArray(result.questionnaireDetails)
+				? result.questionnaireDetails.map((d: unknown) => {
+						const entry = d as Record<string, unknown>;
+						return {
+							question: String(entry.question ?? ""),
+							answer: String(entry.answer ?? ""),
+							kind: entry.kind === "freeform" ? "freeform" : "selection",
+							comment: entry.comment ? String(entry.comment) : undefined,
+						};
+					})
+				: [],
+		};
+	}
+
+	const selections = Array.isArray(result.selections)
+		? result.selections.map(String)
+		: result.selection
+			? [String(result.selection)]
+			: [];
+
+	return {
+		kind,
+		selections,
+		comment: result.comment ? String(result.comment) : undefined,
+	};
+}
+
+function responseToText(response: AskResponse): string {
+	if (response.kind === "freeform") {
+		return response.text ?? "";
+	}
+	const selections = response.selections ?? [];
+	let text = selections.join(", ");
+	if (response.comment) {
+		text += `\n\nComment: ${response.comment}`;
+	}
+	return text;
+}
+
 export function formatResponse(
 	question: string,
 	options: { title: string; description?: string }[],
@@ -38,57 +91,9 @@ export function formatResponse(
 		};
 	}
 
-	const kind =
-		result.kind === "freeform"
-			? "freeform"
-			: result.kind === "questionnaire"
-				? "questionnaire"
-				: "selection";
-
-	const response: AskResponse =
-		kind === "freeform"
-			? { kind, text: String(result.text ?? "").trim() }
-			: kind === "questionnaire"
-				? {
-						kind,
-						selections: Array.isArray(result.selections)
-							? result.selections.map(String)
-							: [],
-						questionnaireDetails: Array.isArray(result.questionnaireDetails)
-							? result.questionnaireDetails.map((d: unknown) => ({
-									question: String((d as Record<string, unknown>).question ?? ""),
-									answer: String((d as Record<string, unknown>).answer ?? ""),
-									kind:
-										(d as Record<string, unknown>).kind === "freeform"
-											? "freeform"
-											: "selection",
-									comment: (d as Record<string, unknown>).comment
-										? String((d as Record<string, unknown>).comment)
-										: undefined,
-								}))
-							: [],
-					}
-				: {
-						kind,
-						selections: Array.isArray(result.selections)
-							? result.selections.map(String)
-							: (() => {
-									const selection = result.selection ?? "";
-									return selection ? [String(selection)] : [];
-								})(),
-						comment: result.comment ? String(result.comment) : undefined,
-					};
-
-	let text: string;
-	if (kind === "freeform") {
-		text = response.text ?? "";
-	} else {
-		const selections = response.selections ?? [];
-		text = selections.join(", ");
-		if (response.comment) {
-			text += `\n\nComment: ${response.comment}`;
-		}
-	}
+	const kind = normalizeKind(result.kind);
+	const response = buildResponse(result, kind);
+	const text = responseToText(response);
 
 	return {
 		content: [{ type: "text", text }],

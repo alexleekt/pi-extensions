@@ -35,6 +35,7 @@ function CheckIcon({ checked }: { checked: boolean }) {
 
 export default function Questionnaire({ payload, showHeader = true }: QuestionnaireProps) {
 	const questions = getQuestions(payload);
+	const allowSkip = payload.allowSkip ?? false;
 	const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
 	const [comments, setComments] = useState<Record<string, string>>({});
 	const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
 	const optionRefs = useRef<Map<string, HTMLButtonElement | HTMLTextAreaElement | null>>(new Map());
 	const questionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
-	// Auto-scroll to first unanswered question on mount, and focus its input
+	// Auto-scroll to first unanswered question on mount
 	useEffect(() => {
 		const firstUnanswered = questions.find((q) => {
 			const ans = answers[q.title];
@@ -54,7 +55,6 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
 			const el = questionRefs.current.get(firstUnanswered.title);
 			if (el) {
 				el.scrollIntoView({ behavior: "smooth", block: "start" });
-				// Focus textarea if this is a freeform question
 				const hasOptions = firstUnanswered.options && firstUnanswered.options.length > 0;
 				if (!hasOptions) {
 					const textarea = optionRefs.current.get(`${firstUnanswered.title}-freeform`);
@@ -104,14 +104,16 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
 		const ans = answers[q.title];
 		if (ans === undefined) return false;
 		if (Array.isArray(ans)) return ans.length > 0;
-		return String(ans).trim().length > 0; // freeform must be non-empty
+		return String(ans).trim().length > 0;
 	});
+
+	const canSubmit = allowSkip || allAnswered;
 
 	const answeredCount = questions.filter((q) => {
 		const ans = answers[q.title];
 		if (ans === undefined) return false;
 		if (Array.isArray(ans)) return ans.length > 0;
-		return true;
+		return String(ans).trim().length > 0;
 	}).length;
 
 	useEffect(() => {
@@ -134,7 +136,7 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
 			if (isInInput) {
 				if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
 					e.preventDefault();
-					if (allAnswered) {
+					if (canSubmit) {
 						handleSubmit();
 					}
 				}
@@ -180,7 +182,7 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
 
 			if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
 				e.preventDefault();
-				if (allAnswered) {
+				if (canSubmit) {
 					handleSubmit();
 				}
 			}
@@ -188,7 +190,7 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [showCommentFor, allAnswered, questions]);
+	}, [showCommentFor, canSubmit, questions]);
 
 	return (
 		<div className="flex h-full flex-col">
@@ -351,6 +353,8 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
 					<div className="flex items-center gap-2 text-xs text-muted-foreground">
 						{allAnswered ? (
 							<span className="text-primary font-medium">All answered — ready to submit</span>
+							) : allowSkip ? (
+							<span>{answeredCount} / {questions.length} answered · partial OK</span>
 							) : (
 							<span>{answeredCount} / {questions.length} answered</span>
 							)}
@@ -367,7 +371,7 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
 						</button>
 						<button
 							onClick={handleSubmit}
-							disabled={!allAnswered || isSubmitting}
+							disabled={!canSubmit || isSubmitting}
 							className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
 						>
 							{isSubmitting ? "Submitting…" : "Submit"}

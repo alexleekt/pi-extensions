@@ -18,13 +18,20 @@ export async function terminalPrompt(
 	return flatOptionsFallback(payload, ui);
 }
 
+type QuestionnaireAnswer = {
+	question: string;
+	answer: string;
+	kind: "selection" | "freeform";
+	comment?: string;
+};
+
 async function questionnaireFallback(
 	questions: Question[],
 	allowComment: boolean,
 	ui: ExtensionUIContext,
 	context?: string,
 ): Promise<Record<string, unknown> | null> {
-	const answers: { question: string; answer: string; kind: "selection" | "freeform"; comment?: string }[] = [];
+	const answers: QuestionnaireAnswer[] = [];
 
 	for (const q of questions) {
 		const prompt = context
@@ -36,7 +43,6 @@ async function questionnaireFallback(
 			const labels = q.options.map((opt, i) => `${i + 1}. ${opt.title}`);
 
 			if (q.allowMultiple) {
-				// Multi-select via repeated single selects
 				const selections: string[] = [];
 				while (true) {
 					const remaining = labels.filter((_, i) => !selections.includes(q.options![i].title));
@@ -56,14 +62,12 @@ async function questionnaireFallback(
 				}
 				answer = selections.join(", ");
 			} else {
-				// Single select
 				const choice = await ui.select(prompt, labels);
 				if (choice === undefined) return null;
 				const idx = labels.indexOf(choice);
 				answer = q.options[idx]?.title;
 			}
 		} else {
-			// Freeform text input
 			answer = await ui.input(prompt + (q.description ? `\n${q.description}` : ""));
 		}
 
@@ -98,24 +102,20 @@ async function flatOptionsFallback(
 	const prompt = context ? `${question}\n\nContext: ${context}` : question;
 
 	if (options.length === 0) {
-		// Single text input
 		const text = await ui.input(prompt);
 		if (text === undefined) return null;
 		return { kind: "freeform", text };
 	}
-
-	// Build option labels for select dialog
-	const optionLabels = options.map((opt: { title: string }, i: number) => `${i + 1}. ${opt.title}`);
+	const optionLabels = options.map((opt, i) => `${i + 1}. ${opt.title}`);
 	if (allowFreeform) {
 		optionLabels.push("Other (freeform)");
 	}
 
 	if (allowMultiple) {
-		// Multi-select via repeated single selects until user cancels or chooses done
 		const selections: string[] = [];
 		while (true) {
 			const remaining = optionLabels.filter(
-				(_: string, i: number) => !selections.includes(options[i]?.title ?? ""),
+				(_, i) => !selections.includes(options[i]?.title ?? ""),
 			);
 			if (remaining.length === 0) break;
 
@@ -127,7 +127,6 @@ async function flatOptionsFallback(
 
 			const idx = optionLabels.indexOf(choice);
 			if (idx >= options.length) {
-				// Freeform option selected — add as a custom selection and continue
 				const text = await ui.input("Enter your answer:");
 				if (text !== undefined && text.trim()) {
 					selections.push(`Other: ${text.trim()}`);
@@ -147,13 +146,11 @@ async function flatOptionsFallback(
 
 		return { kind: "selection", selections, comment };
 	} else {
-		// Single select
 		const choice = await ui.select(prompt, optionLabels);
 		if (choice === undefined) return null;
 
 		const idx = optionLabels.indexOf(choice);
 		if (idx >= options.length) {
-			// Freeform
 			const text = await ui.input("Enter your answer:");
 			if (text === undefined) return null;
 			return { kind: "freeform", text };

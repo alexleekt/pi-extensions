@@ -55,7 +55,7 @@ const STOPWORDS = new Set([
 function summarizeTitle(question: string, maxWords = 3): string {
 	const contentWords = question
 		.toLowerCase()
-		.replace(/[^\w\s]/g, "")          // strip punctuation
+		.replace(/[^\w\s]/g, "")
 		.split(/\s+/)
 		.filter((w) => w.length > 0 && !STOPWORDS.has(w));
 
@@ -103,6 +103,7 @@ export interface AskUserParams {
 	allowMultiple?: boolean;
 	allowFreeform?: boolean;
 	allowComment?: boolean;
+	allowSkip?: boolean;
 	displayMode?: string;
 	followCursor?: boolean;
 }
@@ -150,6 +151,7 @@ export async function askUserHandler(
 		allowMultiple,
 		allowFreeform,
 		allowComment,
+		allowSkip: params.allowSkip,
 	};
 
 	let result: Record<string, unknown> | null = null;
@@ -177,7 +179,7 @@ export async function askUserHandler(
 		}
 
 		result = (await prompt(html, options)) as Record<string, unknown> | null;
-		if (result === null || (result && result.__cancelled === true)) {
+		if (result === null || result?.__cancelled === true) {
 			cancelled = true;
 			result = null;
 		}

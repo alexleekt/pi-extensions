@@ -27,6 +27,7 @@ export interface AskUserPayload {
 	allowMultiple: boolean;
 	allowFreeform: boolean;
 	allowComment: boolean;
+	allowSkip?: boolean;
 }
 
 export interface QuestionnaireDetail {

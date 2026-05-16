@@ -28,7 +28,7 @@ function renderComponent(payload: AskUserPayload, showHeader = true) {
 			return (
 				<div className="flex h-full items-center justify-center p-4">
 					<div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
-						Unknown prompt type: {(payload as AskUserPayload).type}
+						Unknown prompt type: {payload.type}
 					</div>
 				</div>
 			);
