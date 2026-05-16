@@ -6,9 +6,7 @@
         "useIgnoreFile": true
     },
     "files": {
-        "ignoreUnknown": false,
-        "includes": ["**"],
-        "experimentalScannerIgnores": []
+        "includes": ["**"]
     },
     "formatter": {
         "enabled": true,
@@ -23,7 +21,8 @@
     },
     "javascript": {
         "formatter": {
-            "quoteStyle": "double"
+            "quoteStyle": "double",
+            "trailingCommas": "all"
         }
     }
 }

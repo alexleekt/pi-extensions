@@ -41,7 +41,7 @@ const mockAPI = {
     },
 };
 
-// Load extension — this wires up the session_start handler and captures terminalHandler
+// Load extension — wires up the session_start handler and captures terminalHandler
 bumpExtension(mockAPI);
 
 function reset() {
@@ -51,33 +51,22 @@ function reset() {
     hasPending = false;
 }
 
-function assert(name, condition) {
-    if (condition) {
-        console.log(`  ✅ ${name}`);
-        return [1, 0];
-    } else {
-        console.log(`  ❌ ${name}`);
-        return [0, 1];
-    }
-}
-
 const NUDGE_MESSAGES = [
     "Continue",
     "Keep going",
     "What's next?",
     "Onward!",
     "And then?",
-    "Build on that",
     "More please",
     "Next step?",
     "Keep the momentum",
     "Let's see it",
-    "Expand on this",
-    "Go deeper",
     "Proceed",
-    "Keep building",
-    "Show me where this leads",
-    "Run it",
+    "Go on",
+    "Carry on",
+    "Move forward",
+    "Keep at it",
+    "Press on",
 ];
 
 function isNudge(content) {
@@ -87,7 +76,16 @@ function isNudge(content) {
 function runTests() {
     let pass = 0;
     let fail = 0;
-    let p, f;
+
+    function check(name, condition) {
+        if (condition) {
+            pass++;
+            console.log(`  ✅ ${name}`);
+        } else {
+            fail++;
+            console.log(`  ❌ ${name}`);
+        }
+    }
 
     if (!terminalHandler) {
         console.log("❌ Extension did not register a terminal input handler");
@@ -100,21 +98,12 @@ function runTests() {
         console.log("\nTest 1: Double Enter on empty editor (idle)");
         const result1 = terminalHandler("\r");
         const result2 = terminalHandler("\r");
-        [p, f] = assert(
-            "First Enter NOT consumed",
-            result1 === undefined || !result1?.consume,
-        );
-        pass += p;
-        fail += f;
-        [p, f] = assert("Second Enter consumed", result2?.consume === true);
-        pass += p;
-        fail += f;
-        [p, f] = assert(
+        check("First Enter NOT consumed", !result1?.consume);
+        check("Second Enter consumed", result2?.consume === true);
+        check(
             "Message sent is a nudge",
             sentMessages.length === 1 && isNudge(sentMessages[0].content),
         );
-        pass += p;
-        fail += f;
     }
 
     // Test 2: Double Enter ignored when not idle
@@ -123,12 +112,7 @@ function runTests() {
     console.log("\nTest 2: Double Enter while streaming (not idle)");
     terminalHandler("\r");
     terminalHandler("\r");
-    [p, f] = assert(
-        "No message sent while streaming",
-        sentMessages.length === 0,
-    );
-    pass += p;
-    fail += f;
+    check("No message sent while streaming", sentMessages.length === 0);
 
     // Test 3: Double Enter ignored when pending messages exist
     reset();
@@ -136,12 +120,10 @@ function runTests() {
     console.log("\nTest 3: Double Enter with pending messages");
     terminalHandler("\r");
     terminalHandler("\r");
-    [p, f] = assert(
+    check(
         "No message sent when pending messages exist",
         sentMessages.length === 0,
     );
-    pass += p;
-    fail += f;
 
     // Test 4: Enter with text in editor is ignored
     reset();
@@ -149,55 +131,33 @@ function runTests() {
     console.log("\nTest 4: Enter with text in editor");
     const r1 = terminalHandler("\r");
     const r2 = terminalHandler("\r");
-    [p, f] = assert(
-        "No message sent when editor has text",
-        sentMessages.length === 0,
-    );
-    pass += p;
-    fail += f;
-    [p, f] = assert(
+    check("No message sent when editor has text", sentMessages.length === 0);
+    check(
         "Input not consumed when editor has text",
-        (r1 === undefined || !r1?.consume) &&
-            (r2 === undefined || !r2?.consume),
+        !r1?.consume && !r2?.consume,
     );
-    pass += p;
-    fail += f;
 
     // Test 5: Single Enter on empty editor does not send message
     reset();
     console.log("\nTest 5: Single Enter on empty editor");
     terminalHandler("\r");
-    [p, f] = assert("No message after single Enter", sentMessages.length === 0);
-    pass += p;
-    fail += f;
+    check("No message after single Enter", sentMessages.length === 0);
 
     // Test 6: Slow second Enter (>300ms) does not trigger
     {
         reset();
         console.log("\nTest 6: Slow second Enter (>300ms threshold)");
         terminalHandler("\r");
-        // Manually expire the threshold by resetting lastEmptyEnter
-        // Since lastEmptyEnter is private, we simulate by waiting.
-        // In the real code, the gap must be >= 300ms.
-        // We force-expire by sending a non-Enter keystroke first (resets nothing),
-        // then send a fresh first Enter, wait conceptually, then second.
-        // Actually, the simplest way is: first Enter, wait, then the next Enter
-        // should be treated as a new first Enter (not a double-tap).
         const beforeCount = sentMessages.length;
-        // Simulate 400ms delay by directly manipulating the private state
-        // isn't possible; instead we rely on the fact that the test runner
-        // runs fast. We'll do a small timeout and check behavior.
         const start = Date.now();
         while (Date.now() - start < 350) {
             // busy-wait 350ms
         }
         terminalHandler("\r");
-        [p, f] = assert(
+        check(
             "No message after slow second Enter",
             sentMessages.length === beforeCount,
         );
-        pass += p;
-        fail += f;
     }
 
     console.log(`\n${pass} passed, ${fail} failed`);

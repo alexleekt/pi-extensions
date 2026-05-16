@@ -7,24 +7,23 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 // Double-tap detection window (ms).
 const THRESHOLD_MS = 300;
 
-// Randomly selected prompts to avoid repetition and version-bump ambiguity.
+// Randomly selected prompts to avoid repetition.
 const NUDGE_MESSAGES = [
     "Continue",
     "Keep going",
     "What's next?",
     "Onward!",
     "And then?",
-    "Build on that",
     "More please",
     "Next step?",
     "Keep the momentum",
     "Let's see it",
-    "Expand on this",
-    "Go deeper",
     "Proceed",
-    "Keep building",
-    "Show me where this leads",
-    "Run it",
+    "Go on",
+    "Carry on",
+    "Move forward",
+    "Keep at it",
+    "Press on",
 ];
 
 function pickNudge(): string {
