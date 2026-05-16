@@ -25,11 +25,13 @@
   },
   "pi": {
     "extensions": [
-      "./index.ts"
+      "./index.ts",
+      "./grill-with-docs-middleware.ts"
     ]
   },
   "files": [
     "index.ts",
+    "grill-with-docs-middleware.ts",
     "tool",
     "fallback",
     "shared",

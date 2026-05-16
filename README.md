@@ -159,6 +159,31 @@ npm run validate:gui # same + opens actual WebView for visual check
 npm run check        # dry-run npm pack
 ```
 
+## Companion Extension: `grill-with-docs` Middleware
+
+The `grill-with-docs` skill instructs the agent to "ask questions one at a time" but never tells it to **use a tool** — so the agent writes free-form text instead of calling `ask_user`.
+
+This package includes a companion extension that auto-detects when `grill-with-docs` is active and injects a system-prompt mandate forcing the LLM to use `ask_user` for every question.
+
+### Enable it
+
+If you installed via `pi install npm:@alexleekt/pi-ask-user-glimpse`, both extensions are already loaded. If you installed manually, also load the middleware:
+
+```bash
+pi -e ./grill-with-docs-middleware.ts
+```
+
+Or place it in `~/.pi/agent/extensions/grill-with-docs-middleware.ts` for auto-discovery.
+
+### How it works
+
+- Hooks `before_agent_start` — fires before every LLM call.
+- Detects the `grill-with-docs` skill via Pi's structured `systemPromptOptions.skills`.
+- Verifies `ask_user` is in `selectedTools` (safety check).
+- Appends a mandate: "You MUST use `ask_user` for every question. Do NOT write free-form text."
+
+This adds zero extra round-trips and costs ~100 tokens of system prompt.
+
 ## Slash Command: `/ask-debug`
 
 Open a debug prompt that lets you manually test each dialog type:
