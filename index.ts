@@ -43,6 +43,109 @@ function isQuestionSession(systemPrompt: string, options: BuildSystemPromptOptio
 	return hasQuestionSkill || hasQuestionLanguage;
 }
 
+function getStyleMode(entries: any[]): boolean | null {
+	const entry = entries.find((e) => e.type === "custom" && e.customType === "ask-user-style");
+	return (entry as any)?.data?.enabled ?? null;
+}
+
+function extractTextFromAssistantEntry(entry: any): string {
+	const content = entry.message?.content;
+	if (typeof content === "string") return content;
+	if (Array.isArray(content)) {
+		return content
+			.filter((c) => c.type === "text")
+			.map((c) => c.text)
+			.join("\n");
+	}
+	return "";
+}
+
+function buildAskLastParams(questions: string[], fullText: string): AskUserParams {
+	if (questions.length === 1) {
+		return {
+			question: questions[0],
+			context: fullText,
+			allowFreeform: true,
+		};
+	}
+	return {
+		question: "The assistant asked multiple questions",
+		context: fullText,
+		questions: questions.map((q) => ({
+			title: q.length > 60 ? q.slice(0, 57) + "..." : q,
+			description: q,
+		})),
+		allowComment: true,
+	};
+}
+
+function buildDebugParams(mode: string): AskUserParams | null {
+	switch (mode) {
+		case "single-select":
+			return {
+				question: "Test: Single Select",
+				context: "Pick one option (with optional freeform and comment)",
+				options: [
+					{ title: "Option A", description: "Description for A" },
+					{ title: "Option B", description: "Description for B" },
+					{ title: "Option C", description: "Description for C" },
+				],
+				allowFreeform: true,
+				allowComment: true,
+			};
+		case "multi-select":
+			return {
+				question: "Test: Multi Select",
+				context: "Pick multiple options (with optional freeform and comment)",
+				options: [
+					{ title: "Feature X", description: "Enable feature X" },
+					{ title: "Feature Y", description: "Enable feature Y" },
+					{ title: "Feature Z", description: "Enable feature Z" },
+				],
+				allowMultiple: true,
+				allowFreeform: true,
+				allowComment: true,
+			};
+		case "freeform":
+			return {
+				question: "Test: Freeform",
+				context: "Type any answer you like",
+				allowFreeform: true,
+			};
+		case "questionnaire":
+			return {
+				question: "Test: Questionnaire",
+				context: "Answer multiple structured questions",
+				questions: [
+					{
+						title: "Database",
+						description: "Which database should we use?",
+						options: [
+							{ title: "PostgreSQL", description: "Relational, proven" },
+							{ title: "SQLite", description: "Zero-config" },
+						],
+					},
+					{
+						title: "Architecture",
+						description: "Preferred style?",
+						options: [
+							{ title: "Monolith", description: "Simple" },
+							{ title: "Microservices", description: "Scalable" },
+						],
+						allowMultiple: true,
+					},
+					{
+						title: "Notes",
+						description: "Any additional thoughts?",
+					},
+				],
+				allowComment: true,
+			};
+		default:
+			return null;
+	}
+}
+
 const askUserTool = defineTool({
 	name: "ask_user",
 	label: "Ask User",
@@ -142,15 +245,7 @@ export default function (pi: ExtensionAPI) {
 		const hasAskUser = event.systemPromptOptions.selectedTools?.includes("ask_user");
 		if (!hasAskUser) return;
 
-		// Check session-persisted style override
-		const entries = ctx.sessionManager.getEntries();
-		const styleEntry = entries.find(
-			(e) => e.type === "custom" && e.customType === "ask-user-style",
-		);
-		const styleData = (styleEntry as any)?.data;
-		const hasExplicitStyle = styleData && typeof styleData.enabled === "boolean";
-		const styleMode = hasExplicitStyle ? styleData.enabled : null;
-
+		const styleMode = getStyleMode(ctx.sessionManager.getEntries());
 		const shouldInject =
 			styleMode === true ||
 			(styleMode === null && isQuestionSession(event.systemPrompt, event.systemPromptOptions));
@@ -164,19 +259,15 @@ export default function (pi: ExtensionAPI) {
 	pi.registerCommand("ask-style", {
 		description: "Cycle ask_user style: Auto → Always Dialog → Plain Text → Auto",
 		handler: async (_args, ctx) => {
-			const entries = ctx.sessionManager.getEntries();
-			const current = entries.find(
-				(e) => e.type === "custom" && e.customType === "ask-user-style",
-			);
-			const data = (current as any)?.data;
+			const styleMode = getStyleMode(ctx.sessionManager.getEntries());
 
 			let nextMode: boolean | null;
 			let label: string;
 
-			if (!data || typeof data.enabled !== "boolean") {
+			if (styleMode === null) {
 				nextMode = true;
 				label = "Always Dialog (auto-detection overridden)";
-			} else if (data.enabled === true) {
+			} else if (styleMode === true) {
 				nextMode = false;
 				label = "Plain Text (no dialog injection)";
 			} else {
@@ -189,7 +280,6 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	// ── Ask the last assistant message's questions ──
 	pi.registerCommand("ask-last", {
 		description: "Extract questions from the last assistant message and ask them via ask_user",
 		handler: async (_args, ctx) => {
@@ -199,33 +289,16 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			const entries = ctx.sessionManager.getEntries();
-			let lastAssistant: any = null;
-			for (let i = entries.length - 1; i >= 0; i--) {
-				const e = entries[i] as any;
-				if (e.type === "message" && e.message?.role === "assistant") {
-					lastAssistant = e;
-					break;
-				}
-			}
+			const lastAssistant = [...entries]
+				.reverse()
+				.find((e) => e.type === "message" && (e as any).message?.role === "assistant");
 
 			if (!lastAssistant) {
 				ctx.ui.notify("No assistant messages found in this session", "warning");
 				return;
 			}
 
-			const msg: any = lastAssistant.message;
-			const content: any = msg.content;
-
-			let fullText = "";
-			if (typeof content === "string") {
-				fullText = content;
-			} else if (Array.isArray(content)) {
-				fullText = content
-					.filter((c: any) => c.type === "text")
-					.map((c: any) => c.text)
-					.join("\n");
-			}
-
+			const fullText = extractTextFromAssistantEntry(lastAssistant);
 			if (!fullText.trim()) {
 				ctx.ui.notify("Last assistant message has no text content", "warning");
 				return;
@@ -233,42 +306,21 @@ export default function (pi: ExtensionAPI) {
 
 			const questions = fullText
 				.split(/(?<=[.!?])\s+/)
-				.map((s: string) => s.trim())
-				.filter((s: string) => s.length > 0 && s.endsWith("?"));
+				.map((s) => s.trim())
+				.filter((s) => s.endsWith("?"));
 
 			if (questions.length === 0) {
 				ctx.ui.notify("No questions found in the last assistant message", "warning");
 				return;
 			}
 
-			let params: AskUserParams;
-			if (questions.length === 1) {
-				params = {
-					question: questions[0],
-					context: fullText,
-					allowFreeform: true,
-				};
-			} else {
-				params = {
-					question: "The assistant asked multiple questions",
-					context: fullText,
-					questions: questions.map((q: string) => ({
-						title: q.length > 60 ? q.slice(0, 57) + "..." : q,
-						description: q,
-					})),
-					allowComment: true,
-				};
-			}
+			const result = await askUserHandler(buildAskLastParams(questions, fullText), undefined, ctx);
 
-			const result = await askUserHandler(params, undefined, ctx);
-
-			// Check if user cancelled
 			if ((result.details as any)?.cancelled) {
 				ctx.ui.notify("Cancelled — no answer sent", "info");
 				return;
 			}
 
-			// Send the answer back as a user message so the agent can continue
 			const textContent = result.content[0];
 			const answer = textContent?.type === "text" ? textContent.text : "";
 			if (answer) {
@@ -293,75 +345,8 @@ export default function (pi: ExtensionAPI) {
 			);
 			if (!mode) return;
 
-			let params: AskUserParams;
-			switch (mode) {
-				case "single-select":
-					params = {
-						question: "Test: Single Select",
-						context: "Pick one option (with optional freeform and comment)",
-						options: [
-							{ title: "Option A", description: "Description for A" },
-							{ title: "Option B", description: "Description for B" },
-							{ title: "Option C", description: "Description for C" },
-						],
-						allowFreeform: true,
-						allowComment: true,
-					};
-					break;
-				case "multi-select":
-					params = {
-						question: "Test: Multi Select",
-						context: "Pick multiple options (with optional freeform and comment)",
-						options: [
-							{ title: "Feature X", description: "Enable feature X" },
-							{ title: "Feature Y", description: "Enable feature Y" },
-							{ title: "Feature Z", description: "Enable feature Z" },
-						],
-						allowMultiple: true,
-						allowFreeform: true,
-						allowComment: true,
-					};
-					break;
-				case "freeform":
-					params = {
-						question: "Test: Freeform",
-						context: "Type any answer you like",
-						allowFreeform: true,
-					};
-					break;
-				case "questionnaire":
-					params = {
-						question: "Test: Questionnaire",
-						context: "Answer multiple structured questions",
-						questions: [
-							{
-								title: "Database",
-								description: "Which database should we use?",
-								options: [
-									{ title: "PostgreSQL", description: "Relational, proven" },
-									{ title: "SQLite", description: "Zero-config" },
-								],
-							},
-							{
-								title: "Architecture",
-								description: "Preferred style?",
-								options: [
-									{ title: "Monolith", description: "Simple" },
-									{ title: "Microservices", description: "Scalable" },
-								],
-								allowMultiple: true,
-							},
-							{
-								title: "Notes",
-								description: "Any additional thoughts?",
-							},
-						],
-						allowComment: true,
-					};
-					break;
-				default:
-					return;
-			}
+			const params = buildDebugParams(mode);
+			if (!params) return;
 
 			const result = await askUserHandler(params, undefined, ctx);
 			const textContent = result.content[0];
