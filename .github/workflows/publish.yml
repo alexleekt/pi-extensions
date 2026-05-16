@@ -11,10 +11,11 @@ on:
         required: false
         type: string
 
-# Trusted Publishing: https://docs.npmjs.com/trusted-publishers
+# Best practices from npm docs: https://docs.npmjs.com/trusted-publishers
 permissions:
-  id-token: write
-  contents: write
+  id-token: write   # Required for OIDC Trusted Publishing
+  contents: write   # Required for GitHub releases
+  pull-requests: read  # For checkout
 
 jobs:
   publish:
@@ -49,14 +50,16 @@ jobs:
           git commit -m "chore: bump version to ${{ github.event.inputs.version }}"
           git push
 
-      # Provenance is automatic with Trusted Publishing — no --provenance flag needed
+      # npm automatically detects OIDC and publishes with provenance
+      # No --provenance flag needed - it's automatic with Trusted Publishing
       - name: Publish to npm
-        run: npm publish
+        run: npm publish --access public
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         with:
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
