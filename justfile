@@ -27,3 +27,12 @@ typecheck:
 # Publish a package (usage: just publish pi-bump)
 publish pkg:
     cd packages/{{pkg}} && npm publish --access public
+
+# Release a package: bump version, commit, tag, push (triggers publish.yml)
+# Usage: just release pi-bump 0.3.0
+release pkg version:
+    cd packages/{{pkg}} && npm version --no-git-tag-version {{version}}
+    git add packages/{{pkg}}/package.json
+    git commit -m "chore({{pkg}}): release v{{version}}"
+    git tag "@alexleekt/{{pkg}}@{{version}}"
+    git push origin main "@alexleekt/{{pkg}}@{{version}}"
