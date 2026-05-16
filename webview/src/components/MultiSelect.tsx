@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
+import { sendToGlimpse, sendCancelled } from "../util/glimpse";
 
 interface MultiSelectProps {
 	payload: AskUserPayload;
@@ -114,11 +115,11 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
 		if (showComment && comment.trim()) {
 			result.comment = comment.trim();
 		}
-		(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send(result);
+		sendToGlimpse(result);
 	};
 
 	const handleFreeform = () => {
-		(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({
+		sendToGlimpse({
 			kind: "freeform",
 			text: query,
 		});
@@ -135,7 +136,7 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
 					setShowComment(false);
 					return;
 				}
-				(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({ __cancelled: true });
+				sendCancelled();
 				return;
 			}
 
@@ -316,7 +317,7 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
 					<div className="flex items-center gap-2">
 						<button
 							onClick={() =>
-								(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({ __cancelled: true })
+								sendCancelled()
 							}
 							className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
 						>

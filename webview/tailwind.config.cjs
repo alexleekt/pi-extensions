@@ -1,10 +1,6 @@
 /** @type {import('tailwindcss').Config} */
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-export default {
+const path = require("path");
+module.exports = {
 	content: [
 		path.join(__dirname, "index.html"),
 		path.join(__dirname, "src/**/*.{js,ts,jsx,tsx}"),

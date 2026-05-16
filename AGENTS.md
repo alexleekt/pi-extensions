@@ -16,8 +16,6 @@ A **Pi extension** that replaces the built-in `ask_user` tool with rich native W
 index.ts              → Extension entrypoint (registers tool + slash command)
 tool/ask-user.ts      → Payload construction, HTML injection, glimpseui.prompt() call
 tool/response-formatter.ts → Normalizes webview response → Pi AgentToolResult
-util/detect-conflict.ts    → Warns if competing ask_user tools are loaded
-util/safe-callback.ts      → Error-swallowing wrapper for deferred callbacks
 fallback/terminal-prompt.ts → TUI fallback when glimpseui native host unavailable
 webview/              → Vite + React + Tailwind app
   src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform
@@ -90,7 +88,7 @@ This is a Pi extension — Pi loads `.ts` files directly. `tsconfig.json` uses `
 - **Indentation:** 2 spaces (TypeScript), tabs (not enforced but existing code uses 2-space)
 - **Imports:** Use `.js` extensions on relative imports (NodeNext module resolution)
 - **Console output:** Use `[pi-ask-user-glimpse]` prefix for all `console.warn`/`console.error` calls
-- **Peer deps:** Only list `@earendil-works/pi-coding-agent` in `peerDependencies`. Do NOT add `@earendil-works/pi-tui` — it's not used.
+- **Peer deps:** List `@earendil-works/pi-coding-agent` and `@earendil-works/pi-ai` in `peerDependencies`. Do NOT add `@earendil-works/pi-tui` — it's not used.
 
 ## Known Issues / Deferred Work
 

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
+import { sendToGlimpse, sendCancelled } from "../util/glimpse";
 
 interface SingleSelectProps {
 	payload: AskUserPayload;
@@ -90,7 +91,7 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
 		if (showComment && comment.trim()) {
 			result.comment = comment.trim();
 		}
-		(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send(result);
+		sendToGlimpse(result);
 	}, [showComment, comment]);
 
 	const handleSubmit = () => {
@@ -100,7 +101,7 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
 	};
 
 	const handleFreeform = () => {
-		(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({
+		sendToGlimpse({
 			kind: "freeform",
 			text: query,
 		});
@@ -117,7 +118,7 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
 					setShowComment(false);
 					return;
 				}
-				(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({ __cancelled: true });
+				sendCancelled();
 				return;
 			}
 
@@ -274,7 +275,7 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
 					<div className="flex items-center gap-2">
 						<button
 							onClick={() =>
-								(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({ __cancelled: true })
+								sendCancelled()
 							}
 							className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
 						>

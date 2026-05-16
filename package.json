@@ -1,6 +1,6 @@
 {
   "name": "@alexleekt/pi-ask-user-glimpse",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Pi extension that replaces ask_user with rich native WebView dialogs via glimpseui and shadcn/ui",
   "type": "module",
   "keywords": [
@@ -36,15 +36,17 @@
     "types",
     "dist",
     "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "npm run build:css && npm run build:webview",
     "build:css": "cd webview && npx tailwindcss -i ./src/index.css -o ./src/index.generated.css --content './index.html,./src/**/*.{js,ts,jsx,tsx}'",
-    "build:webview": "vite build --config webview/vite.config.ts",
+    "build:webview": "cd webview && npx vite build --config ./vite.config.ts",
     "check": "npm pack --dry-run",
     "prepack": "npm run build",
-    "dev:webview": "vite --config webview/vite.config.ts",
+    "dev:webview": "cd webview && npx vite --config ./vite.config.ts",
     "validate": "npx tsx scripts/validate.ts",
     "validate:gui": "npx tsx scripts/validate.ts --gui"
   },
@@ -66,6 +68,10 @@
     "vite-plugin-singlefile": "^2.0.0"
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*"
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-ai": "*"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

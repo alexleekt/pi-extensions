@@ -166,10 +166,6 @@ async function showDialog(name: string, payload: unknown): Promise<void> {
 			}
 		};
 
-		win.on("ready", () => {
-			console.log(`  ✅ ${name} window ready`);
-		});
-
 		win.on("message", (data) => {
 			console.log(`  📨 ${name} result:`, JSON.stringify(data).slice(0, 100));
 			done();

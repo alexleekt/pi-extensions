@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { AskUserPayload, Question } from "../../../shared/ask-user";
 import { modKey } from "../util/platform";
+import { sendToGlimpse, sendCancelled } from "../util/glimpse";
 
 interface QuestionnaireProps {
 	payload: AskUserPayload;
@@ -93,7 +94,7 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
 			};
 		});
 
-		(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({
+		sendToGlimpse({
 			kind: "questionnaire",
 			selections: questionnaireDetails.map((s) => `${s.question}: ${s.answer}`),
 			questionnaireDetails,
@@ -127,7 +128,7 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
 					setShowCommentFor(null);
 					return;
 				}
-				(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({ __cancelled: true });
+				sendCancelled();
 				return;
 			}
 
@@ -363,7 +364,7 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
 					<div className="flex items-center gap-2">
 						<button
 							onClick={() =>
-								(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({ __cancelled: true })
+								sendCancelled()
 							}
 							className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
 						>

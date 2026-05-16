@@ -1,5 +1,8 @@
 # @alexleekt/pi-ask-user-glimpse
 
+[![npm version](https://img.shields.io/npm/v/@alexleekt/pi-ask-user-glimpse.svg)](https://www.npmjs.com/package/@alexleekt/pi-ask-user-glimpse)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A Pi extension that replaces `ask_user` with rich native WebView dialogs powered by [glimpseui](https://npmjs.com/package/glimpseui) and styled with shadcn/ui design tokens.
 
 ## Features
@@ -115,7 +118,7 @@ Ask multiple structured questions in one dialog:
 }
 ```
 
-Each question is shown as a card with a progress bar at the top. Questions with `options` render as single-select (radio) or multi-select (checkbox) depending on `allowMultiple`. Questions without `options` render as a textarea. The dialog auto-scrolls to the first unanswered question on open. The comment button shows "Edit comment" when text exists. Submit is disabled until all questions have a non-empty answer.
+Each question is shown as a card with a progress bar at the top. Questions with `options` render as single-select (radio) or multi-select (checkbox) depending on `allowMultiple`. Questions without `options` render as a textarea. The dialog auto-scrolls to the first unanswered question on open. The comment button shows "Edit comment" when text exists. Submit is disabled until all questions have a non-empty answer, unless `allowSkip: true` is set.
 
 ### Parameters
 
@@ -124,10 +127,11 @@ Each question is shown as a card with a progress bar at the top. Questions with 
 | `question` | `string` | *(required)* | The question to ask |
 | `context` | `string` | — | Additional context shown in a left-side markdown panel |
 | `options` | `Array<string \| {title, description?}>` | — | Options for flat single/multi-select mode |
-| `questions` | `Array<{title, description?, options?, allowMultiple?}>` | — | Questions for questionnaire mode. When present, `options` is ignored. |
+| `questions` | `Array<{title, description?, options?, allowMultiple?}>` | — | Questions for questionnaire mode. When present, `options` is ignored. Each question can have its own `options` (same shape as top-level `options`) and `allowMultiple`. Questions without `options` render as freeform textareas. |
 | `allowMultiple` | `boolean` | `false` | Allow selecting multiple options |
 | `allowFreeform` | `boolean` | `true` | Show a freeform "Custom" option |
 | `allowComment` | `boolean` | `false` | Collect an optional comment after selection |
+| `allowSkip` | `boolean` | `false` | Allow submitting a questionnaire without answering all questions (questionnaire mode only) |
 | `followCursor` | `boolean` | `false` | Make the 1200×900 dialog follow the terminal cursor |
 | `displayMode` | `"overlay" \| "inline"` | — | Legacy option; ignored (always centered dialog) |
 

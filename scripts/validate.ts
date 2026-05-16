@@ -28,7 +28,7 @@ async function main() {
 	}
 
 	// 2. Check HTML contains the payload placeholder
-	if (html.includes("ASK_USER_PAYLOAD")) {
+	if (html.includes("/*ASK_USER_PAYLOAD*/")) {
 		console.log("✅ HTML contains payload placeholder");
 	} else {
 		console.error("❌ HTML missing payload placeholder");

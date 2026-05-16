@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { modKey } from "../util/platform";
+import { sendToGlimpse, sendCancelled } from "../util/glimpse";
 
 interface FreeformProps {
 	payload: AskUserPayload;
@@ -14,7 +15,7 @@ export default function Freeform({ payload, showHeader = true }: FreeformProps) 
 	const handleSubmit = () => {
 		if (isSubmitting) return;
 		setIsSubmitting(true);
-		(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({
+		sendToGlimpse({
 			kind: "freeform",
 			text: text.trim(),
 		});
@@ -23,7 +24,7 @@ export default function Freeform({ payload, showHeader = true }: FreeformProps) 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
-				(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({ __cancelled: true });
+				sendCancelled();
 				return;
 			}
 			if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
@@ -67,7 +68,7 @@ export default function Freeform({ payload, showHeader = true }: FreeformProps) 
 					<div className="flex items-center gap-2">
 						<button
 							onClick={() =>
-								(window as unknown as { glimpse: { send: (data: unknown) => void } }).glimpse.send({ __cancelled: true })
+								sendCancelled()
 							}
 							className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
 						>

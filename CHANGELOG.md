@@ -2,6 +2,24 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [0.2.1] — 2026-05-16
+
+### Fixed
+- **AGENTS.md stale references** — Removed references to deleted `util/detect-conflict.ts` and `util/safe-callback.ts` files.
+- **`allowSkip` schema gap** — Added `allowSkip` parameter to the `defineTool` schema so the LLM can request partial questionnaire submission.
+- **`visual-qa.ts` non-existent event** — Removed `"ready"` event listener which is not declared in `glimpseui.d.ts`.
+- **Tailwind CSS build warning** — Fixed by running Vite from the `webview/` directory so Tailwind resolves content paths correctly.
+- **`validate.ts` placeholder check** — Now checks for exact placeholder `/*ASK_USER_PAYLOAD*/` instead of substring match.
+- **Missing `pi-ai` peer dependency** — Added `@earendil-works/pi-ai` to `peerDependencies` since `index.ts` imports `StringEnum` from it.
+- **Repeated `window.glimpse.send` type assertion** — Extracted to `webview/src/util/glimpse.ts` helper with `sendToGlimpse()` and `sendCancelled()`.
+
+### Added
+- **CONTRIBUTING.md** — Developer setup, build instructions, and pre-submission checklist.
+- **README badges** — npm version and MIT license shields.
+- **`engines` field** — Requires Node.js >= 18.0.0.
+- **`CHANGELOG.md` in npm files** — Now included in the published tarball.
+- **`.jj/` in `.gitignore`** — Jujutsu working directory ignored.
+
 ## [0.2.0] — 2026-05-16
 
 ### Added

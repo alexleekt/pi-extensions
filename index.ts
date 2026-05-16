@@ -309,6 +309,11 @@ const askUserTool = defineTool({
 				description: "Legacy option; ignored by Glimpse (always opens a centered dialog)",
 			}),
 		),
+		allowSkip: Type.Optional(
+			Type.Boolean({
+				description: "Allow submitting a questionnaire without answering all questions. Default: false",
+			}),
+		),
 		followCursor: Type.Optional(
 			Type.Boolean({
 				description: "Make the dialog follow the terminal cursor. Default: false",
