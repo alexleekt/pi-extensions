@@ -15,9 +15,9 @@ The Pi agent sometimes pauses waiting for more input. Instead of typing "continu
 
 1. Install the extension.
 2. In Pi's interactive mode, make sure the editor is empty.
-3. Press **Enter twice** within ~300 ms to send a nudge.
+3. Press **Enter twice** within ~300 ms to send a randomized prompt.
 
-The extension only fires when the agent is idle and no messages are queued.
+The extension only fires when the agent is idle and no messages are queued. Each nudge is randomly selected from 16 variations to avoid repetition and keep the conversation fresh.
 
 ## Installation
 

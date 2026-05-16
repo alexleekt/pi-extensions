@@ -3,8 +3,12 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+// Time window for detecting a double-tap on empty input.
 const THRESHOLD_MS = 300;
 
+// Curated pool of agent-friendly prompts that avoid ambiguity with version-bumping
+// (the original static "Bump" was sometimes misread as a semver command).
+// Randomization prevents repetition fatigue during long sessions.
 const NUDGE_MESSAGES = [
   "Continue",
   "Keep going",
