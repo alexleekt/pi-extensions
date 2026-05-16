@@ -1,6 +1,8 @@
 # @alexleekt/pi-extensions
 
-Monorepo for Pi coding agent extensions.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+Monorepo for Pi coding agent extensions. All packages are published under the `@alexleekt/` scope on npm.
 
 > **Previous standalone repos have been archived on GitHub.** All development now happens here.
 > - `alexleekt/pi-bump` → `packages/pi-bump` ✅ archived
@@ -15,16 +17,36 @@ Monorepo for Pi coding agent extensions.
 | [`@alexleekt/pi-bump`](./packages/pi-bump) | 0.2.0 | Double-Enter nudge with randomized prompts |
 | [`@alexleekt/pi-pkg-guard`](./packages/pi-pkg-guard) | 0.13.0 | Package management guard for pi extensions |
 
+## Installation
+
+Install any package via the Pi agent:
+
+```bash
+pi install @alexleekt/pi-bump
+pi install @alexleekt/pi-pkg-guard
+pi install @alexleekt/pi-ask-user-glimpse
+```
 
 ## Development
 
 ```bash
-# Format all packages
-npx @biomejs/biome check .
+# Install all workspace dependencies
+npm install
+
+# Type-check all packages
+just typecheck
+
+# Lint all extension code
+just lint
+
+# Format all extension code
+just fmt
 
 # Publish a package
-npm publish --workspace packages/<name>
+just publish pi-bump
 ```
+
+See [`AGENT.md`](./AGENT.md) for contributor guidelines, monorepo structure, and CI details.
 
 ## License
 
