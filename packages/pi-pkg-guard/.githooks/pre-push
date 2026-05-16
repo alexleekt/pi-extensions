@@ -1,0 +1,19 @@
+#!/bin/bash
+#
+# Pre-push hook that runs full just check before pushing to remote
+# To install: just setup-hooks (or copy manually to .git/hooks/pre-push)
+#
+
+set -e
+
+echo "🧪 Running pre-push checks via just check..."
+
+if ! command -v just >/dev/null 2>&1; then
+    echo "❌ Error: 'just' is not installed. Install with: brew install just"
+    exit 1
+fi
+
+just check
+
+echo "✅ All pre-push checks passed! Pushing..."
+echo ""

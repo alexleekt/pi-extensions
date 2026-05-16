@@ -1,0 +1,8 @@
+{
+  "id": "pi-pkg-guard-audit-fixes",
+  "name": "PI Package Guard Audit Fixes",
+  "description": "Implements fixes for security issues, test coverage gaps, and code organization issues identified in the codebase audit",
+  "version": "1.0.0",
+  "entry": "./audit-fixes-process.js",
+  "exports": ["process"]
+}

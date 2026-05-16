@@ -1,0 +1,19 @@
+#!/bin/bash
+#
+# Pre-commit hook that runs just ci before allowing commits
+# To install: make hook (or copy manually to .git/hooks/pre-commit)
+#
+
+set -e
+
+echo "🧪 Running pre-commit checks via just ci..."
+
+if ! command -v just >/dev/null 2>&1; then
+    echo "❌ Error: 'just' is not installed. Install with: brew install just"
+    exit 1
+fi
+
+just ci
+
+echo "✅ All pre-commit checks passed!"
+echo ""

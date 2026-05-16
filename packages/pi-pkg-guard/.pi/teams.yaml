@@ -1,0 +1,8 @@
+# pi-pkg-guard development team
+# Specialized roles for Pi extension development
+
+pi-pkg-guard-team:
+  - typescript-architect  # Core Extension Developer - TypeScript & Pi API
+  - safety-officer        # Type Safety & Testing Specialist
+  - pipeline-keeper       # DevOps & Release Engineer
+  - doc-master            # Documentation & i18n Maintainer

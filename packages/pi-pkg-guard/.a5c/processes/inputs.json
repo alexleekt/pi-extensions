@@ -1,0 +1,4 @@
+{
+  "versionBump": "minor",
+  "releaseNotes": "Improved package detection: added -pi suffix support and keyword validation to filter non-pi packages"
+}

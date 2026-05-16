@@ -1,0 +1,11 @@
+{
+  "actionItems": [
+    "Add isGuardConfig() type guard tests",
+    "Validate gistId before shell commands (command injection fix)",
+    "Restrict backupPath to safe directory scope (path traversal fix)",
+    "Use os.tmpdir() for cross-platform temp files",
+    "Add async operation tests for gist functions",
+    "Export functions from index.ts to eliminate test duplication"
+  ],
+  "securityPriority": "high"
+}

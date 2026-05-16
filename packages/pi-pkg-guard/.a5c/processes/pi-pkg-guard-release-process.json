@@ -1,0 +1,26 @@
+{
+  "id": "pi-pkg-guard-release",
+  "name": "pi-pkg-guard Release Process",
+  "description": "Full code review, quality improvements, semantic versioning, jj commit, npm release prep, and git push",
+  "version": "1.0.0",
+  "harness": "pi",
+  "entry": "./pi-pkg-guard-release-process.js#process",
+  "inputs": {
+    "versionBump": {
+      "type": "string",
+      "enum": ["patch", "minor", "major"],
+      "default": "patch",
+      "description": "Semantic version bump type"
+    },
+    "releaseNotes": {
+      "type": "string",
+      "default": "",
+      "description": "Additional release notes"
+    }
+  },
+  "outputs": {
+    "success": { "type": "boolean" },
+    "version": { "type": "string" },
+    "artifacts": { "type": "array" }
+  }
+}
