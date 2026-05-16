@@ -171,16 +171,16 @@ The extension checks each turn before the LLM starts:
 
 1. **Known question skills** — `grill-with-docs`, `questionnaire`, `interview`, `grill`
 2. **Language patterns** in the system prompt — phrases like "ask the questions one at a time", "interview me", "grilling session", "wait for feedback"
-3. **Manual toggle** — `/ask-force` to force it on or off for the current session
+3. **Manual toggle** — `/ask-style` to override the behavior for the current session
 
 If any condition matches, it appends a mandate: "You MUST use `ask_user` for every question. Do NOT write free-form text."
 
-### Manual toggle: `/ask-force`
+### Manual toggle: `/ask-style`
 
 Override auto-detection for the current session:
 
 ```
-/ask-force
+/ask-style
 ```
 
 Cycles through three states:
@@ -188,8 +188,8 @@ Cycles through three states:
 | State | Behavior |
 |-------|----------|
 | **AUTO** *(default)* | Auto-detect question sessions by skill name + language patterns |
-| **ON** | Force `ask_user` for every question, regardless of detection |
-| **OFF** | Disable everything — no mandate injected, no auto-detection |
+| **Always Dialog** | Always use `ask_user` for every question, regardless of detection |
+| **Plain Text** | Disable everything — let the agent write questions as plain text |
 
 The setting is persisted in the session and survives restarts.
 

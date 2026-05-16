@@ -148,29 +148,29 @@ export default function (pi: ExtensionAPI) {
 		const hasAskUser = event.systemPromptOptions.selectedTools?.includes("ask_user");
 		if (!hasAskUser) return;
 
-		// Check session-persisted force toggle
+		// Check session-persisted style override
 		const entries = ctx.sessionManager.getEntries();
-		const forceEntry = entries.find(
-			(e) => e.type === "custom" && e.customType === "ask-user-force",
+		const styleEntry = entries.find(
+			(e) => e.type === "custom" && e.customType === "ask-user-style",
 		);
-		const forceData = (forceEntry as any)?.data;
-		const hasExplicitToggle = forceData && typeof forceData.enabled === "boolean";
-		const forceMode = hasExplicitToggle ? forceData.enabled : null;
+		const styleData = (styleEntry as any)?.data;
+		const hasExplicitStyle = styleData && typeof styleData.enabled === "boolean";
+		const styleMode = hasExplicitStyle ? styleData.enabled : null;
 
-		if (forceMode === true || (forceMode === null && isQuestionSession(event.systemPrompt, event.systemPromptOptions))) {
+		if (styleMode === true || (styleMode === null && isQuestionSession(event.systemPrompt, event.systemPromptOptions))) {
 			return {
 				systemPrompt: event.systemPrompt + ASK_USER_MANDATE,
 			};
 		}
 	});
 
-	// ── Manual toggle for forced ask_user mode ──
-	pi.registerCommand("ask-force", {
-		description: "Toggle forced ask_user mode for this session (auto-detect → ON → OFF → auto-detect)",
+	// ── Manual style toggle for ask_user behavior ──
+	pi.registerCommand("ask-style", {
+		description: "Cycle ask_user style: Auto → Always Dialog → Plain Text → Auto",
 		handler: async (_args, ctx) => {
 			const entries = ctx.sessionManager.getEntries();
 			const current = entries.find(
-				(e) => e.type === "custom" && e.customType === "ask-user-force",
+				(e) => e.type === "custom" && e.customType === "ask-user-style",
 			);
 			const data = (current as any)?.data;
 
@@ -178,21 +178,21 @@ export default function (pi: ExtensionAPI) {
 			let label: string;
 
 			if (!data || typeof data.enabled !== "boolean") {
-				// Auto-detect → ON (forced)
+				// Auto → Always Dialog
 				enabled = true;
-				label = "ON (auto-detection overridden)";
+				label = "Always Dialog (auto-detection overridden)";
 			} else if (data.enabled === true) {
-				// ON → OFF (disabled)
+				// Always Dialog → Plain Text
 				enabled = false;
-				label = "OFF (auto-detection disabled)";
+				label = "Plain Text (no dialog injection)";
 			} else {
-				// OFF → auto-detect (clear toggle)
+				// Plain Text → Auto
 				enabled = null;
-				label = "AUTO (skill + pattern detection active)";
+				label = "Auto (skill + pattern detection)";
 			}
 
-			pi.appendEntry("ask-user-force", { enabled });
-			ctx.ui.notify(`ask_user force mode: ${label}`, "info");
+			pi.appendEntry("ask-user-style", { enabled });
+			ctx.ui.notify(`ask_user style: ${label}`, "info");
 		},
 	});
 

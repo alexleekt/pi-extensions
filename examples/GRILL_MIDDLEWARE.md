@@ -40,14 +40,14 @@ Regex patterns such as:
 - "questionnaire mode"
 - "one question per call"
 
-### 3. Manual override: `/ask-force`
+### 3. Manual override: `/ask-style`
 
-The user can override auto-detection for the current session. The setting is persisted via `pi.appendEntry("ask-user-force", { enabled: boolean | null })`.
+The user can override auto-detection for the current session. The setting is persisted via `pi.appendEntry("ask-user-style", { enabled: boolean | null })`.
 
 Cycles through three states:
 - **AUTO** *(default)* — auto-detect by skill name + language patterns
-- **ON** — force `ask_user` for every question, regardless of detection
-- **OFF** — disable everything; no mandate injected, no auto-detection
+- **Always Dialog** — always use `ask_user` for every question, regardless of detection
+- **Plain Text** — disable everything; let the agent write questions as plain text
 
 When any signal triggers, the extension appends a mandate to the system prompt:
 
@@ -64,12 +64,12 @@ When any signal triggers, the extension appends a mandate to the system prompt:
 
 - **Skill-agnostic** — works for any skill or prompt template that uses question-session language.
 - **Non-invasive** — only appends tokens when detection triggers.
-- **User-controllable** — `/ask-force` lets the user override auto-detection.
+- **User-controllable** — `/ask-style` lets the user override auto-detection.
 - **Zero round-trips** — no extra LLM calls needed.
 
 ## Cons
 
-- If content is pasted anonymously (bypassing `systemPromptOptions.skills` and not matching regex patterns), detection fails. Use `/ask-force` as a manual override, or `/ask-last` to retroactively answer a question the agent already wrote as plain text.
+- If content is pasted anonymously (bypassing `systemPromptOptions.skills` and not matching regex patterns), detection fails. Use `/ask-style` as a manual override, or `/ask-last` to retroactively answer a question the agent already wrote as plain text.
 - The LLM could theoretically ignore the mandate, though in practice system-prompt overrides are highly effective.
 
 ## Legacy: Separate Middleware File
@@ -80,13 +80,13 @@ Earlier versions shipped a standalone `grill-with-docs-middleware.ts` companion 
 
 **File:** [`grill-with-docs-input-transform.ts`](./grill-with-docs-input-transform.ts)
 
-This is an *example* of an alternative approach, not a recommended one. It hooks the `input` event and regex-matches the raw user input. It is fragile and consumes user-message tokens, but works when content is pasted manually without being loaded as a named skill. Use `/ask-force` instead.
+This is an *example* of an alternative approach, not a recommended one. It hooks the `input` event and regex-matches the raw user input. It is fragile and consumes user-message tokens, but works when content is pasted manually without being loaded as a named skill. Use `/ask-style` instead.
 
 ## Decision Matrix
 
 | Approach | Detects Reliably | Forces Tool Usage | Extra Round-trip | Token Cost | Status |
 |----------|------------------|-------------------|------------------|------------|--------|
 | Built-in `before_agent_start` | ✅ Skills + patterns | ✅ System prompt | ❌ No | Low (~100 chars) | **Active** |
-| `/ask-force` manual toggle | ✅ Always | ✅ System prompt | ❌ No | Low (~100 chars) | **Active** |
+| `/ask-style` manual toggle | ✅ Always | ✅ System prompt | ❌ No | Low (~100 chars) | **Active** |
 | `input` transform (example) | ⚠️ Regex | ✅ Injected text | ❌ No | Medium | Legacy example |
 | `message_end` post-hoc hack | ❌ Post-hoc | ❌ Hope-based | ✅ Yes | High | Not implemented |

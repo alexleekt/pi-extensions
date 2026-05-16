@@ -3,7 +3,7 @@
  *
  * This file is kept as a reference implementation. The main extension
  * auto-detects question sessions skill-agnostically and also supports
- * a manual `/ask-force` toggle.
+ * a manual `/ask-style` toggle.
  *
  * If you install pi-ask-user-glimpse via `pi install`, you do NOT need
  * to copy this file anywhere.
