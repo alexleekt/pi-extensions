@@ -7,32 +7,32 @@
  */
 
 export interface QuestionOption {
-	title: string;
-	description?: string;
+    title: string;
+    description?: string;
 }
 
 export interface Question {
-	title: string;
-	description?: string;
-	options?: QuestionOption[];
-	allowMultiple?: boolean;
+    title: string;
+    description?: string;
+    options?: QuestionOption[];
+    allowMultiple?: boolean;
 }
 
 export interface AskUserPayload {
-	type: "single-select" | "multi-select" | "questionnaire" | "freeform";
-	question: string;
-	context?: string;
-	options: QuestionOption[];
-	questions?: Question[];
-	allowMultiple: boolean;
-	allowFreeform: boolean;
-	allowComment: boolean;
-	allowSkip?: boolean;
+    type: "single-select" | "multi-select" | "questionnaire" | "freeform";
+    question: string;
+    context?: string;
+    options: QuestionOption[];
+    questions?: Question[];
+    allowMultiple: boolean;
+    allowFreeform: boolean;
+    allowComment: boolean;
+    allowSkip?: boolean;
 }
 
 export interface QuestionnaireDetail {
-	question: string;
-	answer: string;
-	kind: "selection" | "freeform";
-	comment?: string;
+    question: string;
+    answer: string;
+    kind: "selection" | "freeform";
+    comment?: string;
 }

@@ -7,10 +7,10 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-	plugins: [react(), viteSingleFile()],
-	root: __dirname,
-	build: {
-		outDir: resolve(__dirname, "../dist"),
-		emptyOutDir: true,
-	},
+    plugins: [react(), viteSingleFile()],
+    root: __dirname,
+    build: {
+        outDir: resolve(__dirname, "../dist"),
+        emptyOutDir: true,
+    },
 });

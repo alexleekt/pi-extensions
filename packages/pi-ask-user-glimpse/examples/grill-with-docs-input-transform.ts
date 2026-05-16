@@ -18,25 +18,25 @@ IMPORTANT: During this grilling session, you MUST use the \`ask_user\` tool for 
 `;
 
 const GRILL_PATTERNS = [
-	/^\s*\/grill-with-docs\b/,
-	/^\s*\/skill:\s*grill-with-docs\b/,
-	/grill.with.docs/i,
+    /^\s*\/grill-with-docs\b/,
+    /^\s*\/skill:\s*grill-with-docs\b/,
+    /grill.with.docs/i,
 ];
 
 export default function grillWithDocsInputTransform(pi: ExtensionAPI) {
-	pi.on("input", async (event) => {
-		if (event.source !== "interactive") {
-			return { action: "continue" };
-		}
+    pi.on("input", async (event) => {
+        if (event.source !== "interactive") {
+            return { action: "continue" };
+        }
 
-		const isGrillSession = GRILL_PATTERNS.some((p) => p.test(event.text));
-		if (!isGrillSession) {
-			return { action: "continue" };
-		}
+        const isGrillSession = GRILL_PATTERNS.some((p) => p.test(event.text));
+        if (!isGrillSession) {
+            return { action: "continue" };
+        }
 
-		return {
-			action: "transform",
-			text: event.text + ASK_USER_APPENDIX,
-		};
-	});
+        return {
+            action: "transform",
+            text: event.text + ASK_USER_APPENDIX,
+        };
+    });
 }

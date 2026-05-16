@@ -9,7 +9,10 @@
  * hook using `systemPromptOptions.skills` detection.
  */
 
-import type { BuildSystemPromptOptions, ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type {
+    BuildSystemPromptOptions,
+    ExtensionAPI,
+} from "@earendil-works/pi-coding-agent";
 
 const SKILL_NAME = "grill-with-docs";
 
@@ -33,28 +36,29 @@ Rules:
 `;
 
 function hasSkill(options: BuildSystemPromptOptions, name: string): boolean {
-	return options.skills?.some((s) => s.name === name) ?? false;
+    return options.skills?.some((s) => s.name === name) ?? false;
 }
 
 export default function grillWithDocsMiddleware(pi: ExtensionAPI) {
-	pi.on("before_agent_start", async (event) => {
-		if (!hasSkill(event.systemPromptOptions, SKILL_NAME)) {
-			// Skill not active — don't interfere with normal behavior
-			return;
-		}
+    pi.on("before_agent_start", async (event) => {
+        if (!hasSkill(event.systemPromptOptions, SKILL_NAME)) {
+            // Skill not active — don't interfere with normal behavior
+            return;
+        }
 
-		// Verify ask_user tool is available so we don't break the session
-		const hasAskUser = event.systemPromptOptions.selectedTools?.includes("ask_user");
-		if (!hasAskUser) {
-			console.warn(
-				"[grill-with-docs-middleware] grill-with-docs skill is active but ask_user tool is not available. " +
-					"Install pi-ask-user-glimpse or ensure ask_user is registered.",
-			);
-			return;
-		}
+        // Verify ask_user tool is available so we don't break the session
+        const hasAskUser =
+            event.systemPromptOptions.selectedTools?.includes("ask_user");
+        if (!hasAskUser) {
+            console.warn(
+                "[grill-with-docs-middleware] grill-with-docs skill is active but ask_user tool is not available. " +
+                    "Install pi-ask-user-glimpse or ensure ask_user is registered.",
+            );
+            return;
+        }
 
-		return {
-			systemPrompt: event.systemPrompt + ASK_USER_MANDATE,
-		};
-	});
+        return {
+            systemPrompt: event.systemPrompt + ASK_USER_MANDATE,
+        };
+    });
 }
