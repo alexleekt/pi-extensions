@@ -1,13 +1,20 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Alex Lee
+
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+const THRESHOLD_MS = 300;
+const DEFAULT_NUDGE_MESSAGE = "Bump"; // TODO: make configurable via config file
+
 export default function bumpExtension(pi: ExtensionAPI) {
-  let lastEmptyEnter = 0;
   let unsubscribe: (() => void) | null = null;
-  const THRESHOLD_MS = 300;
-  const DEFAULT_NUDGE_MESSAGE = "Bump"; // TODO: make configurable via config file
 
   pi.on("session_start", (_event, ctx) => {
     if (!ctx.hasUI) return;
+
+    unsubscribe?.();
+
+    let lastEmptyEnter = 0;
 
     unsubscribe = ctx.ui.onTerminalInput((data) => {
       if (data !== "\r" && data !== "\n") return;
@@ -25,7 +32,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
       }
 
       lastEmptyEnter = now;
-      return { consume: true };
+      return;
     });
   });
 

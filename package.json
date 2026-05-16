@@ -7,6 +7,17 @@
   "author": "Alex Lee",
   "keywords": ["pi-package", "pi-extension", "pi", "bump", "nudge", "continue"],
   "files": ["index.ts", "README.md", "LICENSE"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexleekt/pi-bump.git"
+  },
+  "homepage": "https://github.com/alexleekt/pi-bump#readme",
+  "bugs": {
+    "url": "https://github.com/alexleekt/pi-bump/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "pi": {
     "extensions": ["./index.ts"]
   },

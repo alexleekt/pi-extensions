@@ -1,11 +1,13 @@
-// Manual integration test for @alexleekt/pi-bump
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Alex Lee
+//
+// Manual integration test for @alexleekt/pi-bump.
 // Simulates the ExtensionAPI and ExtensionContext to verify double-Enter logic.
 // Run: node test-integration.mjs
 
 import bumpExtension from "./index.ts";
 
 let sentMessages = [];
-let statusEntries = [];
 let editorText = "";
 let idle = true;
 let terminalHandler = null;
@@ -15,18 +17,14 @@ const mockUI = {
     terminalHandler = handler;
     return () => { terminalHandler = null; };
   },
-  setStatus: (key, text) => {
-    statusEntries.push({ key, text, at: Date.now() });
-  },
   getEditorText: () => editorText,
-  notify: (msg, type) => {},
 };
 
 const mockCtx = {
   hasUI: true,
   ui: mockUI,
   isIdle: () => idle,
-  cwd: "/tmp",
+  hasPendingMessages: () => false,
 };
 
 const mockAPI = {
@@ -45,7 +43,6 @@ bumpExtension(mockAPI);
 
 function reset() {
   sentMessages = [];
-  statusEntries = [];
   editorText = "";
   idle = true;
 }
@@ -53,10 +50,10 @@ function reset() {
 function assert(name, condition) {
   if (condition) {
     console.log(`  ✅ ${name}`);
-    return true;
+    return [1, 0];
   } else {
     console.log(`  ❌ ${name}`);
-    return false;
+    return [0, 1];
   }
 }
 
@@ -69,16 +66,18 @@ function runTests() {
     return;
   }
 
-  // Test 1: Double Enter on empty editor sends Continue when idle
+  // Test 1: Double Enter on empty editor sends Bump when idle
   {
     reset();
     console.log("\nTest 1: Double Enter on empty editor (idle)");
-    terminalHandler("\r"); // first Enter
-    const result2 = terminalHandler("\r"); // second Enter within threshold
-    pass += assert("First Enter consumed", result2 === undefined || result2?.consume === true);
-    pass += assert("Message sent", sentMessages.length === 1 && sentMessages[0].content === "Continue");
-    pass += assert("Status flash set", statusEntries.some(s => s.key === "pi-bump" && s.text?.includes("Bumped")));
-    fail += 3 - pass; // rough count
+    const result1 = terminalHandler("\r");
+    const result2 = terminalHandler("\r");
+    let [p, f] = assert("First Enter NOT consumed", result1 === undefined || !result1?.consume);
+    pass += p; fail += f;
+    [p, f] = assert("Second Enter consumed", result2?.consume === true);
+    pass += p; fail += f;
+    [p, f] = assert("Message sent", sentMessages.length === 1 && sentMessages[0].content === "Bump");
+    pass += p; fail += f;
   }
 
   // Test 2: Double Enter ignored when not idle
@@ -88,8 +87,8 @@ function runTests() {
     console.log("\nTest 2: Double Enter while streaming (not idle)");
     terminalHandler("\r");
     terminalHandler("\r");
-    pass += assert("No message sent while streaming", sentMessages.length === 0);
-    fail += 1 - (sentMessages.length === 0 ? 1 : 0);
+    let [p, f] = assert("No message sent while streaming", sentMessages.length === 0);
+    pass += p; fail += f;
   }
 
   // Test 3: Enter with text in editor is ignored
@@ -99,9 +98,10 @@ function runTests() {
     console.log("\nTest 3: Enter with text in editor");
     const r1 = terminalHandler("\r");
     const r2 = terminalHandler("\r");
-    pass += assert("No message sent when editor has text", sentMessages.length === 0);
-    pass += assert("Input not consumed when editor has text", (r1 === undefined || !r1?.consume) && (r2 === undefined || !r2?.consume));
-    fail += 2 - (sentMessages.length === 0 ? 1 : 0) - ((r1 === undefined || !r1?.consume) && (r2 === undefined || !r2?.consume) ? 1 : 0);
+    let [p, f] = assert("No message sent when editor has text", sentMessages.length === 0);
+    pass += p; fail += f;
+    [p, f] = assert("Input not consumed when editor has text", (r1 === undefined || !r1?.consume) && (r2 === undefined || !r2?.consume));
+    pass += p; fail += f;
   }
 
   // Test 4: Single Enter on empty editor does not send message
@@ -109,8 +109,8 @@ function runTests() {
     reset();
     console.log("\nTest 4: Single Enter on empty editor");
     terminalHandler("\r");
-    pass += assert("No message after single Enter", sentMessages.length === 0);
-    fail += 1 - (sentMessages.length === 0 ? 1 : 0);
+    let [p, f] = assert("No message after single Enter", sentMessages.length === 0);
+    pass += p; fail += f;
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);
