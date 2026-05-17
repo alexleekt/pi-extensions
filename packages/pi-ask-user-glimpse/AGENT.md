@@ -1,6 +1,15 @@
+---
+parent: ../../AGENT.md
+---
+
 # AGENT.md — pi-ask-user-glimpse
 
 > Project-specific guidelines for AI agents working on this codebase.
+
+## Monorepo Context
+
+This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](../../AGENT.md) for monorepo-wide conventions (shared tooling, just commands, release process, CI setup).
+
 > This file is authoritative for this repository. If it conflicts with general agent guidelines, this file wins.
 
 ## Architecture

@@ -1,6 +1,14 @@
+---
+parent: ../../AGENT.md
+---
+
 # Agent Guidelines: pi-pkg-guard
 
-**Scope:** Pi extension development and maintenance  
+**Scope:** Pi extension development and maintenance
+
+## Monorepo Context
+
+This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](../../AGENT.md) for monorepo-wide conventions (shared tooling, just commands, release process, CI setup).  
 **Last Updated:** 2026-05-06  
 **Version:** 1.3
 
