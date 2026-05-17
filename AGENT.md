@@ -55,6 +55,25 @@ just release pi-bump 0.3.0
 
 This bumps version, commits, tags (`@alexleekt/pi-bump@0.3.0`), and pushes — triggering `.github/workflows/publish.yml`.
 
+## Pi Extension Development Setup
+
+For local dev loading into the Pi agent:
+
+```bash
+# Symlink extensions
+ln -s ~/git/pi-extensions/packages/pi-bump ~/.pi/agent/extensions/pi-bump
+ln -s ~/git/pi-extensions/packages/pi-shared ~/.pi/agent/extensions/pi-shared
+
+# Single node_modules link — workspace resolves all deps
+ln -s ~/git/pi-extensions/node_modules ~/.pi/agent/node_modules
+```
+
+**Critical:** After moving or retargeting extension symlinks, clear jiti's file cache or stale compiled paths will persist:
+
+```bash
+rm -rf /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/.cache/jiti/
+```
+
 ## Conventions
 
 - Every package has a `typecheck` script (`tsc --noEmit`)
