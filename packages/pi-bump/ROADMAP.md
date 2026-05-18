@@ -1,19 +1,13 @@
 # Roadmap
 
-## Current
+`pi-bump` is feature-complete. All items below are shipped.
 
 - [x] Double-Enter detection on empty editor
 - [x] Guard against firing while streaming or when messages are pending
-- [x] Basic integration test coverage
+- [x] Invisible continuation via hidden `customType` message
+- [x] Context guard to strip leaked markers before LLM calls
+- [x] `/continue` command with `status` and `help` subcommands
 
-## Near-term
+## Maybe
 
-- [ ] **Configurable nudge message** — replace hard-coded `"Bump"` (see `DEFAULT_NUDGE_MESSAGE` TODO in `index.ts`)
-- [ ] **Configurable double-tap threshold** — expose `THRESHOLD_MS` as user setting
-- [ ] **Support `deliverAs: "followUp"`** — allow bumps to queue even when the agent is streaming, instead of being silently ignored
-
-## Future
-
-- [ ] Optional status-bar flash feedback when a bump is sent
-- [ ] Per-session configuration via JSON config file
-- [ ] Expand test coverage: threshold expiration, pending-messages guard, session re-initialization
+- [ ] **Configurable double-tap threshold** — expose `THRESHOLD_MS` as a user setting (e.g. per-session config or env var)

@@ -1,7 +1,7 @@
 {
     "name": "@alexleekt/pi-bump",
-    "version": "0.2.4",
-    "description": "Double-Enter on empty chat to send a randomized nudge to the Pi agent.",
+    "version": "0.3.0",
+    "description": "Invisible continuation for the Pi agent. Double-tap Enter on empty chat to resume the agentic loop without sending the LLM a single token.",
     "type": "module",
     "license": "MIT",
     "author": "Alex Lee <657215+alexleekt@users.noreply.github.com>",
@@ -10,7 +10,7 @@
         "pi-extension",
         "pi",
         "bump",
-        "nudge",
+        "invisible",
         "continue"
     ],
     "files": [
@@ -41,15 +41,14 @@
         "@alexleekt/pi-shared": "^0.1.0"
     },
     "peerDependencies": {
-        "@earendil-works/pi-coding-agent": "*"
+        "@earendil-works/pi-coding-agent": "*",
+        "@earendil-works/pi-tui": "*"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.4.15",
         "@earendil-works/pi-coding-agent": "^0.74.0",
         "typescript": "^5.9.3"
     },
     "scripts": {
-        "typecheck": "tsc --noEmit",
         "check": "tsc --noEmit"
     }
 }

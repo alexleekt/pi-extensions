@@ -3,25 +3,36 @@
 [![npm](https://img.shields.io/npm/v/@alexleekt/pi-bump)](https://www.npmjs.com/package/@alexleekt/pi-bump)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**The quickest way to say "keep going".**
+**Invisible continuation for the Pi agent.**
 
-> Double-tap **Enter** on an empty chat input to nudge the Pi agent with a randomized prompt.
-
-## Why
-
-The Pi agent sometimes pauses waiting for more input. Instead of typing "continue" or "go on", just double-tap **Enter** on an empty editor — zero typing, zero context switch.
+Resume the agentic loop without sending the LLM a single token.
 
 ## Usage
 
-1. Install the extension.
-2. In Pi's interactive mode, make sure the editor is empty.
-3. Press **Enter twice** within ~300 ms to send a randomized prompt.
+### Double-tap Enter (quickest)
 
-The extension only fires when the agent is idle and no messages are queued. Prompts are randomly selected from 16 variations to avoid repetition.
+1. Make sure the chat editor is **empty**
+2. Press **Enter twice** within ~300 ms
+3. The agent continues — the LLM sees nothing
+
+### `/continue` command
+
+| Command | What it does |
+|---------|-------------|
+| `/continue` | Resume the loop invisibly |
+| `/continue status` | Show if the agent is idle or busy |
+| `/continue help` | Show available commands |
+
+Both methods only fire when the agent is idle and no messages are pending.
+
+## How it works
+
+- A hidden `customType` message is sent with `display: false`
+- Pi's default `convertToLlm` strips custom messages before they reach the LLM
+- The LLM receives unchanged context and loops naturally
+- A `context` event handler also proactively removes any leaked markers as insurance
 
 ## Installation
-
-### Via npm
 
 ```bash
 npm install -g @alexleekt/pi-bump
@@ -29,9 +40,25 @@ npm install -g @alexleekt/pi-bump
 
 Pi auto-discovers globally installed `pi-package` extensions.
 
-### Manual
+Or copy `index.ts` into `.pi/extensions/` (project) or `~/.pi/agent/extensions/` (global).
 
-Copy `index.ts` into your project's `.pi/extensions/` folder, or into `~/.pi/agent/extensions/` for global use.
+## Debug mode
+
+```bash
+BUMP_DEBUG=1 pi
+```
+
+Then toggle per-session debugging with `/bump-debug-keypresses`:
+
+- **Enter** — triggers invisible continue + shows timing
+- **Backspace, Delete** — shows timing only
+- **Ctrl+Enter, Alt+Enter** — also monitored
+
+Debug mode resets when the session ends. Only available when `BUMP_DEBUG=1` is set.
+
+## Acknowledgments
+
+The invisible continuation technique was adapted from [pi-invisible-continue](https://github.com/monotykamary/pi-invisible-continue) by Tom X Nguyen.
 
 ## License
 
