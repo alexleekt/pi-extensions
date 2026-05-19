@@ -18,13 +18,16 @@ const execAsync = promisify(exec);
 const require = createRequire(import.meta.url);
 const { version: EXTENSION_VERSION } = require("../package.json");
 
-import type {
-    ExtensionAPI,
-    ExtensionCommandContext,
+import {
+    Theme,
+    type ExtensionAPI,
+    type ExtensionCommandContext,
 } from "@earendil-works/pi-coding-agent";
 import {
     SelectList,
     type SelectItem,
+    type TUI,
+    type Component,
 } from "@earendil-works/pi-tui";
 
 // =============================================================================
@@ -1557,11 +1560,16 @@ async function runMenuLoop(
     ctx: ExtensionCommandContext,
     title: string,
     widgetKey: string,
-    getWidgetLines: () => string[],
+    getWidget: () => string[] | ((tui: TUI, theme: Theme) => Component),
     getMenuItems: () => MenuItem[],
 ): Promise<void> {
     while (true) {
-        ctx.ui.setWidget(widgetKey, getWidgetLines());
+        const widget = getWidget();
+        if (Array.isArray(widget)) {
+            ctx.ui.setWidget(widgetKey, widget);
+        } else {
+            ctx.ui.setWidget(widgetKey, widget);
+        }
 
         const items = getMenuItems();
         const selectedIndex = await showSelectMenu(
@@ -1729,9 +1737,23 @@ async function executeConfig(ctx: ExtensionCommandContext): Promise<void> {
             const displayPath = currentPath.startsWith(homedir())
                 ? `~${currentPath.slice(homedir().length)}`
                 : currentPath;
-            return [
-                `💾 ${displayPath} │ ${config.gistId ? `☁️ ${config.gistId}` : "☁️ not configured"} │ ${config.gistId ? (config.gistEnabled === false ? "⏸️ off" : "⏳ on") : "⏸️ off"}`,
-            ];
+
+            return (_tui: TUI, theme: Theme) => ({
+                render(_width: number): string[] {
+                    const path = theme.fg("muted", `💾 ${displayPath}`);
+                    const sep = theme.fg("muted", " │ ");
+                    const gist = config.gistId
+                        ? theme.fg("accent", `☁️ ${config.gistId}`)
+                        : theme.fg("muted", "☁️ not configured");
+                    const sync = config.gistId
+                        ? config.gistEnabled === false
+                            ? theme.fg("warning", "⏸️ off")
+                            : theme.fg("success", "⏳ on")
+                        : theme.fg("muted", "⏸️ off");
+                    return [`${path}${sep}${gist} ${sync}`];
+                },
+                invalidate(): void {},
+            });
         },
         () => {
             const currentPath = config.backupPath || DEFAULT_BACKUP_PATH;
@@ -1890,9 +1912,28 @@ export default function piPkgGuardExtension(pi: ExtensionAPI) {
                             ? `🔧 ${status.unregistered.join(", ")}`
                             : `🔧 ${status.unregistered.length}`
                         : "✓";
-                    return [
-                        `📦 ${registeredPackages.length} │ ${unregisteredSummary} │ 💾 ${pathDisplay} │ ${gistDisplay} ${syncDisplay}`,
-                    ];
+
+                    return (_tui: TUI, theme: Theme) => ({
+                        render(_width: number): string[] {
+                            const regCount = theme.fg(
+                                "accent",
+                                String(registeredPackages.length),
+                            );
+                            const unreg = status.hasUnregistered
+                                ? theme.fg("warning", unregisteredSummary)
+                                : theme.fg("success", "✓");
+                            const sep = theme.fg("muted", " │ ");
+                            const backup = theme.fg("muted", `💾 ${pathDisplay}`);
+                            const gist = theme.fg(
+                                "muted",
+                                `│ ${gistDisplay} ${syncDisplay}`,
+                            );
+                            return [
+                                `📦 ${regCount}${sep}${unreg}${sep}${backup} ${gist}`,
+                            ];
+                        },
+                        invalidate(): void {},
+                    });
                 },
                 () => {
                     const status = checkRegistrationStatus();
