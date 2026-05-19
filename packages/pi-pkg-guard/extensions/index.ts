@@ -22,6 +22,10 @@ import type {
     ExtensionAPI,
     ExtensionCommandContext,
 } from "@earendil-works/pi-coding-agent";
+import {
+    SelectList,
+    type SelectItem,
+} from "@earendil-works/pi-tui";
 
 // =============================================================================
 // Constants
@@ -1483,12 +1487,70 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
 
 interface MenuItem {
     label: string;
+    description?: string;
     action: () => Promise<void>;
     exit?: boolean;
 }
 
 /**
+ * Show a SelectList menu via ctx.ui.custom() with grey description text.
+ * Returns the selected index or undefined on cancel.
+ */
+async function showSelectMenu(
+    ctx: ExtensionCommandContext,
+    title: string,
+    menuItems: { label: string; description?: string }[],
+): Promise<number | undefined> {
+    const selectItems: SelectItem[] = menuItems.map((item, index) => ({
+        value: String(index),
+        label: item.label,
+        description: item.description,
+    }));
+
+    return ctx.ui.custom<number | undefined>(
+        (_tui, theme, _keybindings, done) => {
+            const selectList = new SelectList(
+                selectItems,
+                Math.min(menuItems.length, 10),
+                {
+                    selectedPrefix: (text) => theme.fg("accent", text),
+                    selectedText: (text) => theme.fg("accent", text),
+                    description: (text) => theme.fg("muted", text),
+                    scrollInfo: (text) => theme.fg("muted", text),
+                    noMatch: (text) => theme.fg("muted", text),
+                },
+                { minPrimaryColumnWidth: 20, maxPrimaryColumnWidth: 40 },
+            );
+
+            selectList.onSelect = (item) => {
+                const index = selectItems.findIndex(
+                    (i) => i.value === item.value,
+                );
+                done(index);
+            };
+            selectList.onCancel = () => done(undefined);
+
+            return {
+                render(width: number): string[] {
+                    const titleLine = theme.bold(theme.fg("accent", title));
+                    const listLines = selectList.render(width);
+                    return [titleLine, "", ...listLines];
+                },
+                handleInput(data: string): void {
+                    selectList.handleInput(data);
+                },
+                invalidate(): void {
+                    selectList.invalidate();
+                },
+            };
+        },
+        { overlay: true },
+    );
+}
+
+/**
  * Run an interactive menu loop with widget status and consistent exit behavior.
+ * Uses SelectList with grey description text for richer menu items.
  * Clears the widget on Escape or Exit selection.
  */
 async function runMenuLoop(
@@ -1502,17 +1564,18 @@ async function runMenuLoop(
         ctx.ui.setWidget(widgetKey, getWidgetLines());
 
         const items = getMenuItems();
-        const choice = await ctx.ui.select(
+        const selectedIndex = await showSelectMenu(
+            ctx,
             title,
-            items.map((i) => i.label),
+            items.map((i) => ({ label: i.label, description: i.description })),
         );
 
-        if (choice === undefined) {
+        if (selectedIndex === undefined) {
             ctx.ui.setWidget(widgetKey, []);
             return;
         }
 
-        const item = items.find((i) => i.label === choice);
+        const item = items[selectedIndex];
         if (!item) {
             continue;
         }
@@ -1541,6 +1604,7 @@ async function executeGistConfig(
             if (!config.gistId) {
                 items.push({
                     label: `${items.length + 1}. Create Gist`,
+                    description: "Create a new public GitHub Gist for cloud backup",
                     action: async () => {
                         ctx.ui.setWorkingMessage("Creating new gist...");
                         const result = await createGist();
@@ -1563,6 +1627,7 @@ async function executeGistConfig(
                 });
                 items.push({
                     label: `${items.length + 1}. Connect Gist`,
+                    description: "Link an existing GitHub Gist by ID or URL",
                     action: async () => {
                         const gistInput = await ctx.ui.input(
                             "GitHub Gist ID or URL (empty to clear):",
@@ -1590,6 +1655,7 @@ async function executeGistConfig(
             } else {
                 items.push({
                     label: `${items.length + 1}. Switch Gist`,
+                    description: "Change to a different GitHub Gist",
                     action: async () => {
                         const gistInput = await ctx.ui.input(
                             "GitHub Gist ID or URL (empty to clear):",
@@ -1618,6 +1684,7 @@ async function executeGistConfig(
                 });
                 items.push({
                     label: `${items.length + 1}. Disconnect`,
+                    description: "Remove Gist link from Package Guard (keeps Gist on GitHub)",
                     action: async () => {
                         if (!config.gistId) {
                             ctx.ui.notify("No gist configured", "warning");
@@ -1639,6 +1706,7 @@ async function executeGistConfig(
 
             items.push({
                 label: `${items.length + 1}. Back`,
+                description: "Return to Config menu",
                 action: async () => {},
                 exit: true,
             });
@@ -1670,6 +1738,7 @@ async function executeConfig(ctx: ExtensionCommandContext): Promise<void> {
             const items: MenuItem[] = [
                 {
                     label: "1. Backup path",
+                    description: "Set the local file path for package backups",
                     action: async () => {
                         const newPath = await ctx.ui.input(
                             "Backup file path:",
@@ -1690,6 +1759,7 @@ async function executeConfig(ctx: ExtensionCommandContext): Promise<void> {
             if (ghInstalled) {
                 items.push({
                     label: `${items.length + 1}. Gist...`,
+                    description: "Configure GitHub Gist for cloud-synced backups",
                     action: async () => {
                         await executeGistConfig(ctx, config);
                     },
@@ -1698,6 +1768,7 @@ async function executeConfig(ctx: ExtensionCommandContext): Promise<void> {
 
             items.push({
                 label: `${items.length + 1}. Exit`,
+                description: "Back to main menu",
                 action: async () => {},
                 exit: true,
             });
@@ -1831,23 +1902,28 @@ export default function piPkgGuardExtension(pi: ExtensionAPI) {
                     return [
                         {
                             label: `1. ${scanLabel}`,
+                            description: "Find and register unregistered npm packages",
                             action: () =>
                                 executeScan(ctx, { offerReload: true }),
                         },
                         {
                             label: "2. Backup",
+                            description: "Save package list to local file + optional GitHub Gist",
                             action: () => executeBackup(ctx),
                         },
                         {
                             label: "3. Restore",
+                            description: "Register packages from a previous backup",
                             action: () => executeRestore(ctx),
                         },
                         {
                             label: "4. Config",
+                            description: "Backup path, Gist sync, and other settings",
                             action: () => executeConfig(ctx),
                         },
                         {
                             label: "5. Exit",
+                            description: "Close this menu",
                             action: async () => {},
                             exit: true,
                         },
