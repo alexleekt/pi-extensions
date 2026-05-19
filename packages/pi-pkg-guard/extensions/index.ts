@@ -1996,15 +1996,74 @@ async function executeConfig(ctx: ExtensionCommandContext): Promise<void> {
     );
 }
 
+/**
+ * Debug command: render a card using inline replacement mode.
+ * Replaces the editor area instead of floating above it.
+ */
+async function showDebugInline(ctx: ExtensionCommandContext): Promise<void> {
+    await ctx.ui.custom<void>(
+        (_tui, theme, _keybindings, done) => ({
+            render(_width: number): string[] {
+                const title = theme.bold(theme.fg("accent", "🔧 Inline Replacement Mode"));
+                const desc = theme.fg("muted", "This replaces the editor area. No floating box.");
+                const line1 = "  • Renders at full terminal width";
+                const line2 = "  • No overlay positioning needed";
+                const line3 = "  • Feels more like a dedicated screen";
+                const hint = theme.fg("dim", "Press Enter or Escape to exit");
+                return [title, "", desc, "", line1, line2, line3, "", hint];
+            },
+            handleInput(data: string): void {
+                if (data === "\r" || data === "\x1b") done();
+            },
+            invalidate(): void {},
+        }),
+        // overlay: false (or omitted) → inline replacement
+    );
+}
+
+/**
+ * Debug command: render a floating overlay with variable sizing.
+ */
+async function showDebugOverlay(ctx: ExtensionCommandContext): Promise<void> {
+    await ctx.ui.custom<void>(
+        (_tui, theme, _keybindings, done) => ({
+            render(width: number): string[] {
+                const title = theme.bold(theme.fg("accent", "📦 Floating Overlay Mode"));
+                const sizeInfo = theme.fg("muted", `Terminal width: ${width} cols`);
+                const desc = "  • Box size set by minWidth / maxHeight";
+                const line1 = "  • Centered with optional offsetY";
+                const line2 = "  • Keyboard focus captured automatically";
+                const hint = theme.fg("dim", "Press Enter or Escape to exit");
+                return [title, "", sizeInfo, "", desc, line1, line2, "", hint];
+            },
+            handleInput(data: string): void {
+                if (data === "\r" || data === "\x1b") done();
+            },
+            invalidate(): void {},
+        }),
+        {
+            overlay: true,
+            overlayOptions: () => ({
+                minWidth: 50,
+                maxHeight: 12,
+                anchor: "center",
+                offsetY: -3,
+            }),
+        },
+    );
+}
+
 async function showHelp(ctx: ExtensionCommandContext): Promise<void> {
     // Use pi's UI notification for proper formatting and overflow handling
     const helpLines = [
         "═══ Quick Commands ═══",
-        "/package-guard scan     - Scan and register unregistered packages",
-        "/package-guard backup   - Backup packages",
-        "/package-guard restore  - Restore from backup",
-        "/package-guard config   - Open configuration settings",
-        "/package-guard help     - Show this help",
+        "/package-guard scan          - Scan and register unregistered packages",
+        "/package-guard backup        - Backup packages",
+        "/package-guard restore       - Restore from backup",
+        "/package-guard config        - Open configuration settings",
+        "/package-guard help          - Show this help",
+        "/package-guard debug-inline  - Test inline replacement UI mode",
+        "/package-guard debug-overlay - Test floating overlay UI mode",
         "",
         "═══ Interactive Menu ═══",
         "1. Scan - Find and register missing packages",
@@ -2081,6 +2140,14 @@ export default function piPkgGuardExtension(pi: ExtensionAPI) {
             }
             if (subcommand === "help" || subcommand === "?") {
                 await showHelp(ctx);
+                return;
+            }
+            if (subcommand === "debug-inline") {
+                await showDebugInline(ctx);
+                return;
+            }
+            if (subcommand === "debug-overlay") {
+                await showDebugOverlay(ctx);
                 return;
             }
 
