@@ -1617,15 +1617,6 @@ async function showSelectMenu(
                 },
             };
         },
-        {
-            overlay: true,
-            overlayOptions: () => ({
-                width: 74,
-                maxHeight: 16,
-                anchor: "center",
-                offsetY: -2,
-            }),
-        },
     );
 }
 
@@ -1730,20 +1721,11 @@ async function showMultiSelect(
                 },
             };
         },
-        {
-            overlay: true,
-            overlayOptions: () => ({
-                width: 74,
-                maxHeight: 20,
-                anchor: "center",
-                offsetY: -2,
-            }),
-        },
     );
 }
 
 /**
- * Show a result card inside the floating overlay.
+ * Show a result card inside an inline bordered panel.
  * Displays the message with a styled title and a "Press Enter" footer.
  */
 async function showResultOverlay(
@@ -1781,15 +1763,6 @@ async function showResultOverlay(
                 },
                 invalidate(): void {},
             };
-        },
-        {
-            overlay: true,
-            overlayOptions: () => ({
-                width: 74,
-                maxHeight: 16,
-                anchor: "center",
-                offsetY: -2,
-            }),
         },
     );
 }
@@ -2043,68 +2016,6 @@ async function executeConfig(ctx: ExtensionCommandContext): Promise<void> {
     );
 }
 
-/**
- * Debug command: render a card using inline replacement mode.
- * Replaces the editor area instead of floating above it.
- */
-async function showDebugInline(ctx: ExtensionCommandContext): Promise<void> {
-    await ctx.ui.custom<void>(
-        (_tui, theme, _keybindings, done) => ({
-            render(width: number): string[] {
-                const innerWidth = Math.max(50, width - 6);
-                const title = theme.bold(theme.fg("accent", "🔧 Inline Replacement Mode"));
-                const desc = theme.fg("muted", "This replaces the editor area. No floating box.");
-                const line1 = "  • Renders at full terminal width";
-                const line2 = "  • No overlay positioning needed";
-                const line3 = "  • Feels more like a dedicated screen";
-                const hint = theme.fg("dim", "Press Enter or Escape to exit");
-                const body = [title, "", desc, "", line1, line2, line3, "", hint];
-                return renderBordered(theme, "accent", body, innerWidth);
-            },
-            handleInput(data: string): void {
-                if (data === "\r" || data === "\x1b") done();
-            },
-            invalidate(): void {},
-        }),
-        // overlay: false (or omitted) → inline replacement
-    );
-}
-
-/**
- * Debug command: render a floating overlay with variable sizing.
- */
-async function showDebugOverlay(ctx: ExtensionCommandContext): Promise<void> {
-    await ctx.ui.custom<void>(
-        (_tui, theme, _keybindings, done) => ({
-            render(width: number): string[] {
-                const innerWidth = Math.max(50, Math.floor(width * 0.85) - 6);
-                const title = theme.bold(theme.fg("accent", "📦 Floating Overlay Mode (85% width)"));
-                const sizeInfo = theme.fg("muted", `Terminal width: ${width} cols  •  Inner: ${innerWidth}`);
-                const desc = "  • Box uses 85% of terminal width";
-                const line1 = "  • Centered with offsetY: -3";
-                const line2 = "  • Unicode border drawn around content";
-                const line3 = "  • Keyboard focus captured automatically";
-                const hint = theme.fg("dim", "Press Enter or Escape to exit");
-                const body = [title, "", sizeInfo, "", desc, line1, line2, line3, "", hint];
-                return renderBordered(theme, "accent", body, innerWidth);
-            },
-            handleInput(data: string): void {
-                if (data === "\r" || data === "\x1b") done();
-            },
-            invalidate(): void {},
-        }),
-        {
-            overlay: true,
-            overlayOptions: () => ({
-                width: "85%",
-                maxHeight: 18,
-                anchor: "center",
-                offsetY: -3,
-            }),
-        },
-    );
-}
-
 async function showHelp(ctx: ExtensionCommandContext): Promise<void> {
     // Use pi's UI notification for proper formatting and overflow handling
     const helpLines = [
@@ -2114,8 +2025,6 @@ async function showHelp(ctx: ExtensionCommandContext): Promise<void> {
         "/package-guard restore       - Restore from backup",
         "/package-guard config        - Open configuration settings",
         "/package-guard help          - Show this help",
-        "/package-guard debug-inline  - Test inline replacement UI mode",
-        "/package-guard debug-overlay - Test floating overlay UI mode",
         "",
         "═══ Interactive Menu ═══",
         "1. Scan - Find and register missing packages",
@@ -2194,15 +2103,6 @@ export default function piPkgGuardExtension(pi: ExtensionAPI) {
                 await showHelp(ctx);
                 return;
             }
-            if (subcommand === "debug-inline") {
-                await showDebugInline(ctx);
-                return;
-            }
-            if (subcommand === "debug-overlay") {
-                await showDebugOverlay(ctx);
-                return;
-            }
-
             await runMenuLoop(
                 ctx,
                 "Package Guard",
