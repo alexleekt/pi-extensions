@@ -29,6 +29,7 @@ import {
     type TUI,
     type Component,
     getKeybindings,
+    visibleWidth,
 } from "@earendil-works/pi-tui";
 
 // =============================================================================
@@ -1540,6 +1541,28 @@ interface MenuItem {
 }
 
 /**
+ * Wrap content lines in a Unicode box border with theme-colored edges.
+ * Returns the bordered lines including top/bottom padding.
+ */
+function renderBordered(
+    theme: Theme,
+    color: "accent" | "warning" | "error" | "muted",
+    lines: string[],
+    innerWidth: number,
+): string[] {
+    const border = theme.fg(color, "─".repeat(innerWidth + 2));
+    const top = theme.fg(color, "┌") + border + theme.fg(color, "┐");
+    const bottom = theme.fg(color, "└") + border + theme.fg(color, "┘");
+    const pad = " ";
+    const body = lines.map((l) => {
+        const visible = visibleWidth(l);
+        const trailing = Math.max(0, innerWidth - visible);
+        return theme.fg(color, "│") + pad + l + " ".repeat(trailing) + pad + theme.fg(color, "│");
+    });
+    return [top, ...body, bottom];
+}
+
+/**
  * Show a SelectList menu via ctx.ui.custom() with grey description text.
  * Returns the selected index or undefined on cancel.
  */
@@ -1579,9 +1602,12 @@ async function showSelectMenu(
 
             return {
                 render(width: number): string[] {
+                    const innerWidth = Math.max(50, width - 6);
                     const titleLine = theme.bold(theme.fg("accent", title));
-                    const listLines = selectList.render(width);
-                    return [titleLine, "", ...listLines];
+                    const hint = theme.fg("dim", "↑↓ navigate  •  Enter select  •  Esc cancel");
+                    const listLines = selectList.render(innerWidth);
+                    const content = [titleLine, "", hint, "", ...listLines];
+                    return renderBordered(theme, "accent", content, innerWidth);
                 },
                 handleInput(data: string): void {
                     selectList.handleInput(data);
@@ -1591,7 +1617,15 @@ async function showSelectMenu(
                 },
             };
         },
-        { overlay: true },
+        {
+            overlay: true,
+            overlayOptions: () => ({
+                width: 74,
+                maxHeight: 16,
+                anchor: "center",
+                offsetY: -2,
+            }),
+        },
     );
 }
 
@@ -1665,15 +1699,15 @@ async function showMultiSelect(
 
             return {
                 render(width: number): string[] {
-                    const titleLine = theme.bold(
-                        theme.fg("accent", title),
-                    );
+                    const innerWidth = Math.max(50, width - 6);
+                    const titleLine = theme.bold(theme.fg("accent", title));
                     const hint = theme.fg(
                         "dim",
                         "Space/Enter to toggle  •  ↑↓ to navigate  •  Esc to cancel",
                     );
-                    const listLines = selectList.render(width);
-                    return [titleLine, hint, "", ...listLines];
+                    const listLines = selectList.render(innerWidth);
+                    const content = [titleLine, "", hint, "", ...listLines];
+                    return renderBordered(theme, "accent", content, innerWidth);
                 },
                 handleInput(data: string): void {
                     if (data === " ") {
@@ -1696,7 +1730,15 @@ async function showMultiSelect(
                 },
             };
         },
-        { overlay: true },
+        {
+            overlay: true,
+            overlayOptions: () => ({
+                width: 74,
+                maxHeight: 20,
+                anchor: "center",
+                offsetY: -2,
+            }),
+        },
     );
 }
 
@@ -1721,16 +1763,13 @@ async function showResultOverlay(
         (_tui, theme, _keybindings, done) => {
             const kb = getKeybindings();
             return {
-                render(_width: number): string[] {
-                    const titleLine = theme.bold(
-                        theme.fg(color, title),
-                    );
+                render(width: number): string[] {
+                    const innerWidth = Math.max(50, width - 6);
+                    const titleLine = theme.bold(theme.fg(color, title));
                     const content = lines.map((l) => "  " + l);
-                    const hint = theme.fg(
-                        "dim",
-                        "Press Enter to continue",
-                    );
-                    return [titleLine, "", ...content, "", hint];
+                    const hint = theme.fg("dim", "Press Enter to continue");
+                    const body = [titleLine, "", ...content, "", hint];
+                    return renderBordered(theme, color, body, innerWidth);
                 },
                 handleInput(data: string): void {
                     if (
@@ -1743,7 +1782,15 @@ async function showResultOverlay(
                 invalidate(): void {},
             };
         },
-        { overlay: true },
+        {
+            overlay: true,
+            overlayOptions: () => ({
+                width: 74,
+                maxHeight: 16,
+                anchor: "center",
+                offsetY: -2,
+            }),
+        },
     );
 }
 
@@ -2003,14 +2050,16 @@ async function executeConfig(ctx: ExtensionCommandContext): Promise<void> {
 async function showDebugInline(ctx: ExtensionCommandContext): Promise<void> {
     await ctx.ui.custom<void>(
         (_tui, theme, _keybindings, done) => ({
-            render(_width: number): string[] {
+            render(width: number): string[] {
+                const innerWidth = Math.max(50, width - 6);
                 const title = theme.bold(theme.fg("accent", "🔧 Inline Replacement Mode"));
                 const desc = theme.fg("muted", "This replaces the editor area. No floating box.");
                 const line1 = "  • Renders at full terminal width";
                 const line2 = "  • No overlay positioning needed";
                 const line3 = "  • Feels more like a dedicated screen";
                 const hint = theme.fg("dim", "Press Enter or Escape to exit");
-                return [title, "", desc, "", line1, line2, line3, "", hint];
+                const body = [title, "", desc, "", line1, line2, line3, "", hint];
+                return renderBordered(theme, "accent", body, innerWidth);
             },
             handleInput(data: string): void {
                 if (data === "\r" || data === "\x1b") done();
@@ -2028,13 +2077,16 @@ async function showDebugOverlay(ctx: ExtensionCommandContext): Promise<void> {
     await ctx.ui.custom<void>(
         (_tui, theme, _keybindings, done) => ({
             render(width: number): string[] {
-                const title = theme.bold(theme.fg("accent", "📦 Floating Overlay Mode"));
-                const sizeInfo = theme.fg("muted", `Terminal width: ${width} cols`);
-                const desc = "  • Box size set by minWidth / maxHeight";
-                const line1 = "  • Centered with optional offsetY";
-                const line2 = "  • Keyboard focus captured automatically";
+                const innerWidth = Math.max(50, Math.floor(width * 0.85) - 6);
+                const title = theme.bold(theme.fg("accent", "📦 Floating Overlay Mode (85% width)"));
+                const sizeInfo = theme.fg("muted", `Terminal width: ${width} cols  •  Inner: ${innerWidth}`);
+                const desc = "  • Box uses 85% of terminal width";
+                const line1 = "  • Centered with offsetY: -3";
+                const line2 = "  • Unicode border drawn around content";
+                const line3 = "  • Keyboard focus captured automatically";
                 const hint = theme.fg("dim", "Press Enter or Escape to exit");
-                return [title, "", sizeInfo, "", desc, line1, line2, "", hint];
+                const body = [title, "", sizeInfo, "", desc, line1, line2, line3, "", hint];
+                return renderBordered(theme, "accent", body, innerWidth);
             },
             handleInput(data: string): void {
                 if (data === "\r" || data === "\x1b") done();
@@ -2044,8 +2096,8 @@ async function showDebugOverlay(ctx: ExtensionCommandContext): Promise<void> {
         {
             overlay: true,
             overlayOptions: () => ({
-                minWidth: 50,
-                maxHeight: 12,
+                width: "85%",
+                maxHeight: 18,
                 anchor: "center",
                 offsetY: -3,
             }),
