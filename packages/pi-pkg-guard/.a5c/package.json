@@ -1,9 +1,0 @@
-{
-	"name": "pi-pkg-guard-review",
-	"version": "1.0.0",
-	"type": "module",
-	"private": true,
-	"devDependencies": {
-		"@a5c-ai/babysitter-sdk": "^0.0.187"
-	}
-}
