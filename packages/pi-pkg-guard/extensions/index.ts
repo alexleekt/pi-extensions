@@ -28,6 +28,7 @@ import {
     type SelectItem,
     type TUI,
     type Component,
+    getKeybindings,
 } from "@earendil-works/pi-tui";
 
 // =============================================================================
@@ -1066,8 +1067,10 @@ async function executeScan(
     }
 
     if (!status.hasUnregistered) {
-        ctx.ui.notify(
-            "✓ All pi packages are registered. No unregistered packages found.",
+        await showResultOverlay(
+            ctx,
+            "Scan Complete",
+            ["✓ All pi packages are registered.", "No unregistered packages found."],
             "info",
         );
         return;
@@ -1087,13 +1090,23 @@ async function executeScan(
             { label: "Cancel", description: "Do nothing and close" },
         ]);
         if (bulkIndex === undefined || bulkIndex === 2) {
-            ctx.ui.notify("Registration cancelled", "info");
+            await showResultOverlay(
+                ctx,
+                "Scan",
+                ["Registration cancelled"],
+                "info",
+            );
             return;
         }
         if (bulkIndex === 1) {
             packagesToRegister = await selectPackages(ctx, status.unregistered);
             if (packagesToRegister.length === 0) {
-                ctx.ui.notify("No packages selected for registration", "info");
+                await showResultOverlay(
+                    ctx,
+                    "Scan",
+                    ["No packages selected for registration"],
+                    "info",
+                );
                 return;
             }
         }
@@ -1116,8 +1129,13 @@ async function executeScan(
     };
     registerPackages(partialStatus);
 
-    ctx.ui.notify(
-        `✓ Registered ${packagesToRegister.length} ${packagesToRegister.length === 1 ? "package" : "packages"} with pi:\n${packagesToRegister.map((p) => `  - npm:${p}`).join("\n")}`,
+    await showResultOverlay(
+        ctx,
+        "Scan Complete",
+        [
+            `✓ Registered ${packagesToRegister.length} ${packagesToRegister.length === 1 ? "package" : "packages"} with pi:`,
+            ...packagesToRegister.map((p) => `  - npm:${p}`),
+        ],
         "info",
     );
 
@@ -1202,23 +1220,51 @@ async function executeBackup(ctx: ExtensionCommandContext): Promise<void> {
 
     ctx.ui.setWorkingMessage();
 
-    // Combine all results into a single, clear notification
+    // Show combined result inside the overlay box
     if (localSuccess && gistSuccess && config.gistId) {
-        ctx.ui.notify(
-            `✓ Local backup saved:\n  ${backupPath}\n✓ Synced to GitHub Gist:\n  https://gist.github.com/${config.gistId}`,
+        await showResultOverlay(
+            ctx,
+            "Backup Complete",
+            [
+                `✓ Local backup saved:`,
+                `  ${backupPath}`,
+                `✓ Synced to GitHub Gist:`,
+                `  https://gist.github.com/${config.gistId}`,
+            ],
             "info",
         );
     } else if (localSuccess && !config.gistId) {
-        ctx.ui.notify(`✓ Local backup saved:\n  ${backupPath}`, "info");
+        await showResultOverlay(
+            ctx,
+            "Backup Complete",
+            [`✓ Local backup saved:`, `  ${backupPath}`],
+            "info",
+        );
     } else if (localSuccess && config.gistId && config.gistEnabled === false) {
-        ctx.ui.notify(`✓ Local backup saved:\n  ${backupPath}`, "info");
+        await showResultOverlay(
+            ctx,
+            "Backup Complete",
+            [`✓ Local backup saved:`, `  ${backupPath}`],
+            "info",
+        );
     } else if (localSuccess && gistError) {
-        ctx.ui.notify(
-            `✓ Local backup saved\n✗ Gist sync failed:\n${gistError || ""}`,
+        await showResultOverlay(
+            ctx,
+            "Backup Partial",
+            [
+                `✓ Local backup saved`,
+                `✗ Gist sync failed:`,
+                gistError || "",
+            ],
             "warning",
         );
     } else if (localError) {
-        ctx.ui.notify(`✗ Failed to save backup:\n${localError}`, "error");
+        await showResultOverlay(
+            ctx,
+            "Backup Failed",
+            [`✗ Failed to save backup:`, localError],
+            "error",
+        );
     }
 
     // Warn once if gh is missing and user has gist configured
@@ -1352,8 +1398,10 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
     ctx.ui.setWorkingMessage();
 
     if (!backupData) {
-        ctx.ui.notify(
-            "✗ No backup found.\n\nRun Backup first to create a backup.",
+        await showResultOverlay(
+            ctx,
+            "Restore Failed",
+            ["✗ No backup found.", "", "Run Backup first to create a backup."],
             "error",
         );
         return;
@@ -1370,8 +1418,14 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
     );
 
     if (packagesToRestore.length === 0) {
-        ctx.ui.notify(
-            `✓ All ${backupData.npmPackages.length} ${backupData.npmPackages.length === 1 ? "package" : "packages"} from backup are already installed.\n\nNo restore needed.`,
+        await showResultOverlay(
+            ctx,
+            "Restore",
+            [
+                `✓ All ${backupData.npmPackages.length} ${backupData.npmPackages.length === 1 ? "package" : "packages"} from backup are already installed.`,
+                "",
+                "No restore needed.",
+            ],
             "info",
         );
         return;
@@ -1402,7 +1456,12 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
             { label: "Cancel", description: "Do nothing and close" },
         ]);
         if (bulkIndex === undefined || bulkIndex === 2) {
-            ctx.ui.notify("Restore cancelled", "info");
+            await showResultOverlay(
+                ctx,
+                "Restore",
+                ["Restore cancelled"],
+                "info",
+            );
             return;
         }
         if (bulkIndex === 0) {
@@ -1410,7 +1469,12 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
         } else {
             const chosen = await selectPackages(ctx, packagesToRestore);
             if (chosen.length === 0) {
-                ctx.ui.notify("No packages selected for restore", "info");
+                await showResultOverlay(
+                    ctx,
+                    "Restore",
+                    ["No packages selected for restore"],
+                    "info",
+                );
                 return;
             }
             selectedPackages = chosen;
@@ -1442,13 +1506,23 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
 
     if (added > 0) {
         const installCmd = `pi install ${addedPackages.map((p) => `${NPM_PREFIX}${normalizePackageName(p)}`).join(" ")}`;
-        ctx.ui.notify(
-            `✓ Restored ${added} ${added === 1 ? "package" : "packages"} to settings:\n${addedPackages.map((p) => `  - npm:${normalizePackageName(p)}`).join("\n")}\n\nRun this command to install:\n  ${installCmd}`,
+        await showResultOverlay(
+            ctx,
+            "Restore Complete",
+            [
+                `✓ Restored ${added} ${added === 1 ? "package" : "packages"} to settings:`,
+                ...addedPackages.map((p) => `  - npm:${normalizePackageName(p)}`),
+                "",
+                "Run this command to install:",
+                `  ${installCmd}`,
+            ],
             "info",
         );
     } else {
-        ctx.ui.notify(
-            "✓ All selected packages were already registered.",
+        await showResultOverlay(
+            ctx,
+            "Restore",
+            ["✓ All selected packages were already registered."],
             "info",
         );
     }
@@ -1620,6 +1694,53 @@ async function showMultiSelect(
                 invalidate(): void {
                     selectList.invalidate();
                 },
+            };
+        },
+        { overlay: true },
+    );
+}
+
+/**
+ * Show a result card inside the floating overlay.
+ * Displays the message with a styled title and a "Press Enter" footer.
+ */
+async function showResultOverlay(
+    ctx: ExtensionCommandContext,
+    title: string,
+    lines: string[],
+    type: "info" | "warning" | "error" = "info",
+): Promise<void> {
+    const color =
+        type === "error"
+            ? "error"
+            : type === "warning"
+              ? "warning"
+              : "accent";
+
+    return ctx.ui.custom<void>(
+        (_tui, theme, _keybindings, done) => {
+            const kb = getKeybindings();
+            return {
+                render(_width: number): string[] {
+                    const titleLine = theme.bold(
+                        theme.fg(color, title),
+                    );
+                    const content = lines.map((l) => "  " + l);
+                    const hint = theme.fg(
+                        "dim",
+                        "Press Enter to continue",
+                    );
+                    return [titleLine, "", ...content, "", hint];
+                },
+                handleInput(data: string): void {
+                    if (
+                        kb.matches(data, "tui.select.confirm") ||
+                        kb.matches(data, "tui.select.cancel")
+                    ) {
+                        done();
+                    }
+                },
+                invalidate(): void {},
             };
         },
         { overlay: true },
