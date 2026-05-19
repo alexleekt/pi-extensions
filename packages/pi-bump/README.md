@@ -56,6 +56,19 @@ Then toggle per-session debugging with `/bump-debug-keypresses`:
 
 Debug mode resets when the session ends. Only available when `BUMP_DEBUG=1` is set.
 
+## Experimental: Hybrid Continue (v0.3.0+)
+
+`pi-bump` now uses a hybrid strategy to avoid repeat loops:
+
+1. **Invisible trigger** — sends a hidden `customType` message (`display: false`) so nothing appears in chat
+2. **LLM continue signal** — replaces the hidden marker with `"Continue"` in the LLM context, giving the model a clear semantic nudge without polluting the conversation
+3. **Duplicate detection** — tracks the last two assistant responses; blocks further continues if they're identical (indicates a loop)
+4. **Auto-reset** — real user input resets the duplicate detection window
+
+If you hit a blocked continue, type something new and try again.
+
+> ⚠️ This is experimental. Feedback welcome via GitHub issues.
+
 ## Acknowledgments
 
 The invisible continuation technique was adapted from [pi-invisible-continue](https://github.com/monotykamary/pi-invisible-continue) by Tom X Nguyen.

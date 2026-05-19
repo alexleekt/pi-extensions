@@ -10,6 +10,10 @@ import { Key, matchesKey } from "@earendil-works/pi-tui";
 
 const THRESHOLD_MS = 300;
 
+/** Signal injected into LLM context when continuing.
+ *  Invisible to the user, but gives the LLM a clear semantic nudge to keep going. */
+const CONTINUE_SIGNAL = "Continue";
+
 const DEBUG_KEYS = [
     Key.enter,
     Key.backspace,
@@ -26,6 +30,27 @@ const CONTINUE_CUSTOM_TYPE = "__invisible_continue";
 /** Description shown in the / commands list. */
 const CONTINUE_COMMAND_DESCRIPTION =
     "Resume the agentic loop without sending a prompt the LLM can read";
+
+/** Extract plain text from an assistant message for duplicate comparison. */
+function extractAssistantText(msg: any): string | undefined {
+    if (msg.role !== "assistant") return undefined;
+    const content = msg.content;
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) {
+        return content
+            .filter((c: any) => c.type === "text")
+            .map((c: any) => c.text)
+            .join("");
+    }
+    return undefined;
+}
+
+/** Check if two assistant responses are functionally duplicates. */
+function isDuplicateResponse(a: string | undefined, b: string | undefined): boolean {
+    if (!a || !b) return false;
+    // Normalize: ignore trailing whitespace and case for comparison
+    return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
 
 function notifySafely(
     ctx: {
@@ -71,6 +96,7 @@ async function runContinueCommand(
     pi: ExtensionAPI,
     ctx: ExtensionCommandContext,
     args: string,
+    lastAssistantTexts: Map<string, [string | undefined, string | undefined]>,
 ): Promise<void> {
     const subcommand = args.trim().toLowerCase();
 
@@ -111,6 +137,17 @@ async function runContinueCommand(
         await ctx.waitForIdle();
     }
 
+    const sessionId = ctx.sessionManager.getSessionId();
+    const [prev, last] = lastAssistantTexts.get(sessionId) ?? [undefined, undefined];
+    if (isDuplicateResponse(prev, last)) {
+        notifySafely(
+            ctx,
+            "Continue blocked: last response was a duplicate. Type something new to continue.",
+            "warning",
+        );
+        return;
+    }
+
     await pi.sendMessage(
         {
             customType: CONTINUE_CUSTOM_TYPE,
@@ -127,20 +164,24 @@ async function runContinueCommand(
  * double-taps Enter on an empty chat input, or when the /continue command
  * is used.
  *
- * Strategy:
+ * Strategy (experimental hybrid):
  *   - Double-tap Enter or /continue sends a custom-type message with display: false
- *   - Default convertToLlm filters to user/assistant/toolResult only → custom message stripped
- *   - LLM receives unchanged context, loops naturally
- *   - Session gets one hidden entry (customType: "continue", display: false)
+ *   - context event replaces the invisible message with a minimal user signal (e.g. "...")
+ *   - LLM sees the minimal signal and continues meaningfully instead of repeating
+ *   - Duplicate detection blocks rapid-fire continues that would loop
+ *   - Real user input resets the duplicate detection state
  */
 export default function bumpExtension(pi: ExtensionAPI) {
     const sub = manageSessionSubscription(pi);
     const debugSessions = new Set<string>();
 
+    // Per-session state for duplicate detection
+    const lastAssistantTexts = new Map<string, [string | undefined, string | undefined]>();
+
     pi.registerCommand("continue", {
         description: CONTINUE_COMMAND_DESCRIPTION,
         handler: async (args, ctx) => {
-            await runContinueCommand(pi, ctx, args);
+            await runContinueCommand(pi, ctx, args, lastAssistantTexts);
         },
     });
 
@@ -165,19 +206,46 @@ export default function bumpExtension(pi: ExtensionAPI) {
         });
     }
 
-    // Strip hidden continue markers from context before each LLM call.
-    // This is insurance — convertToLlm already filters custom roles, but a
-    // custom convertToLlm override could leak them. Clean proactively.
+    // Reset duplicate detection when the user sends real input.
+    pi.on("input", async (event, ctx) => {
+        if (event.source === "interactive") {
+            const sessionId = ctx.sessionManager.getSessionId();
+            lastAssistantTexts.set(sessionId, [undefined, undefined]);
+        }
+    });
+
+    // Capture assistant messages to detect duplicate responses.
+    pi.on("message_end", async (event, ctx) => {
+        const msg = event.message as any;
+        if (msg.role !== "assistant") return;
+        const text = extractAssistantText(msg);
+        if (!text) return;
+
+        const sessionId = ctx.sessionManager.getSessionId();
+        const [prev] = lastAssistantTexts.get(sessionId) ?? [undefined, undefined];
+        lastAssistantTexts.set(sessionId, [prev, text]);
+    });
+
+    // EXPERIMENTAL: Replace invisible continue markers with minimal LLM signal.
+    // Instead of stripping the custom message (which leaves identical context →
+    // duplicate response), we inject a minimal user message that prompts
+    // meaningful continuation without polluting the chat UI.
     pi.on("context", async (event) => {
-        const cleaned = event.messages.filter(
-            (msg: any) =>
-                !(
-                    msg.role === "custom" &&
-                    msg.customType === CONTINUE_CUSTOM_TYPE
-                ),
-        );
-        if (cleaned.length !== event.messages.length) {
-            return { messages: cleaned };
+        let modified = false;
+        const messages = event.messages.map((msg: any) => {
+            if (msg.role === "custom" && msg.customType === CONTINUE_CUSTOM_TYPE) {
+                modified = true;
+                // Replace with a minimal user message — visible to LLM, invisible to user
+                return {
+                    role: "user",
+                    content: CONTINUE_SIGNAL,
+                    timestamp: Date.now(),
+                };
+            }
+            return msg;
+        });
+        if (modified) {
+            return { messages };
         }
     });
 
@@ -216,6 +284,19 @@ export default function bumpExtension(pi: ExtensionAPI) {
 
                     if (keyId === Key.enter) {
                         if (ctx.isIdle() && !ctx.hasPendingMessages()) {
+                            // DUPLICATE DETECTION: block if the last two
+                            // assistant responses were identical (indicates
+                            // the previous continue produced a loop).
+                            const [prev, last] = lastAssistantTexts.get(sessionId) ?? [undefined, undefined];
+                            if (isDuplicateResponse(prev, last)) {
+                                notifySafely(
+                                    ctx,
+                                    "Continue blocked: last response was a duplicate. Type something new to continue.",
+                                    "warning",
+                                );
+                                return { consume: true };
+                            }
+
                             sendInvisibleContinue(pi);
                         }
                         if (isDebug) {
