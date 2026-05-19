@@ -1068,7 +1068,7 @@ async function executeScan(
     }
 
     if (!status.hasUnregistered) {
-        await showResultOverlay(
+        await showResultPanel(
             ctx,
             "Scan Complete",
             ["✓ All pi packages are registered.", "No unregistered packages found."],
@@ -1091,7 +1091,7 @@ async function executeScan(
             { label: "Cancel", description: "Do nothing and close" },
         ]);
         if (bulkIndex === undefined || bulkIndex === 2) {
-            await showResultOverlay(
+            await showResultPanel(
                 ctx,
                 "Scan",
                 ["Registration cancelled"],
@@ -1102,7 +1102,7 @@ async function executeScan(
         if (bulkIndex === 1) {
             packagesToRegister = await selectPackages(ctx, status.unregistered);
             if (packagesToRegister.length === 0) {
-                await showResultOverlay(
+                await showResultPanel(
                     ctx,
                     "Scan",
                     ["No packages selected for registration"],
@@ -1130,7 +1130,7 @@ async function executeScan(
     };
     registerPackages(partialStatus);
 
-    await showResultOverlay(
+    await showResultPanel(
         ctx,
         "Scan Complete",
         [
@@ -1223,7 +1223,7 @@ async function executeBackup(ctx: ExtensionCommandContext): Promise<void> {
 
     // Show combined result inside the overlay box
     if (localSuccess && gistSuccess && config.gistId) {
-        await showResultOverlay(
+        await showResultPanel(
             ctx,
             "Backup Complete",
             [
@@ -1235,21 +1235,21 @@ async function executeBackup(ctx: ExtensionCommandContext): Promise<void> {
             "info",
         );
     } else if (localSuccess && !config.gistId) {
-        await showResultOverlay(
+        await showResultPanel(
             ctx,
             "Backup Complete",
             [`✓ Local backup saved:`, `  ${backupPath}`],
             "info",
         );
     } else if (localSuccess && config.gistId && config.gistEnabled === false) {
-        await showResultOverlay(
+        await showResultPanel(
             ctx,
             "Backup Complete",
             [`✓ Local backup saved:`, `  ${backupPath}`],
             "info",
         );
     } else if (localSuccess && gistError) {
-        await showResultOverlay(
+        await showResultPanel(
             ctx,
             "Backup Partial",
             [
@@ -1260,7 +1260,7 @@ async function executeBackup(ctx: ExtensionCommandContext): Promise<void> {
             "warning",
         );
     } else if (localError) {
-        await showResultOverlay(
+        await showResultPanel(
             ctx,
             "Backup Failed",
             [`✗ Failed to save backup:`, localError],
@@ -1399,7 +1399,7 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
     ctx.ui.setWorkingMessage();
 
     if (!backupData) {
-        await showResultOverlay(
+        await showResultPanel(
             ctx,
             "Restore Failed",
             ["✗ No backup found.", "", "Run Backup first to create a backup."],
@@ -1419,7 +1419,7 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
     );
 
     if (packagesToRestore.length === 0) {
-        await showResultOverlay(
+        await showResultPanel(
             ctx,
             "Restore",
             [
@@ -1457,7 +1457,7 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
             { label: "Cancel", description: "Do nothing and close" },
         ]);
         if (bulkIndex === undefined || bulkIndex === 2) {
-            await showResultOverlay(
+            await showResultPanel(
                 ctx,
                 "Restore",
                 ["Restore cancelled"],
@@ -1470,7 +1470,7 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
         } else {
             const chosen = await selectPackages(ctx, packagesToRestore);
             if (chosen.length === 0) {
-                await showResultOverlay(
+                await showResultPanel(
                     ctx,
                     "Restore",
                     ["No packages selected for restore"],
@@ -1507,7 +1507,7 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
 
     if (added > 0) {
         const installCmd = `pi install ${addedPackages.map((p) => `${NPM_PREFIX}${normalizePackageName(p)}`).join(" ")}`;
-        await showResultOverlay(
+        await showResultPanel(
             ctx,
             "Restore Complete",
             [
@@ -1520,7 +1520,7 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
             "info",
         );
     } else {
-        await showResultOverlay(
+        await showResultPanel(
             ctx,
             "Restore",
             ["✓ All selected packages were already registered."],
@@ -1542,24 +1542,25 @@ interface MenuItem {
 
 /**
  * Wrap content lines in a Unicode box border with theme-colored edges.
- * Returns the bordered lines including top/bottom padding.
+ * Adds 1 row of vertical padding by default.
+ * innerWidth is clamped to the available terminal width to prevent overflow.
  */
 function renderBordered(
     theme: Theme,
     color: "accent" | "warning" | "error" | "muted",
     lines: string[],
-    innerWidth: number,
+    rawInnerWidth: number,
 ): string[] {
+    const innerWidth = Math.max(1, rawInnerWidth);
     const border = theme.fg(color, "─".repeat(innerWidth + 2));
     const top = theme.fg(color, "┌") + border + theme.fg(color, "┐");
     const bottom = theme.fg(color, "└") + border + theme.fg(color, "┘");
-    const pad = " ";
     const body = lines.map((l) => {
         const visible = visibleWidth(l);
         const trailing = Math.max(0, innerWidth - visible);
-        return theme.fg(color, "│") + pad + l + " ".repeat(trailing) + pad + theme.fg(color, "│");
+        return theme.fg(color, "│") + " " + l + " ".repeat(trailing) + " " + theme.fg(color, "│");
     });
-    return [top, ...body, bottom];
+    return [top, "", ...body, "", bottom];
 }
 
 /**
@@ -1602,7 +1603,7 @@ async function showSelectMenu(
 
             return {
                 render(width: number): string[] {
-                    const innerWidth = Math.max(50, width - 6);
+                    const innerWidth = Math.max(20, width - 6);
                     const titleLine = theme.bold(theme.fg("accent", title));
                     const hint = theme.fg("dim", "↑↓ navigate  •  Enter select  •  Esc cancel");
                     const listLines = selectList.render(innerWidth);
@@ -1690,7 +1691,7 @@ async function showMultiSelect(
 
             return {
                 render(width: number): string[] {
-                    const innerWidth = Math.max(50, width - 6);
+                    const innerWidth = Math.max(20, width - 6);
                     const titleLine = theme.bold(theme.fg("accent", title));
                     const hint = theme.fg(
                         "dim",
@@ -1728,7 +1729,7 @@ async function showMultiSelect(
  * Show a result card inside an inline bordered panel.
  * Displays the message with a styled title and a "Press Enter" footer.
  */
-async function showResultOverlay(
+async function showResultPanel(
     ctx: ExtensionCommandContext,
     title: string,
     lines: string[],
@@ -1746,7 +1747,7 @@ async function showResultOverlay(
             const kb = getKeybindings();
             return {
                 render(width: number): string[] {
-                    const innerWidth = Math.max(50, width - 6);
+                    const innerWidth = Math.max(20, width - 6);
                     const titleLine = theme.bold(theme.fg(color, title));
                     const content = lines.map((l) => "  " + l);
                     const hint = theme.fg("dim", "Press Enter to continue");
