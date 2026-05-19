@@ -10,3 +10,5 @@ dist/
 coverage/
 packages/*/.a5c/
 .jj/
+# CocoIndex Code (ccc)
+/.cocoindex_code/
