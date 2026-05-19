@@ -1081,15 +1081,16 @@ async function executeScan(
     // For small batches (≤3), auto-register for speed. For larger batches, ask first.
     let packagesToRegister = status.unregistered;
     if (status.unregistered.length > 3) {
-        const bulkChoice = await ctx.ui.select(
-            `Register all ${status.unregistered.length} unregistered packages?`,
-            ["Register all", "Choose which to register", "Cancel"],
-        );
-        if (bulkChoice === "Cancel" || bulkChoice === undefined) {
+        const bulkIndex = await showSelectMenu(ctx, `Register ${status.unregistered.length} packages?`, [
+            { label: "Register all", description: "Add all packages to pi settings at once" },
+            { label: "Choose which to register", description: "Review and pick individual packages" },
+            { label: "Cancel", description: "Do nothing and close" },
+        ]);
+        if (bulkIndex === undefined || bulkIndex === 2) {
             ctx.ui.notify("Registration cancelled", "info");
             return;
         }
-        if (bulkChoice === "Choose which to register") {
+        if (bulkIndex === 1) {
             packagesToRegister = await selectPackages(ctx, status.unregistered);
             if (packagesToRegister.length === 0) {
                 ctx.ui.notify("No packages selected for registration", "info");
@@ -1156,46 +1157,14 @@ async function executeScan(
 }
 
 /**
- * Interactive package selector: lets user include/skip each package with bulk options.
+ * Interactive package selector using a multi-select checklist.
+ * Space/Enter toggles each item. Escape cancels.
  */
 async function selectPackages(
     ctx: ExtensionCommandContext,
     packages: string[],
 ): Promise<string[]> {
-    const selected = new Set<string>();
-    const remaining = [...packages];
-
-    while (remaining.length > 0) {
-        const currentPkg = remaining[0];
-        const choice = await ctx.ui.select(
-            `Package ${packages.length - remaining.length + 1} of ${packages.length}: ${currentPkg}`,
-            [
-                "Include this package",
-                "Skip this package",
-                "Include all remaining",
-                "Skip all remaining",
-            ],
-        );
-
-        if (choice === "Include this package") {
-            selected.add(currentPkg);
-            remaining.shift();
-        } else if (choice === "Skip this package") {
-            remaining.shift();
-        } else if (choice === "Include all remaining") {
-            for (const pkg of remaining) {
-                selected.add(pkg);
-            }
-            break;
-        } else if (choice === "Skip all remaining") {
-            break;
-        } else {
-            // undefined (escape) = cancel
-            break;
-        }
-    }
-
-    return [...selected];
+    return showMultiSelect(ctx, "Select packages", packages);
 }
 
 async function executeBackup(ctx: ExtensionCommandContext): Promise<void> {
@@ -1427,15 +1396,16 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
         }
         selectedPackages = packagesToRestore;
     } else {
-        const bulkChoice = await ctx.ui.select(
-            `Restore ${packagesToRestore.length} packages from backup?`,
-            ["Restore all", "Pick individually", "Cancel"],
-        );
-        if (bulkChoice === "Cancel" || bulkChoice === undefined) {
+        const bulkIndex = await showSelectMenu(ctx, `Restore ${packagesToRestore.length} packages?`, [
+            { label: "Restore all", description: "Register every package from the backup" },
+            { label: "Pick individually", description: "Review and choose which packages to restore" },
+            { label: "Cancel", description: "Do nothing and close" },
+        ]);
+        if (bulkIndex === undefined || bulkIndex === 2) {
             ctx.ui.notify("Restore cancelled", "info");
             return;
         }
-        if (bulkChoice === "Restore all") {
+        if (bulkIndex === 0) {
             selectedPackages = packagesToRestore;
         } else {
             const chosen = await selectPackages(ctx, packagesToRestore);
@@ -1540,6 +1510,111 @@ async function showSelectMenu(
                     return [titleLine, "", ...listLines];
                 },
                 handleInput(data: string): void {
+                    selectList.handleInput(data);
+                },
+                invalidate(): void {
+                    selectList.invalidate();
+                },
+            };
+        },
+        { overlay: true },
+    );
+}
+
+/**
+ * Show a multi-select checklist for picking packages.
+ * Space or Enter toggles selection. "Done" confirms.
+ * Returns selected package names, or empty array on cancel.
+ */
+async function showMultiSelect(
+    ctx: ExtensionCommandContext,
+    title: string,
+    packages: string[],
+): Promise<string[]> {
+    const selectItems: SelectItem[] = packages.map((pkg, index) => ({
+        value: String(index),
+        label: `☐ ${pkg}`,
+        description: undefined,
+    }));
+
+    // Append a Done action as the last row
+    selectItems.push({
+        value: "done",
+        label: "Done",
+        description: `0 of ${packages.length} selected`,
+    });
+
+    return ctx.ui.custom<string[]>(
+        (tui, theme, _keybindings, done) => {
+            const selected = new Set<number>();
+
+            const selectList = new SelectList(
+                selectItems,
+                Math.min(selectItems.length, 12),
+                {
+                    selectedPrefix: (text) => theme.fg("accent", text),
+                    selectedText: (text) => theme.fg("accent", text),
+                    description: (text) => theme.fg("muted", text),
+                    scrollInfo: (text) => theme.fg("muted", text),
+                    noMatch: (text) => theme.fg("muted", text),
+                },
+            );
+
+            const updateLabels = () => {
+                for (let i = 0; i < packages.length; i++) {
+                    const prefix = selected.has(i) ? "☑" : "☐";
+                    selectItems[i].label = `${prefix} ${packages[i]}`;
+                }
+                const doneItem = selectItems[selectItems.length - 1];
+                doneItem.description = `${selected.size} of ${packages.length} selected`;
+                tui.requestRender();
+            };
+
+            selectList.onSelect = (item) => {
+                if (item.value === "done") {
+                    const result = packages.filter((_, i) =>
+                        selected.has(i),
+                    );
+                    done(result);
+                    return;
+                }
+                const index = Number(item.value);
+                if (selected.has(index)) {
+                    selected.delete(index);
+                } else {
+                    selected.add(index);
+                }
+                updateLabels();
+            };
+
+            selectList.onCancel = () => done([]);
+
+            return {
+                render(width: number): string[] {
+                    const titleLine = theme.bold(
+                        theme.fg("accent", title),
+                    );
+                    const hint = theme.fg(
+                        "dim",
+                        "Space/Enter to toggle  •  ↑↓ to navigate  •  Esc to cancel",
+                    );
+                    const listLines = selectList.render(width);
+                    return [titleLine, hint, "", ...listLines];
+                },
+                handleInput(data: string): void {
+                    if (data === " ") {
+                        const current = selectList.getSelectedItem();
+                        if (current && current.value !== "done") {
+                            const index = Number(current.value);
+                            if (selected.has(index)) {
+                                selected.delete(index);
+                            } else {
+                                selected.add(index);
+                            }
+                            updateLabels();
+                        }
+                        return;
+                    }
                     selectList.handleInput(data);
                 },
                 invalidate(): void {
