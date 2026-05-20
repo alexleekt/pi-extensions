@@ -1,0 +1,18 @@
+# pi-heading — validation & development tasks
+
+# Run typecheck + tests (the full gate)
+check:
+    bun run typecheck
+    bun test
+
+# Type-check only
+typecheck:
+    bun run typecheck
+
+# Run tests only
+test:
+    bun test
+
+# Run tests in watch mode
+test-watch:
+    bun test --watch
