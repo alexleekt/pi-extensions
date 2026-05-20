@@ -2,6 +2,30 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [0.3.1] — 2026-05-20
+
+### Fixed
+- **Mermaid rendering was missing from v0.3.0** — The mermaid ContextPanel changes were committed on an orphaned branch and never merged into main before the v0.3.0 publish. This release includes them properly.
+
+## [0.3.0] — 2026-05-20
+
+### Added
+- **Always-present "Additional Comments"** — Every dialog type (SingleSelect, MultiSelect, Questionnaire) now shows a non-toggleable freeform textarea at the bottom. Users can submit just additional comments without answering the main question.
+- **Empty submission allowed** — Submit button is always enabled. Users can submit without selecting options, answering questions, or typing freeform text.
+- **"All of the above" radio toggle** — Multi-select options matching patterns like "All of the above", "Select all", "Everything" render as radio buttons. Clicking them selects all regular options at once. Selecting any individual option automatically deselects the "All" toggle.
+- **Auto-split long questions** — When the `question` field exceeds 120 characters and no separate `context` is provided, the first sentence becomes the dialog title and the remainder flows to the left context panel.
+- **Mermaid diagram rendering** — The context panel now renders ` ```mermaid ` code blocks as interactive SVG diagrams (flowcharts, sequence diagrams, etc.). The `mermaid` package is bundled into the webview.
+- **Shared icon components** — Extracted `RadioIcon`, `CheckIcon`, `CommentIcon`, and `isSelectAllOption` from duplicated inline SVGs into `webview/src/components/icons.tsx`.
+- **New `/ask-debug` test scenarios** — Added `mermaid` and `long-question` mock modes, plus "All of the above" options in multi-select and questionnaire mocks.
+
+### Changed
+- **Prompt guidelines** — Updated tool description and parameter docs to encourage agents to include Mermaid diagrams in the `context` field when visualizing architecture, flows, or relationships would aid understanding.
+- **Max-height headers** — Added `max-h-24 overflow-y-auto` to all component headers and `max-h-32` to the global App header as a defensive cap against long titles.
+- **Response formatter** — Added `additionalComments` field to both `selection` and `questionnaire` response kinds. Empty answers are now filtered from questionnaire submissions.
+
+### Fixed
+- **Questionnaire focus-steal bug** — The mount-only auto-focus `useEffect` was incorrectly including `answers` in its dependency array, causing it to re-run on every keystroke and steal focus from the current textarea to the next question.
+
 ## [0.2.1] — 2026-05-16
 
 ### Fixed
