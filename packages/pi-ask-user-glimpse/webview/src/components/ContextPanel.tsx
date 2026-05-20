@@ -1,5 +1,6 @@
 import { marked } from "marked";
-import { useMemo } from "react";
+import mermaid from "mermaid";
+import { useEffect, useRef } from "react";
 
 interface ContextPanelProps {
     context: string;
@@ -17,14 +18,43 @@ function sanitizeHtml(html: string): string {
         .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "");
 }
 
+class MermaidRenderer extends marked.Renderer {
+    code({ text, lang }: { text: string; lang?: string }) {
+        if (lang === "mermaid") {
+            return `<div class="mermaid">${text}</div>`;
+        }
+        return super.code({ text, lang, escaped: false });
+    }
+}
+
+const mermaidRenderer = new MermaidRenderer();
+
+/** Render markdown with mermaid code blocks converted to <div class="mermaid">. */
+function renderMarkdown(text: string): string {
+    const raw = marked.parse(text, {
+        async: false,
+        renderer: mermaidRenderer,
+    }) as string;
+    return sanitizeHtml(raw);
+}
+
 export default function ContextPanel({ context }: ContextPanelProps) {
-    const html = useMemo(() => {
-        const raw = marked.parse(context, { async: false }) as string;
-        return sanitizeHtml(raw);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const html = renderMarkdown(context);
+
+    useEffect(() => {
+        if (!containerRef.current) return;
+        mermaid
+            .run({ nodes: containerRef.current.querySelectorAll(".mermaid") })
+            .catch(() => {
+                // Silently ignore mermaid parse errors so broken diagrams
+                // don't crash the entire panel.
+            });
     }, [context]);
 
     return (
         <div
+            ref={containerRef}
             className="markdown-body text-sm"
             dangerouslySetInnerHTML={{ __html: html }}
         />

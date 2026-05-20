@@ -284,6 +284,36 @@ function buildDebugParams(mode: string): AskUserParams | null {
                 ],
                 allowComment: true,
             };
+        case "mermaid":
+            return {
+                question: "Test: Mermaid Diagrams",
+                context: `This prompt includes a Mermaid diagram to test rendering.
+
+\`\`\`mermaid
+graph TD
+    A[User asks question] --> B{Has context?}
+    B -->|Yes| C[Show left panel]
+    B -->|No| D[Single panel]
+    C --> E[Render markdown + diagrams]
+    D --> E
+\`\`\`
+
+The diagram above should render as an SVG. Below is a sequence diagram:
+
+\`\`\`mermaid
+sequenceDiagram
+    participant Agent
+    participant User
+    Agent->>User: Ask question
+    User->>Agent: Submit answer
+\`\`\`
+`,
+                options: [
+                    { title: "Looks good", description: "Diagrams render correctly" },
+                    { title: "Broken", description: "Something is wrong" },
+                ],
+                allowComment: true,
+            };
         default:
             return null;
     }
@@ -542,6 +572,7 @@ export default function (pi: ExtensionAPI) {
                 "multi-select",
                 "freeform",
                 "questionnaire",
+                "mermaid",
             ]);
             if (!mode) return;
 
