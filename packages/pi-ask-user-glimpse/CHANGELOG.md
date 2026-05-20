@@ -2,6 +2,11 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [0.3.2] — 2026-05-20
+
+### Fixed
+- **Recover all fixes lost during cherry-pick** — When cherry-picking the mermaid commit onto main, the jj colocated working copy was silently reset, discarding every other fix. This release restores: empty submit, shared icons/components, additional comments, auto-split logic, questionnaire focus fix, and updated prompt guidelines.
+
 ## [0.3.1] — 2026-05-20
 
 ### Fixed
