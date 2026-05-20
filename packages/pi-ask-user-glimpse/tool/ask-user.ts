@@ -397,10 +397,22 @@ export async function askUserHandler(
         payloadType = "single-select";
     }
 
+    // If the question is long and no separate context was provided, auto-split
+    // the first sentence into the question and the rest into context.
+    let question = params.question;
+    let context = params.context;
+    if (!context && params.question.length > 120) {
+        const match = params.question.match(/^(.+?[.?!])(\s+|$)/);
+        if (match && match[0].length < params.question.length) {
+            question = match[1].trim();
+            context = params.question.slice(match[0].length).trim();
+        }
+    }
+
     const payload: AskUserPayload = {
         type: payloadType,
-        question: params.question,
-        context: params.context,
+        question,
+        context,
         options: normalizedOptions,
         questions: params.questions,
         allowMultiple,

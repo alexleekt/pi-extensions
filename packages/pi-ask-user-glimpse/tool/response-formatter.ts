@@ -11,6 +11,7 @@ export interface AskResponse {
         kind: "selection" | "freeform";
         comment?: string;
     }[];
+    additionalComments?: string;
 }
 
 export interface AskToolDetails {
@@ -20,6 +21,10 @@ export interface AskToolDetails {
     response: AskResponse | null;
     cancelled: boolean;
     error?: string;
+}
+
+function pickString(raw: unknown): string | undefined {
+    return raw ? String(raw) : undefined;
 }
 
 function normalizeKind(raw: unknown): AskResponse["kind"] {
@@ -51,9 +56,7 @@ function buildResponse(
                               entry.kind === "freeform"
                                   ? "freeform"
                                   : "selection",
-                          comment: entry.comment
-                              ? String(entry.comment)
-                              : undefined,
+                          comment: pickString(entry.comment),
                       };
                   })
                 : [],
@@ -69,7 +72,8 @@ function buildResponse(
     return {
         kind,
         selections,
-        comment: result.comment ? String(result.comment) : undefined,
+        comment: pickString(result.comment),
+        additionalComments: pickString(result.additionalComments),
     };
 }
 
@@ -77,12 +81,12 @@ function responseToText(response: AskResponse): string {
     if (response.kind === "freeform") {
         return response.text ?? "";
     }
+    const lines: string[] = [];
     const selections = response.selections ?? [];
-    let text = selections.join(", ");
-    if (response.comment) {
-        text += `\n\nComment: ${response.comment}`;
-    }
-    return text;
+    if (selections.length > 0) lines.push(selections.join(", "));
+    if (response.comment) lines.push(`Comment: ${response.comment}`);
+    if (response.additionalComments) lines.push(`Additional Comments: ${response.additionalComments}`);
+    return lines.join("\n\n");
 }
 
 export function formatResponse(

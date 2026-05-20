@@ -63,7 +63,7 @@ export default function App() {
     return (
         <div className="flex h-screen flex-col overflow-hidden">
             {/* Full-width question header */}
-            <div className="shrink-0 border-b border-border px-6 py-4">
+            <div className="shrink-0 max-h-32 overflow-y-auto border-b border-border px-6 py-4">
                 <h1 className="text-xl font-semibold leading-snug">
                     {payload.question}
                 </h1>

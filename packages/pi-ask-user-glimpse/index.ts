@@ -284,10 +284,19 @@ function buildDebugParams(mode: string): AskUserParams | null {
                 ],
                 allowComment: true,
             };
+        case "long-question":
+            return {
+                question: "This is a very long question that exceeds one hundred and twenty characters so it should trigger the auto-split behavior. The first sentence becomes the dialog title, and the rest flows to the context panel.",
+                options: [
+                    { title: "Split worked", description: "Title is short, context has the rest" },
+                    { title: "Not split", description: "Everything is still in the title" },
+                ],
+                allowComment: true,
+            };
         case "mermaid":
             return {
                 question: "Test: Mermaid Diagrams",
-                context: `This prompt includes a Mermaid diagram to test rendering.
+                context: `This prompt includes Mermaid diagrams to test rendering in the left context panel.
 
 \`\`\`mermaid
 graph TD
@@ -323,21 +332,23 @@ const askUserTool = defineTool({
     name: "ask_user",
     label: "Ask User",
     description:
-        "Ask the user a question with optional multiple-choice answers. Use this to gather information interactively. Ask exactly one focused question per call. Before calling, gather context with tools (read/web/ref) and pass a short summary via the context field.",
+        "Ask the user a question with optional multiple-choice answers. Use this to gather information interactively. Ask exactly one focused question per call. Before calling, gather context with tools (read/web/ref) and pass a short summary via the context field. The context panel supports Mermaid diagrams (flowcharts, sequence diagrams, etc.) — include them when visualizing architecture, flows, or relationships would aid understanding.",
     promptSnippet:
         "Ask the user one focused question with optional multiple-choice answers to gather information interactively",
     promptGuidelines: [
         "Always use ask_user instead of guessing when user input would improve the answer.",
+        "Keep the question field short and focused (ideally one sentence). Put background, examples, or elaboration in the context field.",
+        "Include Mermaid diagrams in the context field when visualizing architecture, data flows, or decision trees would help the user understand the question.",
         "Pass a concise question and, when applicable, a list of options with short titles and optional longer descriptions.",
         "Set allowMultiple: true when more than one choice is valid.",
         "Set allowFreeform: true (default) when the user might want to answer in their own words.",
     ],
     parameters: Type.Object({
-        question: Type.String({ description: "The question to ask the user" }),
+        question: Type.String({ description: "A short, focused question (ideally one sentence). Put background detail in context." }),
         context: Type.Optional(
             Type.String({
                 description:
-                    "Additional context to help the user understand the question",
+                    "Background, examples, or elaboration that helps the user understand the question. Shown in a side panel, so keep the question itself concise. Supports Mermaid diagrams (flowcharts, sequence diagrams, etc.) — wrap them in ```mermaid code blocks.",
             }),
         ),
         options: Type.Optional(
@@ -572,6 +583,7 @@ export default function (pi: ExtensionAPI) {
                 "multi-select",
                 "freeform",
                 "questionnaire",
+                "long-question",
                 "mermaid",
             ]);
             if (!mode) return;

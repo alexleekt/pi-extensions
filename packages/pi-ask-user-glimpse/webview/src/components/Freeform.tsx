@@ -80,7 +80,7 @@ export default function Freeform({
                         </button>
                         <button
                             onClick={handleSubmit}
-                            disabled={!text.trim() || isSubmitting}
+                            disabled={isSubmitting}
                             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
                         >
                             {isSubmitting ? "Submitting…" : "Submit"}
