@@ -12,6 +12,7 @@ All packages are published under the `@alexleekt/` scope on npm.
 | [`@alexleekt/pi-ask-user-glimpse`](./packages/pi-ask-user-glimpse) | Rich native WebView dialogs via glimpseui |
 | [`@alexleekt/pi-bump`](./packages/pi-bump) | Double-Enter nudge with randomized prompts |
 | [`@alexleekt/pi-pkg-guard`](./packages/pi-pkg-guard) | Package management guard for pi extensions |
+| [`@alexleekt/pi-heading`](./packages/pi-heading) | One-line session heading widget for pi |
 | [`@alexleekt/pi-shared`](./packages/pi-shared) | Shared types and utilities for Pi extensions |
 
 ## Install

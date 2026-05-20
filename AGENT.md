@@ -74,6 +74,31 @@ ln -s ~/git/pi-extensions/node_modules ~/.pi/agent/node_modules
 rm -rf /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/.cache/jiti/
 ```
 
+## Design Journals (Required)
+
+After any significant session (>30 min or touching architecture), write a design journal in the affected package:
+
+```
+packages/<pkg>/docs/session/YYYY-MM-DD-title.md
+```
+
+**Trigger:** Write one when you made a non-obvious decision, found a surprising bug, or reversed a prior decision.
+
+**Template:** See `docs/session/JOURNAL_CONVENTION.md` for the full template. At minimum include:
+1. Session goal
+2. Original problem
+3. Key decisions with options considered
+4. Bugs found — symptom, root cause, fix, prevention
+5. Documentation updated
+
+**Relationship to other docs:**
+- **ADR** (`docs/adr/`) — one hard decision → one ADR
+- **CONTEXT.md** — glossary terms resolved during the session
+- **AGENT.md** — invariants that changed
+- **Memex card** — atomic insight saved via `memex_retro`
+
+Use the quest log as the journal outline. Use vent entries for the "prevention" section.
+
 ## Conventions
 
 - Every package has a `typecheck` script (`tsc --noEmit`)
