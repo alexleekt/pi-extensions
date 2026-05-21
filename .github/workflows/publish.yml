@@ -72,14 +72,14 @@ jobs:
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
               run: |
-                  # Write auth to the npm userconfig file that setup-node created (NPM_CONFIG_USERCONFIG)
-                  # npm 11.x ignores workspace-level .npmrc, so we must ensure the userconfig has the token
+                  # setup-node sets NPM_CONFIG_USERCONFIG to a temp file; ensure it has the auth token
                   USERCONFIG="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
-                  # Ensure clean auth line (setup-node may write registry= without trailing newline)
-                  grep -q "//registry.npmjs.org/:_authToken" "$USERCONFIG" || \
-                    printf "\n//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\nalways-auth=true\n" >> "$USERCONFIG"
+                  # Overwrite with clean config to avoid any corruption from previous runs
+                  printf "registry=https://registry.npmjs.org/\n//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\nalways-auth=true\n" > "$USERCONFIG"
                   echo "✅ Wrote auth to npm userconfig: $USERCONFIG"
                   cat "$USERCONFIG" | sed 's/_authToken=.*/_authToken=***/g'
+                  # Also export for child processes
+                  echo "NPM_CONFIG_USERCONFIG=$USERCONFIG" >> "$GITHUB_ENV"
 
             - name: Publish to npm
               working-directory: packages/${{ steps.pkg.outputs.dir }}
