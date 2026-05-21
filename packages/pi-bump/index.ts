@@ -255,28 +255,30 @@ export default function bumpExtension(pi: ExtensionAPI) {
     // meaningful continuation without polluting the chat UI.
     pi.on("context", async (event) => {
         let modified = false;
-        const messages = event.messages.map(
-            (msg: {
-                role: string;
-                customType?: string;
-                content?: string;
-                timestamp?: number;
-            }) => {
-                if (
-                    msg.role === "custom" &&
-                    msg.customType === CONTINUE_CUSTOM_TYPE
-                ) {
-                    modified = true;
-                    // Replace with a minimal user message — visible to LLM, invisible to user
-                    return {
-                        role: "user",
-                        content: CONTINUE_SIGNAL,
-                        timestamp: Date.now(),
-                    };
-                }
-                return msg;
-            },
-        );
+        const messages = (
+            event as {
+                messages: Array<{
+                    role: string;
+                    customType?: string;
+                    content?: string;
+                    timestamp?: number;
+                }>;
+            }
+        ).messages.map((msg) => {
+            if (
+                msg.role === "custom" &&
+                msg.customType === CONTINUE_CUSTOM_TYPE
+            ) {
+                modified = true;
+                // Replace with a minimal user message — visible to LLM, invisible to user
+                return {
+                    role: "user",
+                    content: CONTINUE_SIGNAL,
+                    timestamp: Date.now(),
+                };
+            }
+            return msg;
+        });
         if (modified) {
             return { messages };
         }
