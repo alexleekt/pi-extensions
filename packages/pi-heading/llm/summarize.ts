@@ -87,7 +87,7 @@ function thinkingOffOpts(model: Model<Api>): Record<string, unknown> {
   }
 }
 
-interface RunPromptResult {
+export interface RunPromptResult {
   text: string;
   fullPrompt: string;
   systemPrompt: string;
@@ -102,10 +102,17 @@ async function runPrompt(
   ctx: ExtensionContext,
   fileName: string,
   message: string,
+  goal?: string,
 ): Promise<RunPromptResult> {
   const promptFile = readPromptFile(fileName);
-  const userText = promptFile.template.replace(/\{message\}/g, message);
-  const example = fileName === "topic" ? "Rust memory leak" : "Fix the memory leak in the Rust service.";
+  let userText = promptFile.template.replace(/\{message\}/g, message);
+  if (goal !== undefined) {
+    userText = userText.replace(/\{goal\}/g, goal);
+  }
+  const example =
+    fileName === "topic" ? "Rust memory leak" :
+    fileName === "achievement" ? "Fixed JWT middleware in 3 files" :
+    "Fix the memory leak in the Rust service.";
   const systemPrompt = buildSystemPrompt(promptFile.instructions, promptFile.maxWords, example);
   const fullPrompt = `${systemPrompt}\n\nMessage: ${userText}`;
 
@@ -134,11 +141,15 @@ async function runPrompt(
 
   const extracted = extractTextFromMessage(result);
   const cleaned = cleanLLMOutput(extracted);
+  // Some models wrap JSON in markdown fences even with response_format: json_object.
+  // extractTextFromMessage parses JSON on the raw text; if that failed because of
+  // fences, try again after cleanLLMOutput has stripped them.
+  const finalText = tryParseJsonResult(cleaned) ?? cleaned;
   return {
-    text: truncateToWords(cleaned, promptFile.maxWords),
+    text: truncateToWords(finalText, promptFile.maxWords),
     fullPrompt,
     systemPrompt,
-    debug: { extractedText: cleaned, finalMessageText: extracted },
+    debug: { extractedText: finalText, finalMessageText: extracted },
   };
 }
 
@@ -177,6 +188,17 @@ function extractTextFromMessage(msg: AssistantMessage | undefined): string {
   return raw;
 }
 
+/** Try to parse a JSON object and extract its `.result` string. Returns undefined on failure. */
+function tryParseJsonResult(text: string): string | undefined {
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed.result === "string") return parsed.result;
+  } catch {
+    // ignore
+  }
+  return undefined;
+}
+
 /** Strip common LLM wrapping artifacts (quotes, markdown, extra whitespace, meta prefixes). */
 export function cleanLLMOutput(text: string): string {
   return text
@@ -198,6 +220,14 @@ export interface SummarizeResult {
   goalSystemPrompt: string;
   topicDebug: StreamDebug;
   goalDebug: StreamDebug;
+}
+
+export async function summarizeAchievement(
+  ctx: ExtensionContext,
+  assistantText: string,
+  goal?: string,
+): Promise<RunPromptResult> {
+  return runPrompt(ctx, "achievement", assistantText, goal);
 }
 
 export async function summarize(

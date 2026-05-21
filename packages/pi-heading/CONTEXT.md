@@ -9,10 +9,14 @@
 | **Heading entry** | A `pi.appendEntry("heading", { topic, goal })` persisted per branch. Survives session restarts, visible in the conversation tree. |
 | **Prompt file** | A markdown file with YAML frontmatter containing the LLM prompt template plus a `max_words` constraint. Two prompt files: one for topic derivation, one for goal derivation. User-editable, extension-reloads on `/reload` or restart. |
 | **Topic guard** | A deterministic string-similarity filter that prevents the topic from jittering between semantically-equivalent labels ("docker setup" vs "docker config"). Preserves original capitalization of proper nouns. |
+| **Execution phase** | The conversational state the widget reflects: **goal-displayed** (static ▸), **working** (animated ⠋ spinner), or **achievement-displayed** (static ✓). Transitions are driven by Pi lifecycle events (`agent_start`, `turn_end`). |
+| **Working indicator** | The animated Braille spinner prefix (`⠋`) shown on the goal line while the agent is actively executing. Updates via rapid `setWidget()` calls. Plain-text only — no pi-tui components. |
+| **Complete indicator** | The static checkmark prefix (`✓`) shown on the achievement line after the agent finishes its turn. Signals completion of the current cycle. |
 | **Widget line** | The single-line string rendered above the editor via `ctx.ui.setWidget()`. Plain text, no borders, no pi-tui components. |
 
 ## Boundaries
 
-- **One line only.** No bordered panels, no multi-row history, no keyboard focus, no animations.
+- **One line only.** No bordered panels, no multi-row history, no keyboard focus.
+- **Plain-text animation only.** Animation is permitted via character rotation in a single-line `setWidget()` string. No pi-tui components, no timers that invalidate outside the widget line.
 - **Passive display.** The widget never intercepts input. There are no hotkeys for the widget itself.
 - **Per-branch state.** Topic and goal are scoped to the current branch via `appendEntry`. Switching branches restores that branch's heading.

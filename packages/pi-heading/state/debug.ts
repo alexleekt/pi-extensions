@@ -25,19 +25,25 @@ export interface DebugEntry {
   prompt: string;      // user prompt (first 200 chars, for quick scan)
   fullTopicPrompt: string; // rendered topic prompt sent to LLM
   fullGoalPrompt: string;  // rendered goal prompt sent to LLM
+  fullAchievementPrompt?: string; // rendered achievement prompt sent to LLM
   topicResponse: string;   // final topic text from LLM
   goalResponse: string;    // final goal text from LLM
+  achievementResponse?: string; // final achievement text from LLM
   rawTopic: string;    // LLM topic before stabilization
   rawGoal: string;     // LLM goal before truncation
+  rawAchievement?: string; // LLM achievement before truncation
   stableTopic: string; // after topic guard
   finalGoal: string;   // after truncation
+  finalAchievement?: string; // after truncation
   error?: string;      // if summarization failed
   modelId?: string;    // which model was used
   topicStream?: StreamDebug;  // raw LLM stream for topic prompt
   goalStream?: StreamDebug;   // raw LLM stream for goal prompt
+  achievementStream?: StreamDebug; // raw LLM stream for achievement prompt
   /** Exact system prompt sent to the model (for verifying prompt architecture). */
   topicSystemPrompt?: string;
   goalSystemPrompt?: string;
+  achievementSystemPrompt?: string;
 }
 
 let _debugEnabled = false;

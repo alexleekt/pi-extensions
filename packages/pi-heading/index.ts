@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { summarize } from "./llm/summarize.js";
+import type { ExtensionAPI, TurnEndEvent, TurnStartEvent } from "@earendil-works/pi-coding-agent";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import { summarize, summarizeAchievement } from "./llm/summarize.js";
 import { stableTopic } from "./state/guard.js";
 import {
   getState,
@@ -11,11 +12,14 @@ import {
   persistState,
   type State,
 } from "./state/store.js";
-import { renderWidget, clearWidget } from "./ui/widget.js";
+import { renderWidget, clearWidget, stopSpinner } from "./ui/widget.js";
 import { getDebugMode, setDebugMode, setModelOverride, resolveModelId } from "./llm/picker.js";
 import { setDebugEnabled, logDebug, readDebugLog, clearDebugLog, DEBUG_LOG } from "./state/debug.js";
 import type { SummarizeResult } from "./llm/summarize.js";
 import type { DebugEntry } from "./state/debug.js";
+
+let turnGeneration = 0;
+let agentStartedForCurrentTurn = false;
 
 function baseDebugEntry(prompt: string, modelId?: string): Pick<DebugEntry, "t" | "input" | "prompt" | "modelId"> {
   return {
@@ -24,6 +28,21 @@ function baseDebugEntry(prompt: string, modelId?: string): Pick<DebugEntry, "t" 
     prompt: prompt.slice(0, 200),
     modelId,
   };
+}
+
+/** Extract text content from an agent message (assistant or tool result). */
+function extractAgentText(msg: AgentMessage): string {
+  const content = (msg as any).content;
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    const parts: string[] = [];
+    for (const part of content) {
+      if (part?.type === "text" && typeof part.text === "string") parts.push(part.text);
+      else if (typeof part === "string") parts.push(part);
+    }
+    return parts.join("");
+  }
+  return "";
 }
 
 function makeDebugEntry(
@@ -47,6 +66,35 @@ function makeDebugEntry(
     goalStream: result.goalDebug,
     topicSystemPrompt: result.topicSystemPrompt,
     goalSystemPrompt: result.goalSystemPrompt,
+  };
+}
+
+function makeDebugEntryAchievement(
+  assistantText: string,
+  result: { text: string; fullPrompt: string; systemPrompt: string; debug: any },
+  existing: State | undefined,
+  modelId?: string,
+): DebugEntry {
+  return {
+    ...baseDebugEntry(assistantText.slice(0, 200), modelId),
+    fullTopicPrompt: "",
+    fullGoalPrompt: "",
+    fullAchievementPrompt: result.fullPrompt,
+    topicResponse: "",
+    goalResponse: "",
+    achievementResponse: result.text,
+    rawTopic: "",
+    rawGoal: "",
+    rawAchievement: result.text,
+    stableTopic: existing?.topic ?? "",
+    finalGoal: existing?.goal ?? "",
+    finalAchievement: result.text,
+    topicStream: undefined,
+    goalStream: undefined,
+    achievementStream: result.debug,
+    topicSystemPrompt: "",
+    goalSystemPrompt: "",
+    achievementSystemPrompt: result.systemPrompt,
   };
 }
 
@@ -79,17 +127,34 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     if (!ctx.hasUI) return;
+    turnGeneration = 0;
+    agentStartedForCurrentTurn = false;
+    ctx.ui.setWorkingVisible(true); // restore default in case previous session left it hidden
     const replayed = replayBranch(ctx);
     if (replayed) {
-      renderWidget(ctx, replayed.goal);
+      if (replayed.achievement) {
+        renderWidget(ctx, replayed.achievement, "achievement");
+      } else if (replayed.goal) {
+        renderWidget(ctx, replayed.goal, "goal");
+      } else {
+        clearWidget(ctx);
+      }
     } else {
       clearWidget(ctx);
     }
   });
 
+  // ── Agent ended — restore Pi's default loader ──────────────────
+
+  pi.on("agent_end", (_event, ctx) => {
+    if (!ctx.hasUI) return;
+    ctx.ui.setWorkingVisible(true); // restore Pi's loader for next agent run
+  });
+
   pi.on("session_shutdown", async (_event, ctx) => {
     if (!ctx.hasUI) return;
     clearWidget(ctx);
+    ctx.ui.setWorkingVisible(true); // restore default for next session
   });
 
   // ── Summarize on every user message ────────────────────────────
@@ -98,12 +163,17 @@ export default function (pi: ExtensionAPI) {
     const prompt = event.prompt?.trim();
     if (!prompt || !ctx.hasUI) return;
 
+    const myGeneration = ++turnGeneration;
+    agentStartedForCurrentTurn = false;
+
     const leafId = ctx.sessionManager.getLeafId();
 
     // Fire-and-forget: do not await summarize — we must not block the agent
     void (async () => {
       try {
         const result = await summarize(ctx, prompt);
+        if (myGeneration !== turnGeneration) return; // stale turn
+
         const existing = leafId ? getState(leafId) : undefined;
 
         if (!result.goal.trim()) {
@@ -112,21 +182,107 @@ export default function (pi: ExtensionAPI) {
         }
 
         const stable = stableTopic(existing?.topic, result.topic);
-        const state: State = { topic: stable, goal: result.goal };
+        const state: State = { topic: stable, goal: result.goal, achievement: existing?.achievement };
 
         if (leafId) {
           setState(leafId, state);
-          if (existing?.topic !== state.topic || existing?.goal !== state.goal) {
+          if (existing?.topic !== state.topic || existing?.goal !== state.goal || existing?.achievement !== state.achievement) {
             persistState(pi, state);
           }
         }
-        renderWidget(ctx, result.goal);
+
+        const mode = agentStartedForCurrentTurn ? "working" : "goal";
+        renderWidget(ctx, result.goal, mode);
         logDebug(makeDebugEntry(prompt, result, existing, ctx.model?.id, stable));
       } catch (err) {
+        if (myGeneration !== turnGeneration) return; // stale turn
         const msg = (err as Error).message ?? String(err);
         ctx.ui.notify(`[pi-heading] Summarize failed: ${msg}`, "error");
         const existing = leafId ? getState(leafId) : undefined;
         logDebug(makeDebugEntryError(prompt, existing, msg, ctx.model?.id));
+      }
+    })();
+  });
+
+  // ── Agent started — flip to working indicator ──────────────────
+
+  pi.on("agent_start", (_event, ctx) => {
+    if (!ctx.hasUI) return;
+    agentStartedForCurrentTurn = true;
+    ctx.ui.setWorkingVisible(false); // suppress Pi's default loader — our widget spinner replaces it
+
+    const leafId = ctx.sessionManager.getLeafId();
+    const state = leafId ? getState(leafId) : undefined;
+    if (state?.goal) {
+      renderWidget(ctx, state.goal, "working");
+    }
+  });
+
+  // ── Turn started — restart spinner between tool-call turns ─────
+
+  pi.on("turn_start", (_event: TurnStartEvent, ctx) => {
+    if (!ctx.hasUI) return;
+    const leafId = ctx.sessionManager.getLeafId();
+    const state = leafId ? getState(leafId) : undefined;
+    if (state?.goal) {
+      renderWidget(ctx, state.goal, "working");
+    }
+  });
+
+  // ── Achievement summary on every turn end ─────────────────────
+
+  pi.on("turn_end", (event: TurnEndEvent, ctx) => {
+    if (!ctx.hasUI) return;
+
+    const leafId = ctx.sessionManager.getLeafId();
+    const existing = leafId ? getState(leafId) : undefined;
+
+    // Stop spinner and show completion prefix (don't restore Pi's loader yet —
+    // agent may still be running between turns with tool calls)
+    stopSpinner();
+    if (existing?.goal) {
+      renderWidget(ctx, existing.goal, "achievement");
+    }
+
+    // Extract the assistant's final message text for this turn
+    const assistantText = extractAgentText(event.message);
+    if (!assistantText.trim()) return;
+
+    const myGeneration = turnGeneration;
+
+    // Fire-and-forget: do not block the next turn
+    void (async () => {
+      try {
+        const achResult = await summarizeAchievement(ctx, assistantText, existing?.goal);
+        const achievement = achResult.text.trim();
+        if (!achievement) {
+          logDebug(makeDebugEntryAchievement(assistantText, achResult, existing, ctx.model?.id));
+          return;
+        }
+
+        if (myGeneration !== turnGeneration) return; // stale turn
+
+        const state: State = {
+          topic: existing?.topic ?? "",
+          goal: existing?.goal ?? "",
+          achievement,
+        };
+
+        if (leafId) {
+          setState(leafId, state);
+          // Persist if achievement changed (goal/topic unchanged from before)
+          if (existing?.achievement !== achievement) {
+            persistState(pi, state);
+          }
+        }
+        renderWidget(ctx, achievement, "achievement");
+        logDebug(makeDebugEntryAchievement(assistantText, achResult, existing, ctx.model?.id));
+      } catch (err) {
+        if (myGeneration !== turnGeneration) return; // stale turn
+        // Achievement summarization failure is non-fatal — keep showing the goal
+        const msg = (err as Error).message ?? String(err);
+        ctx.ui.notify(`[pi-heading] Achievement summarize failed: ${msg}`, "error");
+        logDebug(makeDebugEntryError(assistantText.slice(0, 200), existing, msg, ctx.model?.id));
       }
     })();
   });
@@ -143,7 +299,7 @@ export default function (pi: ExtensionAPI) {
       const goal = input.trim();
       const leafId = ctx.sessionManager.getLeafId();
       const existing = leafId ? getState(leafId) : undefined;
-      const state: State = { topic: existing?.topic ?? "manual", goal };
+      const state: State = { topic: existing?.topic ?? "manual", goal, achievement: existing?.achievement };
 
       if (leafId) {
         setState(leafId, state);
@@ -251,7 +407,8 @@ export default function (pi: ExtensionAPI) {
           streamInfo = ` 💥${e.goalStream.errorEvent.slice(0, 20)}`;
         }
         const frontmatterLeak = e.goalSystemPrompt?.includes("max_words:") ? " ⚠️FRONTMATTER_LEAK" : "";
-        return `${ts} ▸ goal:"${rawGoal.slice(0, 40)}" final:"${e.finalGoal.slice(0, 40)}"${streamInfo}${err}${frontmatterLeak}`;
+        const ach = e.achievementResponse ? ` ✓:"${e.achievementResponse.slice(0, 30)}"` : "";
+        return `${ts} ▸ goal:"${rawGoal.slice(0, 40)}" final:"${e.finalGoal.slice(0, 40)}"${ach}${streamInfo}${err}${frontmatterLeak}`;
       });
 
       ctx.ui.notify(

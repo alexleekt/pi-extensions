@@ -2,6 +2,21 @@
 
 ## Short-term
 
+### Phase indicators (✓ done)
+- [x] `▸` static prefix for goal
+- [x] `⠋` Braille spinner during agent execution (`agent_start` / `turn_start` → `turn_end`)
+- [x] `✓` completion prefix for achievement
+- [x] Plain-text animation via `setInterval` + `setWidget()` — no pi-tui components
+- [x] Turn-generation guard prevents stale async renders from overwriting active turns
+- [x] Suppress Pi's default `setWorkingVisible()` loader while widget spinner is active
+- [x] Restore Pi's loader at `agent_end` (not `turn_end`, to avoid recreating it between tool-call turns)
+- [x] Restart spinner at `turn_start` between tool-call turns (same agent run)
+
+### Achievement alignment (✓ done)
+- [x] Achievement prompt now receives `{goal}` placeholder for context
+- [x] LLM is instructed to echo the goal's terminology in the achievement summary
+- [x] Prevents generic disconnected summaries when tool calls are involved
+
 ### Model validation on startup
 - [ ] Check if the configured heading model (override or session model) has a valid API key on `session_start`
 - [ ] If not, show a one-time warning via `ctx.ui.notify()` suggesting `/heading-model` to pick a working model

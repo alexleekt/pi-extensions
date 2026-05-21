@@ -10,11 +10,24 @@ Always know what you're working on — without scrolling back through tool calls
 
 A single line above your editor, updated after every message you send:
 
+**Goal locked in** — static prefix:
 ```
 ▸ Clean up that old chezmoi checkout
 ```
 
+**Agent working** — animated Braille spinner:
+```
+⠋ Clean up that old chezmoi checkout
+```
+
+**Turn complete** — achievement shown with checkmark:
+```
+✓ Removed stale dotfiles and migrated to yadm
+```
+
 No borders. No panels. No ghosting. Just context.
+
+> **Note:** Pi's built-in "Working…" loader is suppressed while the widget spinner is active, so there's only one motion source on screen at a time. Restored between turns.
 
 ## Features
 
@@ -25,6 +38,7 @@ No borders. No panels. No ghosting. Just context.
 | **Per-branch memory** | Switch branches and the widget restores that branch's context |
 | **Custom prompts** | Edit the LLM prompts that generate topics and goals |
 | **Model override** | Use a cheaper/faster model for summarization |
+| **Phase indicators** | `▸` for goal, `⠋` spinner while agent works, `✓` for achievement |
 | **Zero ghosting** | Plain text widget — no border fragments to orphan |
 
 ## Installation
@@ -42,11 +56,13 @@ ln -s ~/git/pi-extensions/packages/pi-heading ~/.pi/agent/extensions/pi-heading
 
 ### Automatic (default)
 
-Just send a message. Within 1-3 seconds, the goal line appears.
+Just send a message. Within 1-3 seconds, the goal line appears. While the agent is generating, it spins. When the turn ends, a checkmark appears with the achievement summary.
 
 ```
 help me set up docker for this project
-→ ▸ Docker project setup
+→ ▸ Docker project setup          (goal ready)
+→ ⠋ Docker project setup          (agent working)
+→ ✓ Wrote Dockerfile and .dockerignore  (achievement)
 ```
 
 ### `/heading` — manual override
@@ -77,7 +93,8 @@ The LLM prompts live in:
 ```
 ~/.pi/agent/extensions/pi-heading/prompts/
 ├── topic.md
-└── goal.md
+├── goal.md
+└── achievement.md
 ```
 
 Each file has YAML frontmatter with a `max_words` constraint:
@@ -94,8 +111,11 @@ User message:
 {message}
 ```
 
-- `{message}` is the only placeholder
+- `{message}` — the agent's output text (required for all prompts)
+- `{goal}` — the current goal text (available in `achievement.md` only)
 - `max_words` is enforced after generation (output is truncated if the LLM exceeds it)
+
+The **achievement** prompt receives both `{goal}` and `{message}` so the LLM can echo the goal's terminology in its summary.
 - Edit these files, then `/reload` or restart Pi to pick up changes
 
 Default prompts are auto-copied on first run if the files don't exist.
@@ -113,9 +133,20 @@ Parallel LLM calls:
     ↓
 Topic stability guard (prevents jitter)
     ↓
-setWidget("▸ {goal}")
+setWidget("▸ {goal}")        ← goal phase
     ↓
-appendEntry("heading", { topic, goal })  ← per-branch persistence
+agent_start event
+    ↓
+setWidget("⠋ {goal}")        ← working phase (animated)
+    ↓
+turn_end event
+    ↓
+Achievement LLM call:
+  • prompt: {goal} + {message}  ← goal context biases wording
+    ↓
+setWidget("✓ {achievement}") ← achievement phase
+    ↓
+appendEntry("heading", { topic, goal, achievement })  ← per-branch persistence
 ```
 
 ### Pi event lifecycle
@@ -142,15 +173,31 @@ sequenceDiagram
     Pi->>LLM: Agent loop begins
     LLM-->>Pi: Streaming response
     Pi->>pi_heading: agent_start
-    Pi->>pi_heading: agent_end { messages }
+    pi_heading->>Pi: setWidget("⠋ {goal}")   ← working spinner starts
+    Pi->>pi_heading: turn_end
+    pi_heading->>Pi: setWidget("✓ {goal}")  ← completion prefix
+    alt More tool-call turns
+        Pi->>pi_heading: turn_start
+        pi_heading->>Pi: setWidget("⠋ {goal}")  ← spinner restarts
+        LLM-->>Pi: Streaming response
+        Pi->>pi_heading: turn_end
+        pi_heading->>Pi: setWidget("✓ {goal}")  ← completion prefix
+    end
+    Pi->>pi_heading: agent_end
 
     Note over pi_heading,LLM: Meanwhile (async)
     pi_heading->>LLM: topic prompt → topic
     pi_heading->>LLM: goal prompt → goal
     LLM-->>pi_heading: topic + goal
     pi_heading->>pi_heading: stableTopic(old, new)
-    pi_heading->>Pi: setWidget("▸ {goal}")
+    pi_heading->>Pi: setWidget("▸ {goal}")    ← goal ready (if before agent_start)
     pi_heading->>Pi: appendEntry("heading", {topic, goal})
+
+    Note over pi_heading,LLM: Achievement summarization (with goal context)
+    pi_heading->>LLM: achievement prompt (goal={goal}, output={message})
+    LLM-->>pi_heading: achievement (echoes goal terminology)
+    pi_heading->>Pi: setWidget("✓ {achievement}")
+    pi_heading->>Pi: appendEntry("heading", {topic, goal, achievement})
 
     Note over User,Pi: User leaves / session ends
     Pi->>pi_heading: session_shutdown (reason: quit/reload)
@@ -158,9 +205,12 @@ sequenceDiagram
 ```
 
 **Key points:**
-- `session_start` — restores heading from previous branch session
-- `before_agent_start` — triggers summarization (fire-and-forget, does not block agent)
-- `agent_start` / `agent_end` — herdr-tab-sync uses these; pi-heading ignores them
+- `session_start` — restores heading from previous branch session (▸ or ✓)
+- `before_agent_start` — triggers goal summarization (fire-and-forget)
+- `agent_start` — starts the working spinner (⠋), suppresses Pi's default loader
+- `turn_start` — restarts the spinner between tool-call turns (same agent run)
+- `turn_end` — stops spinner, shows completion prefix (✓), triggers achievement summarization
+- `agent_end` — restores Pi's default loader for the next agent run
 - `session_shutdown` — clears the widget
 
 ## No ghosting — how?

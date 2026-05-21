@@ -1,0 +1,62 @@
+[
+  {
+    "goal": "Fix JWT validation bug",
+    "message": "I've fixed the bug by updating the auth middleware in `src/auth.ts` and adding tests in `test/auth.test.ts`. The issue was that JWT tokens weren't being validated against the expected audience. Let me know if you need anything else.",
+    "expected": "Fixed JWT audience validation and added tests",
+    "max_words": 12
+  },
+  {
+    "goal": "Fix JWT validation bug",
+    "message": "The issue is that the JWT token is not being validated correctly. Here's how it works: when a request comes in, the middleware checks the signature but skips the audience claim. This allows tokens issued for other services to be accepted. To fix it, you need to add audience validation to the `verifyToken` function.",
+    "expected": "Explained JWT audience validation gap",
+    "max_words": 12
+  },
+  {
+    "goal": "Fix JWT validation bug",
+    "message": "Let me look at the codebase first to understand the structure.\n\n[Read src/auth.ts]\n\nOkay, I see the problem. The `validateToken` function is missing the audience check. I'll add it now.\n\n[Edit src/auth.ts: add audience parameter to verify call]\n\nDone! The fix adds audience validation to prevent token replay attacks. I've also updated the error message to be more specific.",
+    "expected": "Added JWT audience validation to auth middleware",
+    "max_words": 12
+  },
+  {
+    "goal": "Fix JWT validation bug",
+    "message": "Running the test suite to verify the fix...\n\n[Bash: npm test -- auth]\n\nTests passed! All 15 auth tests are green. I've also updated the CI config (`.github/workflows/ci.yml`) to run these tests automatically on every PR.",
+    "expected": "Passed auth tests and updated CI config",
+    "max_words": 12
+  },
+  {
+    "goal": "Refactor database layer",
+    "message": "I'll refactor the database layer to separate concerns better.\n\n[Edit src/db.ts: extract connection logic]\n[Write src/db/connection.ts: new connection module]\n[Edit src/models/user.ts: update imports]\n[Edit src/models/order.ts: update imports]\n\nDone! I've extracted the connection logic into `src/db/connection.ts`, moved queries to `src/db/queries.ts`, and updated all imports across 4 files. The new structure is much cleaner and easier to test.",
+    "expected": "Refactored database layer into separate modules",
+    "max_words": 12
+  },
+  {
+    "goal": "Fix TypeScript build error",
+    "message": "The build is failing because of a TypeScript error. Let me check what's wrong.\n\n[Read src/api.ts]\n\nThe `User` type is missing the `email` field that's referenced in the login handler. I'll add it to the interface.\n\n[Edit src/types.ts: add email to User interface]\n\nFixed! The build should pass now. The type definition now matches the actual usage.",
+    "expected": "Fixed TypeScript build by adding User.email field",
+    "max_words": 12
+  },
+  {
+    "goal": "Debug failing function",
+    "message": "I can't reproduce the issue on my end. The function works fine with the test data you provided. Could you share the exact input that's causing the error, and the full error message including the stack trace? Also, what Node version are you running?",
+    "expected": "Asked for reproduction details and context",
+    "max_words": 12
+  },
+  {
+    "goal": "Create profile update endpoint",
+    "message": "I've created a new API endpoint for user profile updates.\n\n[Write src/routes/profile.ts: new PUT /api/profile endpoint]\n[Edit src/middleware/auth.ts: add profile scope check]\n[Write test/profile.test.ts: add endpoint tests]\n\nThe new endpoint validates the request body, checks authentication, and updates the user record. All edge cases are handled: invalid email format, duplicate username, and unauthorized access.",
+    "expected": "Created profile update API endpoint with tests",
+    "max_words": 12
+  },
+  {
+    "goal": "Fix Docker build",
+    "message": "I see the problem — the Docker build is failing because the base image `node:18-alpine` has a security vulnerability in OpenSSL. I need to update to `node:20-alpine` and rebuild.\n\n[Edit Dockerfile: update FROM image]\n[Edit .dockerignore: add node_modules]\n\nBuild succeeded! The image is now 12MB smaller and passes the security scan.",
+    "expected": "Updated Docker base image and reduced size",
+    "max_words": 12
+  },
+  {
+    "goal": "Document auth flow",
+    "message": "I've updated the documentation for the new auth flow.\n\n[Write docs/auth.md: document OAuth2 flow]\n[Edit README.md: add auth setup instructions]\n[Write docs/examples/oauth-flow.md: code examples]\n\nThe docs cover the complete flow: generating the auth URL, handling the callback, refreshing tokens, and error handling. I also added a sequence diagram showing the interaction between the client, our server, and the OAuth provider.",
+    "expected": "Documented OAuth2 flow with examples and diagrams",
+    "max_words": 12
+  }
+]

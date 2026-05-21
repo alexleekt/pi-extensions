@@ -6,6 +6,8 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 export interface State {
   topic: string;
   goal: string;
+  /** Post-turn achievement summary — what the agent accomplished in its last turn. */
+  achievement?: string;
 }
 
 const STATE_KEY = "heading";
@@ -34,7 +36,7 @@ export function replayBranch(ctx: ExtensionContext): State | undefined {
     if (entry?.type === "custom" && entry?.customType === STATE_KEY) {
       const payload = (entry as any).data ?? (entry as any).detail;
       if (payload && typeof payload.topic === "string" && typeof payload.goal === "string") {
-        const state: State = { topic: payload.topic, goal: payload.goal };
+        const state: State = { topic: payload.topic, goal: payload.goal, achievement: payload.achievement };
         memory.set(leafId, state);
         return state;
       }
