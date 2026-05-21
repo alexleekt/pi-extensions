@@ -69,26 +69,14 @@ jobs:
                   fi
 
             - name: Configure npm auth
-              working-directory: packages/${{ steps.pkg.outputs.dir }}
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
               run: |
-                  echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
-                  echo "registry=https://registry.npmjs.org/" >> .npmrc
-                  echo "always-auth=true" >> .npmrc
-                  echo "✅ Wrote .npmrc with auth token"
-                  cat .npmrc | sed 's/_authToken=.*/_authToken=***/g'
-
-            - name: Verify npm auth
-              working-directory: packages/${{ steps.pkg.outputs.dir }}
-              run: |
-                  echo "npm config registry: $(npm config get registry)"
-                  echo "npm config userconfig: $(npm config get userconfig)"
-                  if npm whoami 2>/dev/null; then
-                      echo "✅ npm auth verified"
-                  else
-                      echo "⚠️ npm whoami failed — proceeding anyway (auth may be token-based)"
-                  fi
+                  # Write auth directly to userconfig (~/.npmrc) to avoid workspace .npmrc ignore issues in npm 11.x
+                  echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
+                  echo "always-auth=true" >> ~/.npmrc
+                  echo "✅ Wrote auth to userconfig (~/.npmrc)"
+                  cat ~/.npmrc | sed 's/_authToken=.*/_authToken=***/g'
 
             - name: Publish to npm
               working-directory: packages/${{ steps.pkg.outputs.dir }}
