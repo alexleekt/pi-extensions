@@ -30,7 +30,7 @@
     ],
     "exports": {
         "./session": "./session.ts",
-        "./types": "./types/pi.d.ts",
+        "./types": "./types/pi.ts",
         "./prompt-eval": "./prompt-eval.ts"
     },
     "pi": {
