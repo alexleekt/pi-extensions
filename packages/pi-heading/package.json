@@ -39,5 +39,13 @@
         "session-summary"
     ],
     "license": "MIT",
-    "author": "Alex Lee"
+    "author": "Alex Lee",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/alexleekt/pi-extensions.git"
+    },
+    "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-heading#readme",
+    "bugs": {
+        "url": "https://github.com/alexleekt/pi-extensions/issues"
+    }
 }
