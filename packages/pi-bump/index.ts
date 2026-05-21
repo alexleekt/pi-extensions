@@ -46,7 +46,7 @@ const DEBUG_KEYS = [
     Key.alt("enter"),
 ];
 
-const DEBUG_KEYS_LIST = DEBUG_KEYS.join(", ");
+
 
 /** Custom type used for the invisible trigger message. */
 const CONTINUE_CUSTOM_TYPE = "__invisible_continue";
@@ -55,17 +55,10 @@ const CONTINUE_CUSTOM_TYPE = "__invisible_continue";
 const CONTINUE_COMMAND_DESCRIPTION =
     "Resume the agentic loop without sending a prompt the LLM can read";
 
-/** Extract plain text from an assistant message for duplicate comparison. */
-interface TextPart {
-    type: string;
-    text?: string;
-}
-
 function extractAssistantText(msg: {
     role: string;
-    content?: string | TextPart[];
+    content?: string | Array<{ type: string; text?: string }>;
 }): string | undefined {
-    if (msg.role !== "assistant") return undefined;
     const content = msg.content;
     if (typeof content === "string") return content;
     if (Array.isArray(content)) {
@@ -91,16 +84,25 @@ function extractToolCallsFingerprint(msg: {
     if (!calls || !Array.isArray(calls) || calls.length === 0) return undefined;
     return JSON.stringify(
         calls.map((tc: unknown) => {
-            const fn =
-                (tc as Record<string, unknown>).function ??
-                (tc as Record<string, unknown>).fn;
+            const tcRec = tc as Record<string, unknown>;
+            const fn = (tcRec.function ?? tcRec.fn) as
+                | Record<string, unknown>
+                | undefined;
+            const rawArgs = fn?.arguments ?? tcRec.arguments;
+            // Normalize argument key order to avoid false negatives
+            // from object key reordering across turns.
+            let args: unknown = rawArgs;
+            if (typeof rawArgs === "string") {
+                try {
+                    const parsed = JSON.parse(rawArgs);
+                    args = JSON.stringify(parsed, Object.keys(parsed).sort());
+                } catch {
+                    args = rawArgs;
+                }
+            }
             return {
-                name:
-                    (fn as Record<string, unknown>)?.name ??
-                    (tc as Record<string, unknown>).name,
-                arguments:
-                    (fn as Record<string, unknown>)?.arguments ??
-                    (tc as Record<string, unknown>).arguments,
+                name: fn?.name ?? tcRec.name,
+                arguments: args,
             };
         }),
     );
@@ -108,7 +110,7 @@ function extractToolCallsFingerprint(msg: {
 
 function extractFingerprint(msg: {
     role: string;
-    content?: string | TextPart[];
+    content?: string | Array<{ type: string; text?: string }>;
     tool_calls?: unknown[];
     toolCalls?: unknown[];
 }): ResponseFingerprint | undefined {
@@ -119,16 +121,6 @@ function extractFingerprint(msg: {
     };
 }
 
-/** Check if two assistant responses are functionally duplicates. */
-function isDuplicateResponse(
-    a: string | undefined,
-    b: string | undefined,
-): boolean {
-    if (!a || !b) return false;
-    // Normalize: ignore trailing whitespace and case for comparison
-    return a.trim().toLowerCase() === b.trim().toLowerCase();
-}
-
 /** Detect a loop from two consecutive assistant fingerprints.
  *  Same tool calls = definite loop. No tool calls = fall back to text duplicate. */
 function isLoop(
@@ -137,21 +129,16 @@ function isLoop(
 ): boolean {
     if (!a || !b) return false;
     if (a.toolCalls && b.toolCalls && a.toolCalls === b.toolCalls) return true;
-    if (!a.toolCalls && !b.toolCalls) {
-        return isDuplicateResponse(a.text, b.text);
+    if (!a.toolCalls && !b.toolCalls && a.text && b.text) {
+        return a.text.trim().toLowerCase() === b.text.trim().toLowerCase();
     }
     return false;
 }
 
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+
 function notifySafely(
-    ctx: {
-        ui: {
-            notify: (
-                message: string,
-                type?: "info" | "warning" | "error",
-            ) => void;
-        };
-    },
+    ctx: ExtensionContext,
     message: string,
     type: "info" | "warning" | "error",
 ): void {
@@ -162,10 +149,6 @@ function notifySafely(
     }
 }
 
-function findMatchedKey(data: string): string | undefined {
-    return DEBUG_KEYS.find((keyId) => matchesKey(data, keyId));
-}
-
 /** Send a continue — invisible by default, visible if escalation is needed. */
 function sendContinue(
     pi: ExtensionAPI,
@@ -174,13 +157,15 @@ function sendContinue(
 ): void {
     if (needsEscalation.has(sessionId)) {
         // Escalated: send visible user message with randomized nudge
-        Promise.resolve(pi.sendUserMessage(pickNudge())).catch((e) => {
+        try {
+            pi.sendUserMessage(pickNudge());
+        } catch (e) {
             console.error("[pi-bump] Failed to send visible continue:", e);
-        });
+        }
         return;
     }
     // Normal: invisible continue
-    Promise.resolve(
+    try {
         pi.sendMessage(
             {
                 customType: CONTINUE_CUSTOM_TYPE,
@@ -189,10 +174,10 @@ function sendContinue(
                 details: {},
             },
             { triggerTurn: true },
-        ),
-    ).catch((e) => {
+        );
+    } catch (e) {
         console.error("[pi-bump] Failed to send invisible continue:", e);
-    });
+    }
 }
 
 async function runContinueCommand(
@@ -261,6 +246,7 @@ async function runContinueCommand(
  *   - Real user input resets escalation and fingerprint state
  */
 export default function bumpExtension(pi: ExtensionAPI) {
+    // @ts-expect-error — monorepo type resolution mismatch (local 0.74.1 vs root 0.75.4)
     const sub = manageSessionSubscription(pi);
     const debugSessions = new Set<string>();
 
@@ -291,7 +277,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
                     debugSessions.add(sessionId);
                     notifySafely(
                         ctx,
-                        `Debug mode ON — monitored: ${DEBUG_KEYS_LIST}`,
+                        `Debug mode ON — monitored: ${DEBUG_KEYS.join(", ")}`,
                         "info",
                     );
                 }
@@ -309,7 +295,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
     });
 
     // Capture assistant messages to detect loops and manage escalation.
-    pi.on("message_end", async (event, ctx) => {
+    pi.on("message_end", (event, ctx) => {
         const msg = event.message as {
             role: string;
             content?: string | Array<{ type: string; text?: string }>;
@@ -318,7 +304,14 @@ export default function bumpExtension(pi: ExtensionAPI) {
         };
         if (msg.role !== "assistant") return;
         const fingerprint = extractFingerprint(msg);
-        if (!fingerprint) return;
+        if (!fingerprint) {
+            if (process.env.BUMP_DEBUG === "1") {
+                console.warn(
+                    "[pi-bump] Could not extract fingerprint from assistant message. Tool-call loop detection may not fire.",
+                );
+            }
+            return;
+        }
 
         const sessionId = ctx.sessionManager.getSessionId();
         const [, last] = lastFingerprints.get(sessionId) ?? [
@@ -336,6 +329,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
     });
 
     // Replace invisible continue markers with minimal LLM signal.
+    // @ts-expect-error — monorepo type resolution mismatch (local 0.74.1 vs root 0.75.4)
     pi.on("context", async (event) => {
         let modified = false;
         const messages = (
@@ -367,6 +361,13 @@ export default function bumpExtension(pi: ExtensionAPI) {
         }
     });
 
+    // Clean up per-session state when a session shuts down.
+    pi.on("session_shutdown", (_event, ctx) => {
+        const sessionId = ctx.sessionManager.getSessionId();
+        lastFingerprints.delete(sessionId);
+        needsEscalation.delete(sessionId);
+    });
+
     pi.on("session_start", (_event, ctx) => {
         if (!ctx.hasUI) return;
 
@@ -376,7 +377,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
 
         sub.set(
             ctx.ui.onTerminalInput((data) => {
-                const keyId = findMatchedKey(data);
+                const keyId = DEBUG_KEYS.find((keyId) => matchesKey(data, keyId));
                 if (!keyId) return;
 
                 const editorText = ctx.ui.getEditorText().trim();
@@ -397,28 +398,17 @@ export default function bumpExtension(pi: ExtensionAPI) {
                     lastKeyId = undefined;
                     lastKeyTime = 0;
 
-                    if (keyId === Key.enter) {
-                        if (ctx.isIdle() && !ctx.hasPendingMessages()) {
-                            sendContinue(pi, sessionId, needsEscalation);
-                        }
-                        if (isDebug) {
-                            notifySafely(
-                                ctx,
-                                `Double-tap: ${keyId} (${duration}ms)`,
-                                "info",
-                            );
-                        }
-                        return { consume: true };
+                    if (keyId === Key.enter && ctx.isIdle() && !ctx.hasPendingMessages()) {
+                        sendContinue(pi, sessionId, needsEscalation);
                     }
-
                     if (isDebug) {
                         notifySafely(
                             ctx,
                             `Double-tap: ${keyId} (${duration}ms)`,
                             "info",
                         );
-                        return { consume: true };
                     }
+                    return { consume: true };
                 }
 
                 lastKeyId = keyId;

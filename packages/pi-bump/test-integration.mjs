@@ -36,8 +36,6 @@ const mockCtx = {
     sessionManager: { getSessionId: () => sessionId },
 };
 
-const registeredCommands = [];
-
 const mockAPI = {
     on: (event, handler) => {
         if (event === "session_start") {
@@ -48,9 +46,7 @@ const mockAPI = {
             messageEndHandler = handler;
         }
     },
-    registerCommand: (name, options) => {
-        registeredCommands.push({ name, ...options });
-    },
+    registerCommand: () => {},
     sendMessage: (message, options) => {
         sentMessages.push({ message, options, at: Date.now() });
     },
@@ -108,7 +104,7 @@ function isNudge(content) {
     return NUDGE_MESSAGES.includes(content);
 }
 
-function runTests() {
+async function runTests() {
     let pass = 0;
     let fail = 0;
 
@@ -191,10 +187,7 @@ function runTests() {
         console.log("\nTest 6: Slow second Enter (>300ms threshold)");
         terminalHandler("\r");
         const beforeCount = sentMessages.length;
-        const start = Date.now();
-        while (Date.now() - start < 350) {
-            // busy-wait 350ms
-        }
+        await new Promise((r) => setTimeout(r, 350));
         terminalHandler("\r");
         check(
             "No message after slow second Enter",
@@ -276,7 +269,56 @@ function runTests() {
         check("No visible nudge after real input", sentUserMessages.length === 0);
     }
 
+    // Test 10: Tool-call loop triggers escalation
+    {
+        reset();
+        console.log("\nTest 10: Tool-call loop triggers escalation");
+        terminalHandler("\r");
+        terminalHandler("\r");
+        simulateAssistantResponse(null, [
+            { function: { name: "read", arguments: '{"path":"a.txt"}' } },
+        ]);
+        simulateAssistantResponse(null, [
+            { function: { name: "read", arguments: '{"path":"a.txt"}' } },
+        ]);
+
+        sentMessages = [];
+        sentUserMessages = [];
+        terminalHandler("\r");
+        terminalHandler("\r");
+        check(
+            "Tool-call loop escalates to visible nudge",
+            sentUserMessages.length === 1 && isNudge(sentUserMessages[0].content),
+        );
+        check("No invisible message when tool-loop escalated", sentMessages.length === 0);
+    }
+
+    // Test 11: Non-loop tool calls do not escalate
+    {
+        reset();
+        console.log("\nTest 11: Non-loop tool calls stay invisible");
+        terminalHandler("\r");
+        terminalHandler("\r");
+        simulateAssistantResponse(null, [
+            { function: { name: "read", arguments: '{"path":"a.txt"}' } },
+        ]);
+        simulateAssistantResponse(null, [
+            { function: { name: "write", arguments: '{"path":"b.txt"}' } },
+        ]);
+
+        sentMessages = [];
+        sentUserMessages = [];
+        terminalHandler("\r");
+        terminalHandler("\r");
+        check(
+            "Different tool calls stay on invisible tier",
+            sentMessages.length === 1 &&
+                sentMessages[0].message.customType === "__invisible_continue",
+        );
+        check("No visible nudge when tools differ", sentUserMessages.length === 0);
+    }
+
     console.log(`\n${pass} passed, ${fail} failed`);
 }
 
-runTests();
+runTests().catch((e) => { console.error("Test runner failed:", e); process.exit(1); });
