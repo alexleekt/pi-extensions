@@ -10,9 +10,11 @@ import { StringEnum, Type } from "@earendil-works/pi-ai";
 import type {
     BuildSystemPromptOptions,
     ExtensionAPI,
+    ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type AskUserParams, askUserHandler } from "./tool/ask-user.js";
+import type { AnimationLevel, ThemeMode } from "./shared/ask-user.js";
 
 /* ── Module-level reference to ExtensionAPI for tool execute closure ── */
 let _pi: ExtensionAPI | undefined;
@@ -73,16 +75,57 @@ function getStyleMode(entries: unknown[]): boolean | null {
     return typeof enabled === "boolean" ? enabled : null;
 }
 
-function getThemeSettings(entries: unknown[]): { theme?: string; animationLevel?: string } {
+function getThemeSettings(entries: unknown[]): { theme?: ThemeMode; animationLevel?: AnimationLevel } {
     const entry = entries.find(
         (e): e is CustomJournalEntry =>
             isCustomEntry(e) && e.customType === "ask-user-theme",
     );
     const data = entry?.data as Record<string, unknown> | undefined;
+    const theme = typeof data?.theme === "string" ? data.theme : undefined;
+    const animationLevel = typeof data?.animationLevel === "string" ? data.animationLevel : undefined;
     return {
-        theme: typeof data?.theme === "string" ? data.theme : undefined,
-        animationLevel: typeof data?.animationLevel === "string" ? data.animationLevel : undefined,
+        theme: theme === "light" || theme === "dark" || theme === "system" ? theme : undefined,
+        animationLevel: animationLevel === "none" || animationLevel === "minimal" || animationLevel === "all" ? animationLevel : undefined,
     };
+}
+
+/* ── Shared helpers for consistent ask_user UX across all entry points ── */
+
+/** Enrich raw ask_user params with persisted theme/animation settings. */
+function enrichWithThemeSettings(
+    params: AskUserParams,
+    entries: unknown[],
+): AskUserParams {
+    const { theme, animationLevel } = getThemeSettings(entries);
+    return { ...params, theme, animationLevel };
+}
+
+/** Build a metadata saver that writes theme changes back to the session journal. */
+function createThemeSaver(): (metadata: import("./tool/ask-user.js").AskUserMetadata) => void {
+    return (metadata) => {
+        if ((metadata.theme || metadata.animationLevel) && _pi) {
+            _pi.appendEntry("ask-user-theme", {
+                theme: metadata.theme,
+                animationLevel: metadata.animationLevel,
+            });
+        }
+    };
+}
+
+/** Execute ask_user with full enrichment + persistence, used by tool and commands alike. */
+async function runAskUserWithTheme(
+    rawParams: AskUserParams,
+    signal: AbortSignal | undefined,
+    ctx: ExtensionContext,
+): Promise<ReturnType<typeof askUserHandler>> {
+    const params = enrichWithThemeSettings(rawParams, ctx.sessionManager.getEntries());
+    const saveTheme = createThemeSaver();
+    let metadata: import("./tool/ask-user.js").AskUserMetadata = {};
+    const result = await askUserHandler(params, signal, ctx, (m) => {
+        metadata = m;
+    });
+    saveTheme(metadata);
+    return result;
 }
 
 function extractTextFromAssistantEntry(entry: unknown): string {
@@ -464,23 +507,7 @@ const askUserTool = defineTool({
     }),
 
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-        const { theme, animationLevel } = getThemeSettings(ctx.sessionManager.getEntries());
-        const enrichedParams = {
-            ...params,
-            theme,
-            animationLevel,
-        } as AskUserParams;
-        let metadata: import("./tool/ask-user.js").AskUserMetadata = {};
-        const result = await askUserHandler(enrichedParams, signal, ctx, (m) => {
-            metadata = m;
-        });
-        if ((metadata.theme || metadata.animationLevel) && _pi) {
-            _pi.appendEntry("ask-user-theme", {
-                theme: metadata.theme,
-                animationLevel: metadata.animationLevel,
-            });
-        }
-        return result;
+        return runAskUserWithTheme(params, signal, ctx);
     },
 });
 
@@ -574,7 +601,7 @@ export default function (pi: ExtensionAPI) {
 
             const questions = extractQuestions(fullText);
 
-            const result = await askUserHandler(
+            const result = await runAskUserWithTheme(
                 buildAskLastParams(questions, fullText),
                 undefined,
                 ctx,
@@ -623,7 +650,7 @@ export default function (pi: ExtensionAPI) {
             const params = buildDebugParams(mode);
             if (!params) return;
 
-            const result = await askUserHandler(params, undefined, ctx);
+            const result = await runAskUserWithTheme(params, undefined, ctx);
             const textContent = result.content[0];
             const text =
                 textContent.type === "text" ? textContent.text : "No response";
