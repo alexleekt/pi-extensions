@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
-import { sendCancelled, sendToGlimpse } from "../util/glimpse";
+import { sendToGlimpse } from "../util/glimpse";
 import { modKey } from "../util/platform";
+import { useDialogKeys } from "../hooks/useDialogKeys";
+import DialogFooter from "./DialogFooter";
 
 const MAX_FREEFORM_LENGTH = 2000;
 
@@ -17,32 +19,15 @@ export default function Freeform({
     const [text, setText] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = () => {
+    const handleSubmit = useCallback(() => {
         if (isSubmitting) return;
+        const trimmed = text.trim();
+        if (!trimmed) return;
         setIsSubmitting(true);
-        sendToGlimpse({
-            kind: "freeform",
-            text: text.trim(),
-        });
-    };
+        sendToGlimpse({ kind: "freeform", text: trimmed });
+    }, [isSubmitting, text]);
 
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                sendCancelled();
-                return;
-            }
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault();
-                if (text.trim()) {
-                    handleSubmit();
-                }
-            }
-        };
-
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [text, handleSubmit]);
+    useDialogKeys({ onSubmit: handleSubmit, isSubmitting });
 
     return (
         <div className="flex h-full flex-col">
@@ -69,33 +54,11 @@ export default function Freeform({
                 />
             </div>
 
-            <div className="shrink-0 border-t border-border p-4">
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground">
-                            {modKey()}+Enter to submit
-                        </span>
-                        <span className={`text-xs ${text.length > MAX_FREEFORM_LENGTH * 0.9 ? "text-destructive" : "text-muted-foreground"}`}>
-                            {text.length}/{MAX_FREEFORM_LENGTH}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={sendCancelled}
-                            className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            disabled={isSubmitting}
-                            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
-                        >
-                            {isSubmitting ? "Submitting…" : "Submit"}
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <DialogFooter
+                isSubmitting={isSubmitting}
+                onSubmit={handleSubmit}
+                hint={`${text.length}/${MAX_FREEFORM_LENGTH} · ${modKey()}+Enter to submit`}
+            />
         </div>
     );
 }

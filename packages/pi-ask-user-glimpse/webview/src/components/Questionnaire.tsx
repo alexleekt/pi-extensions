@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
-import { sendCancelled, sendToGlimpse } from "../util/glimpse";
-import { modKey } from "../util/platform";
+import { sendToGlimpse } from "../util/glimpse";
+import { useDialogKeys } from "../hooks/useDialogKeys";
 import AdditionalComments from "./AdditionalComments";
+import DialogFooter from "./DialogFooter";
+import { modKey } from "../util/platform";
 import { CheckIcon, RadioIcon, isSelectAllOption } from "./icons";
 
 interface QuestionnaireProps {
@@ -43,11 +45,11 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const setSingleAnswer = (questionTitle: string, value: string) => {
+    const setSingleAnswer = useCallback((questionTitle: string, value: string) => {
         setAnswers((prev) => ({ ...prev, [questionTitle]: value }));
-    };
+    }, []);
 
-    const toggleMultiAnswer = (questionTitle: string, optionTitle: string) => {
+    const toggleMultiAnswer = useCallback((questionTitle: string, optionTitle: string) => {
         const q = questions.find((qq) => qq.title === questionTitle);
         const selectAllOpt = q?.options?.find((opt) => isSelectAllOption(opt.title));
 
@@ -66,9 +68,9 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
             }
             return { ...prev, [questionTitle]: next };
         });
-    };
+    }, [questions]);
 
-    const handleSubmit = () => {
+    const handleSubmit = useCallback(() => {
         if (isSubmitting) return;
         setIsSubmitting(true);
 
@@ -98,7 +100,7 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
         };
         if (additionalComments.trim()) result.additionalComments = additionalComments.trim();
         sendToGlimpse(result);
-    };
+    }, [isSubmitting, questions, answers, comments, additionalComments]);
 
     const answeredCount = questions.filter((q) => {
         const ans = answers[q.title];
@@ -107,21 +109,16 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
         return String(ans).trim().length > 0;
     }).length;
 
+    // Component-specific keydown: Space to toggle, Arrow navigation between options
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement;
             const isInInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
 
-            if (e.key === "Escape") {
-                if (showCommentFor) { e.preventDefault(); setShowCommentFor(null); return; }
-                sendCancelled();
-                return;
-            }
+            if (e.key === "Escape") return; // handled by useDialogKeys
             if (e.key === "Tab") return;
-            if (isInInput) {
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleSubmit(); }
-                return;
-            }
+            if (isInInput) return;
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) return; // handled by useDialogKeys
 
             if ((e.key === " " || e.key === "Spacebar") && target.tagName === "BUTTON") {
                 const questionTitle = target.dataset.question;
@@ -149,15 +146,17 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
                 }
                 return;
             }
-
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault();
-                handleSubmit();
-            }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [showCommentFor, questions, toggleMultiAnswer, handleSubmit]);
+    }, [questions, toggleMultiAnswer]);
+
+    useDialogKeys({
+        onSubmit: handleSubmit,
+        isSubmitting,
+        isCommentOpen: !!showCommentFor,
+        onCloseComment: () => setShowCommentFor(null),
+    });
 
     return (
         <div className="flex h-full flex-col">
@@ -291,22 +290,13 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
                 </div>
             </div>
 
-            <div className="shrink-0 border-t border-border p-4">
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{answeredCount} / {questions.length} answered</span>
-                        <span className="opacity-60">· {modKey()}+Enter to submit</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button onClick={sendCancelled}
-                            className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Cancel</button>
-                        <button onClick={handleSubmit} disabled={isSubmitting}
-                            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40">
-                            {isSubmitting ? "Submitting…" : "Submit"}
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <DialogFooter
+                isSubmitting={isSubmitting}
+                onSubmit={handleSubmit}
+                hint={`${answeredCount} / ${questions.length} answered · ${modKey()}+Enter to submit`}
+            >
+                {/* no extra children */}
+            </DialogFooter>
         </div>
     );
 }
