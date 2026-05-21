@@ -113,16 +113,16 @@ function enrichWithThemeSettings(
     return { ...params, theme, animationLevel };
 }
 
-/** Build a metadata saver that writes theme changes back to the session journal. */
-function createThemeSaver(): (metadata: import("./tool/ask-user.js").AskUserMetadata) => void {
-    return (metadata) => {
-        if ((metadata.theme || metadata.animationLevel) && _pi) {
-            _pi.appendEntry("ask-user-theme", {
-                theme: metadata.theme,
-                animationLevel: metadata.animationLevel,
-            });
-        }
-    };
+/** Persist theme/animation changes back to the session journal. */
+function saveThemeMetadata(
+    metadata: import("./tool/ask-user.js").AskUserMetadata,
+) {
+    if ((metadata.theme || metadata.animationLevel) && _pi) {
+        _pi.appendEntry("ask-user-theme", {
+            theme: metadata.theme,
+            animationLevel: metadata.animationLevel,
+        });
+    }
 }
 
 /** Execute ask_user with full enrichment + persistence, used by tool and commands alike. */
@@ -133,7 +133,7 @@ async function runAskUserWithTheme(
 ): Promise<ReturnType<typeof askUserHandler>> {
     const entries = ctx.sessionManager.getEntries();
     const params = enrichWithThemeSettings(rawParams, entries);
-    const saveTheme = createThemeSaver();
+
     let metadata: import("./tool/ask-user.js").AskUserMetadata = {};
 
     // Capture the agent's preceding message as additional context
@@ -150,7 +150,7 @@ async function runAskUserWithTheme(
     const result = await askUserHandler(enrichedParams, signal, ctx, (m) => {
         metadata = m;
     });
-    saveTheme(metadata);
+    saveThemeMetadata(metadata);
     return result;
 }
 
@@ -335,7 +335,7 @@ function buildDebugParams(mode: string): AskUserParams | null {
                 question: "Test: Single Select",
                 context: "Pick one option (with optional freeform and comment)",
                 options: [
-                    { title: "Option A", description: "Description for A" },
+                    { title: "Option A", description: "Description for A", recommended: true },
                     { title: "Option B", description: "Description for B" },
                     { title: "Option C", description: "Description for C" },
                 ],
@@ -348,7 +348,7 @@ function buildDebugParams(mode: string): AskUserParams | null {
                 context:
                     "Pick multiple options (with optional freeform and comment)",
                 options: [
-                    { title: "Feature X", description: "Enable feature X" },
+                    { title: "Feature X", description: "Enable feature X", recommended: true },
                     { title: "Feature Y", description: "Enable feature Y" },
                     { title: "Feature Z", description: "Enable feature Z" },
                 ],
@@ -374,6 +374,7 @@ function buildDebugParams(mode: string): AskUserParams | null {
                             {
                                 title: "PostgreSQL",
                                 description: "Relational, proven",
+                                recommended: true,
                             },
                             { title: "SQLite", description: "Zero-config" },
                         ],
@@ -382,7 +383,7 @@ function buildDebugParams(mode: string): AskUserParams | null {
                         title: "Architecture",
                         description: "Preferred style?",
                         options: [
-                            { title: "Monolith", description: "Simple" },
+                            { title: "Monolith", description: "Simple", recommended: true },
                             { title: "Microservices", description: "Scalable" },
                         ],
                         allowMultiple: true,
@@ -476,6 +477,12 @@ const askUserTool = defineTool({
                                     "Longer description explaining this option",
                             }),
                         ),
+                        recommended: Type.Optional(
+                            Type.Boolean({
+                                description:
+                                    "Mark this option as most recommended. Shows a badge in the dialog.",
+                            }),
+                        ),
                     }),
                 ]),
                 { description: "List of options for the user to choose from" },
@@ -500,6 +507,12 @@ const askUserTool = defineTool({
                                     description: Type.Optional(
                                         Type.String({
                                             description: "Option description",
+                                        }),
+                                    ),
+                                    recommended: Type.Optional(
+                                        Type.Boolean({
+                                            description:
+                                                "Mark this option as most recommended. Shows a badge in the dialog.",
                                         }),
                                     ),
                                 }),

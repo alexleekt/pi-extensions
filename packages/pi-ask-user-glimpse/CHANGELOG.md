@@ -5,6 +5,9 @@ All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this f
 ## [Unreleased]
 
 ### Added
+- **Recommendation badges** — Options can now include `recommended: true` to show a "Recommended" badge in the dialog. The badge renders next to the option title using the primary color token. Works in single-select, multi-select, and questionnaire modes. The LLM tool schema documents the field so agents can mark their top recommendation.
+- **Auto-catch free-form questions** — When `/ask-style` is set to `Always Dialog` (default), the extension now automatically detects questions written as plain text by the agent and converts them into a rich `ask_user` dialog without manual `/ask` intervention. If the user has already started typing a response in the editor, auto-catch skips with a notification. Deduped by message text via session journal entries so the same message is never caught twice.
+- **HTML context format** — New `contextFormat: "html"` option for the `ask_user` tool. When set, the `context` field renders inside a sandboxed iframe (`sandbox="allow-scripts"`) in the left panel instead of markdown. The iframe inherits the wrapper's CSS variables for automatic light/dark theme consistency. Theme changes are propagated via `postMessage`. Terminal fallback strips HTML tags and shows plain text with a `[HTML context]` prefix.
 - **YOLO mode** — New `/ask-style` state that tells the agent to proceed with its best recommendation without asking. Injects a mandate: "Do NOT ask the user for input or confirmation. Go with your best recommendation and proceed immediately. Only use `ask_user` if the action would cause irreversible harm, data loss, security compromise, or violate explicit hard constraints."
 
 ### Changed

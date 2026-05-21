@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
-import { sendToGlimpse } from "../util/glimpse";
 import { useDialogKeys } from "../hooks/useDialogKeys";
+import { sendToGlimpse } from "../util/glimpse";
+import { renderOptionText } from "../util/html";
+import { modKey } from "../util/platform";
 import AdditionalComments from "./AdditionalComments";
 import DialogFooter from "./DialogFooter";
-import { modKey } from "../util/platform";
-import { CheckIcon, CommentIcon, RadioIcon, isSelectAllOption } from "./icons";
+import { CheckIcon, CommentIcon, isSelectAllOption, RadioIcon } from "./icons";
 
 interface QuestionnaireProps {
     payload: AskUserPayload;
@@ -20,7 +21,9 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
     const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [additionalComments, setAdditionalComments] = useState("");
-    const optionRefs = useRef<Map<string, HTMLButtonElement | HTMLTextAreaElement | null>>(new Map());
+    const optionRefs = useRef<
+        Map<string, HTMLButtonElement | HTMLTextAreaElement | null>
+    >(new Map());
     const questionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
     // Auto-scroll to first unanswered question on mount
@@ -35,39 +38,62 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
             const el = questionRefs.current.get(firstUnanswered.title);
             if (el) {
                 el.scrollIntoView({ behavior: "smooth", block: "start" });
-                const hasOptions = firstUnanswered.options && firstUnanswered.options.length > 0;
+                const hasOptions =
+                    firstUnanswered.options &&
+                    firstUnanswered.options.length > 0;
                 if (!hasOptions) {
-                    optionRefs.current.get(`${firstUnanswered.title}-freeform`)?.focus();
+                    optionRefs.current
+                        .get(`${firstUnanswered.title}-freeform`)
+                        ?.focus();
                 }
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const setSingleAnswer = useCallback((questionTitle: string, value: string) => {
-        setAnswers((prev) => ({ ...prev, [questionTitle]: value }));
-    }, []);
+    const setSingleAnswer = useCallback(
+        (questionTitle: string, value: string) => {
+            setAnswers((prev) => ({ ...prev, [questionTitle]: value }));
+        },
+        [],
+    );
 
-    const toggleMultiAnswer = useCallback((questionTitle: string, optionTitle: string) => {
-        const q = questions.find((qq) => qq.title === questionTitle);
-        const selectAllOpt = q?.options?.find((opt) => isSelectAllOption(opt.title));
+    const toggleMultiAnswer = useCallback(
+        (questionTitle: string, optionTitle: string) => {
+            const q = questions.find((qq) => qq.title === questionTitle);
+            const selectAllOpt = q?.options?.find((opt) =>
+                isSelectAllOption(opt.title),
+            );
 
-        if (selectAllOpt && optionTitle === selectAllOpt.title) {
-            const regularOptions = q!.options!.filter((opt) => !isSelectAllOption(opt.title)).map((opt) => opt.title);
-            setAnswers((prev) => ({ ...prev, [questionTitle]: regularOptions }));
-            return;
-        }
-
-        setAnswers((prev) => {
-            const current = prev[questionTitle];
-            const arr = Array.isArray(current) ? [...current] : current ? [current] : [];
-            let next = arr.includes(optionTitle) ? arr.filter((v) => v !== optionTitle) : [...arr, optionTitle];
-            if (selectAllOpt && next.includes(selectAllOpt.title)) {
-                next = next.filter((v) => v !== selectAllOpt.title);
+            if (selectAllOpt && optionTitle === selectAllOpt.title) {
+                const regularOptions = (q?.options ?? [])
+                    .filter((opt) => !isSelectAllOption(opt.title))
+                    .map((opt) => opt.title);
+                setAnswers((prev) => ({
+                    ...prev,
+                    [questionTitle]: regularOptions,
+                }));
+                return;
             }
-            return { ...prev, [questionTitle]: next };
-        });
-    }, [questions]);
+
+            setAnswers((prev) => {
+                const current = prev[questionTitle];
+                const arr = Array.isArray(current)
+                    ? [...current]
+                    : current
+                      ? [current]
+                      : [];
+                let next = arr.includes(optionTitle)
+                    ? arr.filter((v) => v !== optionTitle)
+                    : [...arr, optionTitle];
+                if (selectAllOpt && next.includes(selectAllOpt.title)) {
+                    next = next.filter((v) => v !== selectAllOpt.title);
+                }
+                return { ...prev, [questionTitle]: next };
+            });
+        },
+        [questions],
+    );
 
     const handleSubmit = useCallback(() => {
         if (isSubmitting) return;
@@ -76,28 +102,35 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         const questionnaireDetails = questions
             .map((q) => {
                 const answer = answers[q.title];
-                const answerText = Array.isArray(answer) ? answer.join(", ") : (answer ?? "").trim();
+                const answerText = Array.isArray(answer)
+                    ? answer.join(", ")
+                    : (answer ?? "").trim();
                 if (!answerText) return null;
                 return {
                     question: q.title,
                     answer: answerText,
-                    kind: (q.options && q.options.length > 0 ? "selection" : "freeform") as "selection" | "freeform",
+                    kind: (q.options && q.options.length > 0
+                        ? "selection"
+                        : "freeform") as "selection" | "freeform",
                     comment: comments[q.title]?.trim() || undefined,
                 };
             })
             .filter(Boolean) as {
-                question: string;
-                answer: string;
-                kind: "selection" | "freeform";
-                comment?: string;
-            }[];
+            question: string;
+            answer: string;
+            kind: "selection" | "freeform";
+            comment?: string;
+        }[];
 
         const result: Record<string, unknown> = {
             kind: "questionnaire",
-            selections: questionnaireDetails.map((s) => `${s.question}: ${s.answer}`),
+            selections: questionnaireDetails.map(
+                (s) => `${s.question}: ${s.answer}`,
+            ),
             questionnaireDetails,
         };
-        if (additionalComments.trim()) result.additionalComments = additionalComments.trim();
+        if (additionalComments.trim())
+            result.additionalComments = additionalComments.trim();
         sendToGlimpse(result);
     }, [isSubmitting, questions, answers, comments, additionalComments]);
 
@@ -112,19 +145,29 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement;
-            const isInInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+            const isInInput =
+                target instanceof HTMLInputElement ||
+                target instanceof HTMLTextAreaElement;
 
             if (e.key === "Escape") return; // handled by useDialogKeys
             if (e.key === "Tab") return;
             if (isInInput) return;
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) return; // handled by useDialogKeys
 
-            if ((e.key === " " || e.key === "Spacebar") && target.tagName === "BUTTON") {
+            if (
+                (e.key === " " || e.key === "Spacebar") &&
+                target.tagName === "BUTTON"
+            ) {
                 const questionTitle = target.dataset.question;
                 const optionTitle = target.dataset.option;
                 if (questionTitle && optionTitle) {
-                    const q = questions.find((qq) => qq.title === questionTitle);
-                    if (q?.allowMultiple) { e.preventDefault(); toggleMultiAnswer(questionTitle, optionTitle); }
+                    const q = questions.find(
+                        (qq) => qq.title === questionTitle,
+                    );
+                    if (q?.allowMultiple) {
+                        e.preventDefault();
+                        toggleMultiAnswer(questionTitle, optionTitle);
+                    }
                 }
                 return;
             }
@@ -134,14 +177,24 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                     e.preventDefault();
                     const questionTitle = target.dataset.question;
                     const currentOption = target.dataset.option;
-                    const siblings = Array.from(document.querySelectorAll<HTMLButtonElement>(
-                        `button[data-question="${questionTitle}"]`,
-                    ));
-                    const idx = siblings.findIndex((btn) => btn.dataset.option === currentOption);
+                    const siblings = Array.from(
+                        document.querySelectorAll<HTMLButtonElement>(
+                            `button[data-question="${questionTitle}"]`,
+                        ),
+                    );
+                    const idx = siblings.findIndex(
+                        (btn) => btn.dataset.option === currentOption,
+                    );
                     if (idx === -1) return;
-                    const nextIdx = e.key === "ArrowDown" ? Math.min(idx + 1, siblings.length - 1) : Math.max(idx - 1, 0);
+                    const nextIdx =
+                        e.key === "ArrowDown"
+                            ? Math.min(idx + 1, siblings.length - 1)
+                            : Math.max(idx - 1, 0);
                     const nextBtn = siblings[nextIdx];
-                    if (nextBtn) { nextBtn.focus(); nextBtn.scrollIntoView({ block: "nearest" }); }
+                    if (nextBtn) {
+                        nextBtn.focus();
+                        nextBtn.scrollIntoView({ block: "nearest" });
+                    }
                 }
                 return;
             }
@@ -160,95 +213,268 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
     return (
         <div className="flex h-full flex-col">
             <div className="shrink-0 h-1 w-full bg-muted">
-                <div className="h-full bg-primary transition-all duration-300"
-                    style={{ width: `${(answeredCount / questions.length) * 100}%` }} />
+                <div
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{
+                        width: `${(answeredCount / questions.length) * 100}%`,
+                    }}
+                />
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
                 <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">{answeredCount} / {questions.length} answered</span>
+                    <span className="text-xs font-medium text-muted-foreground">
+                        {answeredCount} / {questions.length} answered
+                    </span>
                 </div>
 
                 <div className="space-y-3">
                     {questions.map((q) => {
                         const answer = answers[q.title];
-                        const isAnswered = answer !== undefined && (Array.isArray(answer) ? answer.length > 0 : String(answer).trim().length > 0);
+                        const isAnswered =
+                            answer !== undefined &&
+                            (Array.isArray(answer)
+                                ? answer.length > 0
+                                : String(answer).trim().length > 0);
                         const isRequired = payload.allowSkip === false;
                         return (
-                            <div ref={(el) => { questionRefs.current.set(q.title, el); }} key={q.title}
-                                className={`rounded-xl border p-4 bg-card ${isRequired && !isAnswered ? "border-destructive/50" : "border-border"}`}>
+                            <div
+                                ref={(el) => {
+                                    questionRefs.current.set(q.title, el);
+                                }}
+                                key={q.title}
+                                className={`rounded-xl border p-4 bg-card ${isRequired && !isAnswered ? "border-destructive/50" : "border-border"}`}
+                            >
                                 <div className="mb-1 flex items-center gap-2">
-                                    <span className="font-medium">{q.title}</span>
+                                    <span className="font-medium">
+                                        {q.title}
+                                    </span>
                                     {isRequired && !isAnswered && (
-                                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">Required</span>
+                                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                                            Required
+                                        </span>
                                     )}
                                 </div>
-                                {q.description && <div className="mb-3 text-sm text-muted-foreground">{q.description}</div>}
+                                {q.description && (
+                                    <div className="mb-3 text-sm text-muted-foreground">
+                                        {q.description}
+                                    </div>
+                                )}
 
                                 {q.options && q.options.length > 0 ? (
                                     <div className="space-y-2">
-                                        {q.allowMultiple ? q.options.map((opt) => {
-                                            const arr = Array.isArray(answer) ? answer : answer ? [answer] : [];
-                                            const isSelected = arr.includes(opt.title);
-                                            const isSelectAll = isSelectAllOption(opt.title);
-                                            return (
-                                                <button ref={(el) => { optionRefs.current.set(`${q.title}-${opt.title}`, el); }}
-                                                    key={opt.title} data-question={q.title} data-option={opt.title}
-                                                    onClick={() => toggleMultiAnswer(q.title, opt.title)}
-                                                    role={isSelectAll ? "radio" : "checkbox"} aria-checked={isSelected}
-                                                    className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
-                                                        isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-accent"
-                                                    }`}>
-                                                    {isSelectAll ? (
-                                                        <RadioIcon checked={isSelected} />
-                                                    ) : (
-                                                        <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-                                                            isSelected ? "bg-primary text-primary-foreground" : "border border-border"
-                                                        }`}>
-                                                            {isSelected && <CheckIcon checked={true} />}
-                                                        </div>
-                                                    )}
-                                                    <div className="min-w-0">
-                                                        <div className="font-medium">{opt.title}</div>
-                                                        {opt.description && (
-                                                            <div className="mt-0.5 text-sm text-muted-foreground border-l-2 border-muted-foreground/30 pl-2.5">
-                                                                {opt.description}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </button>
-                                            );
-                                        }) : q.options.map((opt) => {
-                                            const isSelected = answer === opt.title;
-                                            return (
-                                                <button ref={(el) => { optionRefs.current.set(`${q.title}-${opt.title}`, el); }}
-                                                    key={opt.title} data-question={q.title} data-option={opt.title}
-                                                    onClick={() => setSingleAnswer(q.title, opt.title)}
-                                                    role="radio" aria-checked={isSelected}
-                                                    className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
-                                                        isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-accent"
-                                                    }`}>
-                                                    <RadioIcon checked={isSelected} />
-                                                    <div className="min-w-0">
-                                                        <div className="font-medium">{opt.title}</div>
-                                                        {opt.description && (
-                                                            <div className="mt-0.5 text-sm text-muted-foreground border-l-2 border-muted-foreground/30 pl-2.5">
-                                                                {opt.description}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
+                                        {q.allowMultiple
+                                            ? q.options.map((opt, optIdx) => {
+                                                  const arr = Array.isArray(
+                                                      answer,
+                                                  )
+                                                      ? answer
+                                                      : answer
+                                                        ? [answer]
+                                                        : [];
+                                                  const isSelected =
+                                                      arr.includes(opt.title);
+                                                  const isSelectAll =
+                                                      isSelectAllOption(
+                                                          opt.title,
+                                                      );
+                                                  const titleHtml =
+                                                      renderOptionText(
+                                                          opt.title,
+                                                      );
+                                                  const descHtml =
+                                                      opt.description
+                                                          ? renderOptionText(
+                                                                opt.description,
+                                                            )
+                                                          : null;
+                                                  return (
+                                                      <button
+                                                          ref={(el) => {
+                                                              optionRefs.current.set(
+                                                                  `${q.title}-${opt.title}`,
+                                                                  el,
+                                                              );
+                                                          }}
+                                                          key={opt.title}
+                                                          data-question={
+                                                              q.title
+                                                          }
+                                                          data-option={
+                                                              opt.title
+                                                          }
+                                                          onClick={() =>
+                                                              toggleMultiAnswer(
+                                                                  q.title,
+                                                                  opt.title,
+                                                              )
+                                                          }
+                                                          role={
+                                                              isSelectAll
+                                                                  ? "radio"
+                                                                  : "checkbox"
+                                                          }
+                                                          aria-checked={
+                                                              isSelected
+                                                          }
+                                                          className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
+                                                              isSelected
+                                                                  ? "border-primary bg-primary/5"
+                                                                  : "border-border hover:bg-accent"
+                                                          }`}
+                                                      >
+                                                          {isSelectAll ? (
+                                                              <RadioIcon
+                                                                  checked={
+                                                                      isSelected
+                                                                  }
+                                                              />
+                                                          ) : (
+                                                              <div
+                                                                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
+                                                                      isSelected
+                                                                          ? "bg-primary text-primary-foreground"
+                                                                          : "border border-border"
+                                                                  }`}
+                                                              >
+                                                                  {isSelected && (
+                                                                      <CheckIcon
+                                                                          checked={
+                                                                              true
+                                                                          }
+                                                                      />
+                                                                  )}
+                                                              </div>
+                                                          )}
+                                                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                                                              {optIdx + 1}
+                                                          </span>
+                                                          <div className="min-w-0">
+                                                              <div className="flex items-center gap-2">
+                                                                  <div
+                                                                      className="font-medium"
+                                                                      dangerouslySetInnerHTML={{
+                                                                          __html: titleHtml,
+                                                                      }}
+                                                                  />
+                                                                  {opt.recommended && (
+                                                                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                                                          Recommended
+                                                                      </span>
+                                                                  )}
+                                                              </div>
+                                                              {descHtml && (
+                                                                  <div
+                                                                      className="mt-0.5 text-sm text-muted-foreground border-l-2 border-muted-foreground/30 pl-2.5"
+                                                                      dangerouslySetInnerHTML={{
+                                                                          __html: descHtml,
+                                                                      }}
+                                                                  />
+                                                              )}
+                                                          </div>
+                                                      </button>
+                                                  );
+                                              })
+                                            : q.options.map((opt, optIdx) => {
+                                                  const isSelected =
+                                                      answer === opt.title;
+                                                  const titleHtml =
+                                                      renderOptionText(
+                                                          opt.title,
+                                                      );
+                                                  const descHtml =
+                                                      opt.description
+                                                          ? renderOptionText(
+                                                                opt.description,
+                                                            )
+                                                          : null;
+                                                  return (
+                                                      <button
+                                                          ref={(el) => {
+                                                              optionRefs.current.set(
+                                                                  `${q.title}-${opt.title}`,
+                                                                  el,
+                                                              );
+                                                          }}
+                                                          key={opt.title}
+                                                          data-question={
+                                                              q.title
+                                                          }
+                                                          data-option={
+                                                              opt.title
+                                                          }
+                                                          onClick={() =>
+                                                              setSingleAnswer(
+                                                                  q.title,
+                                                                  opt.title,
+                                                              )
+                                                          }
+                                                          role="radio"
+                                                          aria-checked={
+                                                              isSelected
+                                                          }
+                                                          className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
+                                                              isSelected
+                                                                  ? "border-primary bg-primary/5"
+                                                                  : "border-border hover:bg-accent"
+                                                          }`}
+                                                      >
+                                                          <RadioIcon
+                                                              checked={
+                                                                  isSelected
+                                                              }
+                                                          />
+                                                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                                                              {optIdx + 1}
+                                                          </span>
+                                                          <div className="min-w-0">
+                                                              <div className="flex items-center gap-2">
+                                                                  <div
+                                                                      className="font-medium"
+                                                                      dangerouslySetInnerHTML={{
+                                                                          __html: titleHtml,
+                                                                      }}
+                                                                  />
+                                                                  {opt.recommended && (
+                                                                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                                                          Recommended
+                                                                      </span>
+                                                                  )}
+                                                              </div>
+                                                              {descHtml && (
+                                                                  <div
+                                                                      className="mt-0.5 text-sm text-muted-foreground border-l-2 border-muted-foreground/30 pl-2.5"
+                                                                      dangerouslySetInnerHTML={{
+                                                                          __html: descHtml,
+                                                                      }}
+                                                                  />
+                                                              )}
+                                                          </div>
+                                                      </button>
+                                                  );
+                                              })}
                                     </div>
                                 ) : (
                                     <div>
-                                        <textarea ref={(el) => { optionRefs.current.set(`${q.title}-freeform`, el); }}
-                                            placeholder="Your answer…" value={(answer as string) ?? ""}
-                                            onChange={(e) => setSingleAnswer(q.title, e.target.value)}
+                                        <textarea
+                                            ref={(el) => {
+                                                optionRefs.current.set(
+                                                    `${q.title}-freeform`,
+                                                    el,
+                                                );
+                                            }}
+                                            placeholder="Your answer…"
+                                            value={(answer as string) ?? ""}
+                                            onChange={(e) =>
+                                                setSingleAnswer(
+                                                    q.title,
+                                                    e.target.value,
+                                                )
+                                            }
                                             maxLength={1000}
                                             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring resize-none"
-                                            rows={3} />
+                                            rows={3}
+                                        />
                                         <div className="mt-1 text-right text-xs text-muted-foreground">
                                             {String(answer ?? "").length}/1000
                                         </div>
@@ -257,25 +483,50 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
 
                                 {payload.allowComment && (
                                     <div className="mt-2">
-                                        <button onClick={() => setShowCommentFor((prev) => prev === q.title ? null : q.title)}
+                                        <button
+                                            onClick={() =>
+                                                setShowCommentFor((prev) =>
+                                                    prev === q.title
+                                                        ? null
+                                                        : q.title,
+                                                )
+                                            }
                                             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                                            aria-expanded={showCommentFor === q.title}>
+                                            aria-expanded={
+                                                showCommentFor === q.title
+                                            }
+                                        >
                                             <CommentIcon />
-                                            {showCommentFor === q.title ? "Hide comment" : comments[q.title]?.trim() ? "Edit comment" : "Add comment"}
+                                            {showCommentFor === q.title
+                                                ? "Hide comment"
+                                                : comments[q.title]?.trim()
+                                                  ? "Edit comment"
+                                                  : "Add comment"}
                                         </button>
                                         {showCommentFor === q.title && (
-                                            <textarea value={comments[q.title] ?? ""}
-                                                onChange={(e) => setComments((prev) => ({ ...prev, [q.title]: e.target.value }))}
+                                            <textarea
+                                                value={comments[q.title] ?? ""}
+                                                onChange={(e) =>
+                                                    setComments((prev) => ({
+                                                        ...prev,
+                                                        [q.title]:
+                                                            e.target.value,
+                                                    }))
+                                                }
                                                 placeholder="Optional comment…"
                                                 className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring resize-none"
-                                                rows={3} />
+                                                rows={3}
+                                            />
                                         )}
                                     </div>
                                 )}
                             </div>
                         );
                     })}
-                    <AdditionalComments value={additionalComments} onChange={setAdditionalComments} />
+                    <AdditionalComments
+                        value={additionalComments}
+                        onChange={setAdditionalComments}
+                    />
                 </div>
             </div>
 

@@ -94,6 +94,26 @@ Ask the user to pick multiple options:
 
 Each option has a checkbox. "Select all" and "Select none" links appear above the list (when not searching). A "Clear all" link resets selections. Submit is disabled until at least one item is selected. Use ⌘+Enter (macOS) or Ctrl+Enter to submit.
 
+### HTML Context (Visualizations)
+
+When text and Mermaid diagrams aren't enough, render rich HTML in the context panel:
+
+```json
+{
+  "question": "Which layout performs better?",
+  "context": "<div style='display:flex;gap:1rem;justify-content:center'>...</div>",
+  "contextFormat": "html",
+  "options": [
+    { "title": "Layout A", "description": "Dense grid with sidebar" },
+    { "title": "Layout B", "description": "Spacious single column" }
+  ]
+}
+```
+
+The `context` HTML renders inside a **sandboxed iframe** (`sandbox="allow-scripts"`) in the left panel. It inherits the wrapper's CSS variables (`--background`, `--foreground`, `--primary`, etc.) for automatic light/dark theme consistency. The iframe auto-updates its theme class when the user toggles settings. This is ideal for throwaway bar charts, tables, decision trees, or any visualization that helps the user decide.
+
+**Security:** The iframe is isolated from the wrapper app. It cannot access `localStorage`, cookies, or the parent DOM. Only inline scripts are permitted (for animations/interactivity). The agent should not include `<script src="...">` tags that load external resources — inline JS and CSS only.
+
 ### Freeform
 
 Ask an open-ended question with no predefined options:
@@ -151,8 +171,9 @@ Each question is shown as a card with a progress bar at the top. Questions with 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `question` | `string` | *(required)* | The question to ask |
-| `context` | `string` | — | Additional context shown in a left-side markdown panel |
-| `options` | `Array<string &#124; {title, description?}>` | — | Options for flat single/multi-select mode |
+| `context` | `string` | — | Additional context shown in a left-side panel |
+| `contextFormat` | `"markdown" &#124; "html"` | `"markdown"` | Format of the `context` field. `markdown` renders formatted text with Mermaid diagram support. `html` renders in a sandboxed iframe — useful for throwaway charts, tables, or interactive visualizations. The iframe inherits the wrapper's CSS variables for theme consistency. |
+| `options` | `Array<string &#124; {title, description?, recommended?}>` | — | Options for flat single/multi-select mode. Set `recommended: true` to show a "Recommended" badge. |
 | `questions` | `Array<{title, description?, options?, allowMultiple?}>` | — | Questions for questionnaire mode. When present, `options` is ignored. Each question can have its own `options` (same shape as top-level `options`) and `allowMultiple`. Questions without `options` render as freeform textareas. |
 | `allowMultiple` | `boolean` | `false` | Allow selecting multiple options |
 | `allowFreeform` | `boolean` | `true` | Show a freeform "Custom" option |

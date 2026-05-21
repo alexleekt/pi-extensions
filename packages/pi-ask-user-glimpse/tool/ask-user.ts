@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { prompt } from "glimpseui";
 import { terminalPrompt } from "../fallback/terminal-prompt.js";
-import type { AnimationLevel, AskUserPayload, Question, ThemeMode } from "../shared/ask-user.js";
+import type {
+    AnimationLevel,
+    AskUserPayload,
+    Question,
+    ThemeMode,
+} from "../shared/ask-user.js";
 import { formatResponse } from "./response-formatter.js";
 
 const _require = createRequire(import.meta.url);
@@ -62,7 +67,11 @@ function resolveWebviewHtml(): string {
 export interface AskUserParams {
     question: string;
     context?: string;
-    options?: (string | { title: string; description?: string })[];
+    contextFormat?: "markdown" | "html";
+    options?: (
+        | string
+        | { title: string; description?: string; recommended?: boolean }
+    )[];
     questions?: Question[];
     allowMultiple?: boolean;
     allowFreeform?: boolean;
@@ -99,7 +108,11 @@ export async function askUserHandler(
 
     const normalizedOptions = (params.options ?? []).map((opt) => {
         if (typeof opt === "string") return { title: opt };
-        return { title: opt.title, description: opt.description };
+        return {
+            title: opt.title,
+            description: opt.description,
+            recommended: opt.recommended,
+        };
     });
 
     const hasOptions = normalizedOptions.length > 0;
@@ -135,6 +148,7 @@ export async function askUserHandler(
         type: payloadType,
         question,
         context,
+        contextFormat: params.contextFormat,
         options: normalizedOptions,
         questions: params.questions,
         allowMultiple,
@@ -166,17 +180,17 @@ export async function askUserHandler(
             ? `Pi · ${sessionName} · ${questionTitle}`
             : `Pi · ${questionTitle}`;
 
-        const options: Record<string, unknown> = {
+        const windowOptions: Record<string, unknown> = {
             width: 1200,
             height: 900,
             title: title.length > 60 ? `${title.slice(0, 57)}…` : title,
         };
 
         if (params.followCursor) {
-            options.followCursor = true;
+            windowOptions.followCursor = true;
         }
 
-        result = (await prompt(html, options)) as Record<
+        result = (await prompt(html, windowOptions)) as Record<
             string,
             unknown
         > | null;

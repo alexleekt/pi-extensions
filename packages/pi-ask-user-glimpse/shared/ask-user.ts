@@ -9,6 +9,7 @@
 export interface QuestionOption {
     title: string;
     description?: string;
+    recommended?: boolean;
 }
 
 export interface Question {
@@ -25,6 +26,7 @@ export interface AskUserPayload {
     type: "single-select" | "multi-select" | "questionnaire" | "freeform";
     question: string;
     context?: string;
+    contextFormat?: "markdown" | "html";
     options: QuestionOption[];
     questions?: Question[];
     allowMultiple: boolean;
