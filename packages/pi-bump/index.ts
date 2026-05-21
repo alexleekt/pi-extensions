@@ -14,6 +14,30 @@ const THRESHOLD_MS = 300;
  *  Invisible to the user, but gives the LLM a clear semantic nudge to keep going. */
 const CONTINUE_SIGNAL = "Continue";
 
+/** Randomized prompts to break loops with fresh phrasing. */
+const NUDGE_MESSAGES = [
+    "Continue",
+    "Keep going",
+    "What's next?",
+    "Onward!",
+    "And then?",
+    "Build on that",
+    "More please",
+    "Next step?",
+    "Keep the momentum",
+    "Let's see it",
+    "Expand on this",
+    "Go deeper",
+    "Proceed",
+    "Keep building",
+    "Show me where this leads",
+    "Run it",
+];
+
+function pickNudge(): string {
+    return NUDGE_MESSAGES[Math.floor(Math.random() * NUDGE_MESSAGES.length)];
+}
+
 const DEBUG_KEYS = [
     Key.enter,
     Key.backspace,
@@ -53,6 +77,48 @@ function extractAssistantText(msg: {
     return undefined;
 }
 
+/** Per-response fingerprint for loop detection. */
+interface ResponseFingerprint {
+    text: string | undefined;
+    toolCalls: string | undefined;
+}
+
+function extractToolCallsFingerprint(msg: {
+    tool_calls?: unknown[];
+    toolCalls?: unknown[];
+}): string | undefined {
+    const calls = msg.tool_calls ?? msg.toolCalls;
+    if (!calls || !Array.isArray(calls) || calls.length === 0) return undefined;
+    return JSON.stringify(
+        calls.map((tc: unknown) => {
+            const fn =
+                (tc as Record<string, unknown>).function ??
+                (tc as Record<string, unknown>).fn;
+            return {
+                name:
+                    (fn as Record<string, unknown>)?.name ??
+                    (tc as Record<string, unknown>).name,
+                arguments:
+                    (fn as Record<string, unknown>)?.arguments ??
+                    (tc as Record<string, unknown>).arguments,
+            };
+        }),
+    );
+}
+
+function extractFingerprint(msg: {
+    role: string;
+    content?: string | TextPart[];
+    tool_calls?: unknown[];
+    toolCalls?: unknown[];
+}): ResponseFingerprint | undefined {
+    if (msg.role !== "assistant") return undefined;
+    return {
+        text: extractAssistantText(msg),
+        toolCalls: extractToolCallsFingerprint(msg),
+    };
+}
+
 /** Check if two assistant responses are functionally duplicates. */
 function isDuplicateResponse(
     a: string | undefined,
@@ -61,6 +127,20 @@ function isDuplicateResponse(
     if (!a || !b) return false;
     // Normalize: ignore trailing whitespace and case for comparison
     return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+/** Detect a loop from two consecutive assistant fingerprints.
+ *  Same tool calls = definite loop. No tool calls = fall back to text duplicate. */
+function isLoop(
+    a: ResponseFingerprint | undefined,
+    b: ResponseFingerprint | undefined,
+): boolean {
+    if (!a || !b) return false;
+    if (a.toolCalls && b.toolCalls && a.toolCalls === b.toolCalls) return true;
+    if (!a.toolCalls && !b.toolCalls) {
+        return isDuplicateResponse(a.text, b.text);
+    }
+    return false;
 }
 
 function notifySafely(
@@ -86,8 +166,20 @@ function findMatchedKey(data: string): string | undefined {
     return DEBUG_KEYS.find((keyId) => matchesKey(data, keyId));
 }
 
-/** Send an invisible continue message to resume the agentic loop. */
-function sendInvisibleContinue(pi: ExtensionAPI): void {
+/** Send a continue — invisible by default, visible if escalation is needed. */
+function sendContinue(
+    pi: ExtensionAPI,
+    sessionId: string,
+    needsEscalation: Set<string>,
+): void {
+    if (needsEscalation.has(sessionId)) {
+        // Escalated: send visible user message with randomized nudge
+        Promise.resolve(pi.sendUserMessage(pickNudge())).catch((e) => {
+            console.error("[pi-bump] Failed to send visible continue:", e);
+        });
+        return;
+    }
+    // Normal: invisible continue
     Promise.resolve(
         pi.sendMessage(
             {
@@ -107,7 +199,7 @@ async function runContinueCommand(
     pi: ExtensionAPI,
     ctx: ExtensionCommandContext,
     args: string,
-    lastAssistantTexts: Map<string, [string | undefined, string | undefined]>,
+    needsEscalation: Set<string>,
 ): Promise<void> {
     const subcommand = args.trim().toLowerCase();
 
@@ -115,12 +207,14 @@ async function runContinueCommand(
     if (subcommand === "status") {
         const idle = ctx.isIdle();
         const hasPending = ctx.hasPendingMessages();
+        const escalated = needsEscalation.has(ctx.sessionManager.getSessionId());
         notifySafely(
             ctx,
             [
                 "pi-bump status:",
                 `  Agent idle: ${idle ? "yes" : "no"}`,
                 `  Pending messages: ${hasPending ? "yes" : "no"}`,
+                `  Escalated: ${escalated ? "yes" : "no"}`,
             ].join("\n"),
             "info",
         );
@@ -137,40 +231,20 @@ async function runContinueCommand(
                 "         /continue help    This message",
                 "",
                 "Double-tap Enter on empty input also triggers invisible continue.",
+                "When the agent loops, the next continue sends a visible nudge instead.",
             ].join("\n"),
             "info",
         );
         return;
     }
 
-    // ---- main: fire invisible continue --------------------------------------
+    // ---- main: fire continue (invisible or escalated visible) ---------------
     if (!ctx.isIdle()) {
         await ctx.waitForIdle();
     }
 
     const sessionId = ctx.sessionManager.getSessionId();
-    const [prev, last] = lastAssistantTexts.get(sessionId) ?? [
-        undefined,
-        undefined,
-    ];
-    if (isDuplicateResponse(prev, last)) {
-        notifySafely(
-            ctx,
-            "Continue blocked: last response was a duplicate. Type something new to continue.",
-            "warning",
-        );
-        return;
-    }
-
-    await pi.sendMessage(
-        {
-            customType: CONTINUE_CUSTOM_TYPE,
-            content: "",
-            display: false,
-            details: {},
-        },
-        { triggerTurn: true },
-    );
+    sendContinue(pi, sessionId, needsEscalation);
 }
 
 /**
@@ -178,27 +252,29 @@ async function runContinueCommand(
  * double-taps Enter on an empty chat input, or when the /continue command
  * is used.
  *
- * Strategy (experimental hybrid):
+ * Strategy (hybrid escalation):
  *   - Double-tap Enter or /continue sends a custom-type message with display: false
- *   - context event replaces the invisible message with a minimal user signal (e.g. "...")
+ *   - context event replaces the invisible message with a minimal user signal ("Continue")
  *   - LLM sees the minimal signal and continues meaningfully instead of repeating
- *   - Duplicate detection blocks rapid-fire continues that would loop
- *   - Real user input resets the duplicate detection state
+ *   - Loop detection (same tool calls or exact text duplicate) escalates the *next*
+ *     continue to a visible randomized user message (e.g. "What's next?")
+ *   - Real user input resets escalation and fingerprint state
  */
 export default function bumpExtension(pi: ExtensionAPI) {
     const sub = manageSessionSubscription(pi);
     const debugSessions = new Set<string>();
 
-    // Per-session state for duplicate detection
-    const lastAssistantTexts = new Map<
+    // Per-session state for loop detection and escalation
+    const lastFingerprints = new Map<
         string,
-        [string | undefined, string | undefined]
+        [ResponseFingerprint | undefined, ResponseFingerprint | undefined]
     >();
+    const needsEscalation = new Set<string>();
 
     pi.registerCommand("continue", {
         description: CONTINUE_COMMAND_DESCRIPTION,
         handler: async (args, ctx) => {
-            await runContinueCommand(pi, ctx, args, lastAssistantTexts);
+            await runContinueCommand(pi, ctx, args, needsEscalation);
         },
     });
 
@@ -223,36 +299,43 @@ export default function bumpExtension(pi: ExtensionAPI) {
         });
     }
 
-    // Reset duplicate detection when the user sends real input.
+    // Reset state when the user sends real input.
     pi.on("input", async (event, ctx) => {
         if (event.source === "interactive") {
             const sessionId = ctx.sessionManager.getSessionId();
-            lastAssistantTexts.set(sessionId, [undefined, undefined]);
+            lastFingerprints.set(sessionId, [undefined, undefined]);
+            needsEscalation.delete(sessionId);
         }
     });
 
-    // Capture assistant messages to detect duplicate responses.
+    // Capture assistant messages to detect loops and manage escalation.
     pi.on("message_end", async (event, ctx) => {
         const msg = event.message as {
             role: string;
             content?: string | Array<{ type: string; text?: string }>;
+            tool_calls?: unknown[];
+            toolCalls?: unknown[];
         };
         if (msg.role !== "assistant") return;
-        const text = extractAssistantText(msg);
-        if (!text) return;
+        const fingerprint = extractFingerprint(msg);
+        if (!fingerprint) return;
 
         const sessionId = ctx.sessionManager.getSessionId();
-        const [prev] = lastAssistantTexts.get(sessionId) ?? [
+        const [, last] = lastFingerprints.get(sessionId) ?? [
             undefined,
             undefined,
         ];
-        lastAssistantTexts.set(sessionId, [prev, text]);
+
+        if (isLoop(last, fingerprint)) {
+            needsEscalation.add(sessionId);
+        } else {
+            needsEscalation.delete(sessionId);
+        }
+
+        lastFingerprints.set(sessionId, [last, fingerprint]);
     });
 
-    // EXPERIMENTAL: Replace invisible continue markers with minimal LLM signal.
-    // Instead of stripping the custom message (which leaves identical context →
-    // duplicate response), we inject a minimal user message that prompts
-    // meaningful continuation without polluting the chat UI.
+    // Replace invisible continue markers with minimal LLM signal.
     pi.on("context", async (event) => {
         let modified = false;
         const messages = (
@@ -316,22 +399,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
 
                     if (keyId === Key.enter) {
                         if (ctx.isIdle() && !ctx.hasPendingMessages()) {
-                            // DUPLICATE DETECTION: block if the last two
-                            // assistant responses were identical (indicates
-                            // the previous continue produced a loop).
-                            const [prev, last] = lastAssistantTexts.get(
-                                sessionId,
-                            ) ?? [undefined, undefined];
-                            if (isDuplicateResponse(prev, last)) {
-                                notifySafely(
-                                    ctx,
-                                    "Continue blocked: last response was a duplicate. Type something new to continue.",
-                                    "warning",
-                                );
-                                return { consume: true };
-                            }
-
-                            sendInvisibleContinue(pi);
+                            sendContinue(pi, sessionId, needsEscalation);
                         }
                         if (isDebug) {
                             notifySafely(

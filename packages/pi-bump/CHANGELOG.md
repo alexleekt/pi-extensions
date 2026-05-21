@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Hybrid escalation strategy**: When loop detection notices identical tool calls or exact text duplicates across the last two assistant responses, the next continue automatically escalates from an invisible `customType` message to a visible randomized user message (e.g. "Continue", "Keep going", "What's next?"). This breaks loops that the invisible tier alone cannot escape.
+- Restored `NUDGE_MESSAGES` pool with 16 varied nudge prompts for the visible escalation tier.
+- Per-session loop detection using response fingerprints (text + tool call signatures).
+- `/continue status` now shows whether the session is escalated.
+
+### Changed
+
+- Removed "Continue blocked" warning — instead of blocking on duplicate responses, pi-bump now escalates to a visible nudge on the next continue attempt.
+- Duplicate detection now compares tool call fingerprints in addition to text content.
+
 ## [0.3.0] - 2026-05-17
 
 ### Changed

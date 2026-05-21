@@ -19,18 +19,19 @@ Resume the agentic loop without sending the LLM a single token.
 
 | Command | What it does |
 |---------|-------------|
-| `/continue` | Resume the loop invisibly |
-| `/continue status` | Show if the agent is idle or busy |
+| `/continue` | Resume the loop invisibly (or visibly if escalated) |
+| `/continue status` | Show if the agent is idle, busy, or escalated |
 | `/continue help` | Show available commands |
 
 Both methods only fire when the agent is idle and no messages are pending.
 
 ## How it works
 
-- A hidden `customType` message is sent with `display: false`
-- Pi's default `convertToLlm` strips custom messages before they reach the LLM
-- The LLM receives unchanged context and loops naturally
-- A `context` event handler also proactively removes any leaked markers as insurance
+**Default (invisible)**: A hidden `customType` message is sent with `display: false`. The `context` handler replaces it with `"Continue"` before the LLM sees it. The LLM receives a clean semantic nudge and the chat stays uncluttered.
+
+**Escalated (visible)**: When loop detection notices the last two assistant responses had identical tool calls (or exact text duplicates), the *next* continue sends a real visible user message like `"What's next?"` or `"Keep going"` — stronger signal, same goal.
+
+A `context` event handler proactively removes any leaked invisible markers as insurance. Real user input always resets escalation state.
 
 ## Installation
 
@@ -56,18 +57,15 @@ Then toggle per-session debugging with `/bump-debug-keypresses`:
 
 Debug mode resets when the session ends. Only available when `BUMP_DEBUG=1` is set.
 
-## Experimental: Hybrid Continue (v0.3.0+)
+## Hybrid Escalation Strategy (v0.3.1+)
 
-`pi-bump` now uses a hybrid strategy to avoid repeat loops:
+`pi-bump` uses a two-tier strategy to keep the agent moving without polluting the chat:
 
-1. **Invisible trigger** — sends a hidden `customType` message (`display: false`) so nothing appears in chat
-2. **LLM continue signal** — replaces the hidden marker with `"Continue"` in the LLM context, giving the model a clear semantic nudge without polluting the conversation
-3. **Duplicate detection** — tracks the last two assistant responses; blocks further continues if they're identical (indicates a loop)
-4. **Auto-reset** — real user input resets the duplicate detection window
+1. **Invisible tier** (default) — sends a hidden `customType` message (`display: false`). The `context` handler replaces it with `"Continue"` for the LLM. Chat stays clean.
+2. **Visible tier** (escalation) — when loop detection sees identical tool calls (or exact text duplicates) across the last two assistant responses, the *next* continue sends a real visible user message with a randomized nudge like `"Continue"`, `"Go deeper"`, or `"Show me where this leads"`.
+3. **Auto-reset** — a non-loop assistant response or real user input resets back to the invisible tier.
 
-If you hit a blocked continue, type something new and try again.
-
-> ⚠️ This is experimental. Feedback welcome via GitHub issues.
+The visible tier only triggers when the invisible tier isn't breaking the loop — so most continues stay silent and seamless.
 
 ## Acknowledgments
 

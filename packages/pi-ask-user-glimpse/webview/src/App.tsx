@@ -39,7 +39,7 @@ function renderComponent(payload: AskUserPayload, showHeader = true) {
     }
 }
 
-const DEFAULT_PANEL_WIDTH = 50; // percent
+const DEFAULT_PANEL_WIDTH = 70; // percent
 const MIN_PANEL_WIDTH = 20;     // percent
 const MAX_PANEL_WIDTH = 80;     // percent
 

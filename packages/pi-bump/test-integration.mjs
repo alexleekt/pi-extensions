@@ -8,10 +8,13 @@
 import bumpExtension from "./index.ts";
 
 let sentMessages = [];
+let sentUserMessages = [];
 let editorText = "";
 let idle = true;
 let hasPending = false;
 let terminalHandler = null;
+let inputHandler = null;
+let messageEndHandler = null;
 
 const mockUI = {
     onTerminalInput: (handler) => {
@@ -23,32 +26,63 @@ const mockUI = {
     getEditorText: () => editorText,
 };
 
+const sessionId = "test-session";
+
 const mockCtx = {
     hasUI: true,
     ui: mockUI,
     isIdle: () => idle,
     hasPendingMessages: () => hasPending,
+    sessionManager: { getSessionId: () => sessionId },
 };
+
+const registeredCommands = [];
 
 const mockAPI = {
     on: (event, handler) => {
         if (event === "session_start") {
             handler({}, mockCtx);
+        } else if (event === "input") {
+            inputHandler = handler;
+        } else if (event === "message_end") {
+            messageEndHandler = handler;
         }
     },
+    registerCommand: (name, options) => {
+        registeredCommands.push({ name, ...options });
+    },
+    sendMessage: (message, options) => {
+        sentMessages.push({ message, options, at: Date.now() });
+    },
     sendUserMessage: (content, options) => {
-        sentMessages.push({ content, options, at: Date.now() });
+        sentUserMessages.push({ content, options, at: Date.now() });
     },
 };
 
-// Load extension — wires up the session_start handler and captures terminalHandler
+// Load extension — wires up handlers
 bumpExtension(mockAPI);
 
 function reset() {
     sentMessages = [];
+    sentUserMessages = [];
     editorText = "";
     idle = true;
     hasPending = false;
+}
+
+function simulateAssistantResponse(content, toolCalls) {
+    if (messageEndHandler) {
+        messageEndHandler(
+            { message: { role: "assistant", content, tool_calls: toolCalls } },
+            mockCtx,
+        );
+    }
+}
+
+function simulateUserInput(text) {
+    if (inputHandler) {
+        inputHandler({ source: "interactive", text }, mockCtx);
+    }
 }
 
 const NUDGE_MESSAGES = [
@@ -57,16 +91,17 @@ const NUDGE_MESSAGES = [
     "What's next?",
     "Onward!",
     "And then?",
+    "Build on that",
     "More please",
     "Next step?",
     "Keep the momentum",
     "Let's see it",
+    "Expand on this",
+    "Go deeper",
     "Proceed",
-    "Go on",
-    "Carry on",
-    "Move forward",
-    "Keep at it",
-    "Press on",
+    "Keep building",
+    "Show me where this leads",
+    "Run it",
 ];
 
 function isNudge(content) {
@@ -92,18 +127,20 @@ function runTests() {
         return;
     }
 
-    // Test 1: Double Enter on empty editor sends a nudge when idle
+    // Test 1: Double Enter on empty editor sends invisible message when idle
     {
         reset();
-        console.log("\nTest 1: Double Enter on empty editor (idle)");
+        console.log("\nTest 1: Double Enter on empty editor (idle) — invisible tier");
         const result1 = terminalHandler("\r");
         const result2 = terminalHandler("\r");
         check("First Enter NOT consumed", !result1?.consume);
         check("Second Enter consumed", result2?.consume === true);
         check(
-            "Message sent is a nudge",
-            sentMessages.length === 1 && isNudge(sentMessages[0].content),
+            "Invisible message sent",
+            sentMessages.length === 1 &&
+                sentMessages[0].message.customType === "__invisible_continue",
         );
+        check("No visible nudge sent", sentUserMessages.length === 0);
     }
 
     // Test 2: Double Enter ignored when not idle
@@ -112,7 +149,8 @@ function runTests() {
     console.log("\nTest 2: Double Enter while streaming (not idle)");
     terminalHandler("\r");
     terminalHandler("\r");
-    check("No message sent while streaming", sentMessages.length === 0);
+    check("No invisible message sent while streaming", sentMessages.length === 0);
+    check("No visible nudge sent while streaming", sentUserMessages.length === 0);
 
     // Test 3: Double Enter ignored when pending messages exist
     reset();
@@ -121,8 +159,12 @@ function runTests() {
     terminalHandler("\r");
     terminalHandler("\r");
     check(
-        "No message sent when pending messages exist",
+        "No invisible message sent when pending messages exist",
         sentMessages.length === 0,
+    );
+    check(
+        "No visible nudge sent when pending messages exist",
+        sentUserMessages.length === 0,
     );
 
     // Test 4: Enter with text in editor is ignored
@@ -158,6 +200,80 @@ function runTests() {
             "No message after slow second Enter",
             sentMessages.length === beforeCount,
         );
+    }
+
+    // Test 7: Escalation — after looped responses, next continue sends visible nudge
+    {
+        reset();
+        console.log("\nTest 7: Escalation after looped assistant responses");
+        // First continue: invisible
+        terminalHandler("\r");
+        terminalHandler("\r");
+        check("First double-tap sends invisible", sentMessages.length === 1);
+
+        // Simulate two identical assistant responses (loop)
+        simulateAssistantResponse("I'll continue working on that.");
+        simulateAssistantResponse("I'll continue working on that.");
+
+        // Next continue: should escalate to visible
+        sentMessages = [];
+        terminalHandler("\r");
+        terminalHandler("\r");
+        check(
+            "Escalated double-tap sends visible nudge",
+            sentUserMessages.length === 1 && isNudge(sentUserMessages[0].content),
+        );
+        check("No invisible message when escalated", sentMessages.length === 0);
+    }
+
+    // Test 8: Escalation cleared after non-loop response
+    {
+        reset();
+        console.log("\nTest 8: Escalation cleared after non-loop response");
+        // Trigger loop and escalation
+        terminalHandler("\r");
+        terminalHandler("\r");
+        simulateAssistantResponse("I'll continue working on that.");
+        simulateAssistantResponse("I'll continue working on that.");
+
+        // Non-loop response clears escalation
+        simulateAssistantResponse("Here's the updated file.");
+
+        sentMessages = [];
+        sentUserMessages = [];
+        terminalHandler("\r");
+        terminalHandler("\r");
+        check(
+            "After non-loop response, goes back to invisible",
+            sentMessages.length === 1 &&
+                sentMessages[0].message.customType === "__invisible_continue",
+        );
+        check("No visible nudge after reset", sentUserMessages.length === 0);
+    }
+
+    // Test 9: Real user input resets escalation
+    {
+        reset();
+        console.log("\nTest 9: Real user input resets escalation");
+        // Trigger loop and escalation
+        terminalHandler("\r");
+        terminalHandler("\r");
+        simulateAssistantResponse("I'll continue working on that.");
+        simulateAssistantResponse("I'll continue working on that.");
+
+        // Real user input resets
+        simulateUserInput("Please fix the bug");
+
+        sentMessages = [];
+        sentUserMessages = [];
+        terminalHandler("\r");
+        terminalHandler("\r");
+        check(
+            "After real input, goes back to invisible",
+            sentMessages.length === 1 &&
+                sentMessages[0].message.customType === "__invisible_continue",
+        );
+        check("No visible nudge after real input", sentUserMessages.length === 0);
     }
 
     console.log(`\n${pass} passed, ${fail} failed`);

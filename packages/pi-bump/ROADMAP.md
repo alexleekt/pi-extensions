@@ -7,6 +7,7 @@
 - [x] Invisible continuation via hidden `customType` message
 - [x] Context guard to strip leaked markers before LLM calls
 - [x] `/continue` command with `status` and `help` subcommands
+- [x] **Escalation to visible nudge** — when the agent loops (same tool calls or duplicate text), the next continue sends a visible randomized user message instead of an invisible trigger
 
 ## Maybe
 
