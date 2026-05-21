@@ -4,8 +4,23 @@
 
 import {
     type CustomJournalEntry,
-    isCustomEntry,
+    isCustomEntry as _isCustomEntry,
 } from "@alexleekt/pi-shared/types";
+
+/* ── Defensive: isCustomEntry may resolve to undefined in some jiti cache states ── */
+const isCustomEntry: typeof _isCustomEntry =
+    typeof _isCustomEntry === "function"
+        ? _isCustomEntry
+        : (e: unknown): e is CustomJournalEntry => {
+              if (!e || typeof e !== "object") return false;
+              const entry = e as Record<string, unknown>;
+              return (
+                  entry.type === "custom" &&
+                  typeof entry.customType === "string" &&
+                  typeof entry.data === "object" &&
+                  entry.data !== null
+              );
+          };
 import { StringEnum, Type } from "@earendil-works/pi-ai";
 import type {
     BuildSystemPromptOptions,
