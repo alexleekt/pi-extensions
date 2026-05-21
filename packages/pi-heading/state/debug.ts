@@ -53,10 +53,32 @@ export function isDebugEnabled(): boolean {
     return _debugEnabled;
 }
 
+const MAX_LOG_BYTES = 1024 * 1024; // 1 MB
+
+/** Rotate the log by dropping the oldest half of entries when it exceeds the size limit. */
+function rotateLogIfNeeded(): void {
+    try {
+        const stats = fs.statSync(DEBUG_LOG);
+        if (stats.size <= MAX_LOG_BYTES) return;
+    } catch {
+        return; // file doesn't exist yet
+    }
+    try {
+        const raw = fs.readFileSync(DEBUG_LOG, "utf8");
+        const lines = raw.trim().split("\n").filter(Boolean);
+        const keepFrom = Math.floor(lines.length / 2);
+        const trimmed = `${lines.slice(keepFrom).join("\n")}\n`;
+        fs.writeFileSync(DEBUG_LOG, trimmed, "utf8");
+    } catch {
+        // silent fail
+    }
+}
+
 /** Append a structured debug entry to the log file. */
 export function logDebug(entry: DebugEntry): void {
     if (!_debugEnabled) return;
     try {
+        rotateLogIfNeeded();
         const line = `${JSON.stringify(entry)}\n`;
         fs.appendFileSync(DEBUG_LOG, line, "utf8");
     } catch {

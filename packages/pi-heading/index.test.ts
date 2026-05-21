@@ -62,11 +62,13 @@ function makeMockPi() {
         };
     } = {};
     const entries: any[] = [];
+    const eventEmissions: { channel: string; data: unknown }[] = [];
 
     return {
         handlers,
         commands,
         entries,
+        eventEmissions,
         on: (event: string, handler: any) => {
             if (!handlers[event]) handlers[event] = [];
             handlers[event].push(handler);
@@ -76,6 +78,11 @@ function makeMockPi() {
         },
         appendEntry: (key: string, data: any) => {
             entries.push({ key, data });
+        },
+        events: {
+            emit: (channel: string, data: unknown) => {
+                eventEmissions.push({ channel, data });
+            },
         },
     };
 }

@@ -1,10 +1,8 @@
 # Integrating with pi-heading
 
-> ⚠️ **NOT YET IMPLEMENTED** — This document describes the *planned* event-bus integration. The current codebase does not emit `heading:state` events. This integration is on the roadmap for a future release.
+pi-heading broadcasts its current heading state on the shared Pi `EventBus` so other extensions can react to what the user is working on — without coupling to herdr, tmux, or any specific multiplexer.
 
-pi-heading will broadcast its current heading state on the shared Pi `EventBus` so other extensions can react to what the user is working on — without coupling to herdr, tmux, or any specific multiplexer.
-
-## What you will get
+## What you get
 
 Subscribe to the `heading:state` channel on `pi.events`:
 
@@ -26,9 +24,9 @@ interface HeadingExposure {
 }
 ```
 
-### Mode semantics (planned)
+### Mode semantics
 
-| Mode | When it will fire | What it means |
+| Mode | When it fires | What it means |
 |------|--------------|---------------|
 | `goal` | After the user sends a message and the goal is summarized | The agent is about to start working on this goal |
 | `working` | When the agent loop starts, and at the start of each tool-call turn | The agent is actively executing |
@@ -37,7 +35,7 @@ interface HeadingExposure {
 
 A `clearExposure()` (empty topic/goal, mode `idle`) will fire on `session_shutdown` so consumers can clean up any transient UI they built.
 
-## When events will fire
+## When events fire
 
 ```
 session_start  → exposeHeading(replayedState,  "achievement" | "goal")
@@ -45,7 +43,7 @@ before_agent_start → exposeHeading(newState,   "goal" | "working")
 agent_start    → exposeHeading(currentState,    "working")
 turn_start     → exposeHeading(currentState,    "working")
 turn_end       → exposeHeading(stateWithAch,    "achievement")
-agent_end      → exposeHeading(currentState,    "idle")
+agent_end      → clearExposure()
 session_shutdown → clearExposure()
 /heading cmd   → exposeHeading(manualState,     "goal")
 ```

@@ -12,7 +12,7 @@ let spinnerTimer: ReturnType<typeof setInterval> | null = null;
 let spinnerIndex = 0;
 let currentSpinnerText = "";
 
-export type WidgetMode = "goal" | "working" | "achievement";
+export type WidgetMode = "goal" | "working" | "achievement" | "idle";
 
 export function renderWidget(
     ctx: ExtensionContext,
@@ -20,7 +20,7 @@ export function renderWidget(
     mode: WidgetMode = "goal",
 ): void {
     const trimmed = text.trim();
-    if (!trimmed) {
+    if (!trimmed || mode === "idle") {
         clearWidget(ctx);
         return;
     }

@@ -5,12 +5,20 @@ import type {
     ExtensionAPI,
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import type { WidgetMode } from "../ui/widget.js";
 
 export interface State {
     topic: string;
     goal: string;
     /** Post-turn achievement summary — what the agent accomplished in its last turn. */
     achievement?: string;
+}
+
+export interface HeadingExposure {
+    topic: string;
+    goal: string;
+    achievement?: string;
+    mode: WidgetMode;
 }
 
 const STATE_KEY = "heading";
@@ -24,6 +32,29 @@ export function getState(leafId: string): State | undefined {
 
 export function setState(leafId: string, state: State): void {
     memory.set(leafId, state);
+}
+
+/** Broadcast heading state to the shared event bus so other extensions can react. */
+export function exposeHeading(
+    pi: ExtensionAPI,
+    state: State,
+    mode: WidgetMode,
+): void {
+    pi.events.emit("heading:state", {
+        topic: state.topic,
+        goal: state.goal,
+        achievement: state.achievement,
+        mode,
+    } as HeadingExposure);
+}
+
+/** Clear exposure when the session ends or no state is available. */
+export function clearExposure(pi: ExtensionAPI): void {
+    pi.events.emit("heading:state", {
+        topic: "",
+        goal: "",
+        mode: "idle",
+    } as HeadingExposure);
 }
 
 /** Replay previous recap entries for the current branch. */

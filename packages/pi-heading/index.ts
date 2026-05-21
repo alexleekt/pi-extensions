@@ -25,6 +25,8 @@ import {
 } from "./state/debug.js";
 import { stableTopic } from "./state/guard.js";
 import {
+    clearExposure,
+    exposeHeading,
     getState,
     persistState,
     replayBranch,
@@ -163,13 +165,17 @@ export default function (pi: ExtensionAPI) {
         if (replayed) {
             if (replayed.achievement) {
                 renderWidget(ctx, replayed.achievement, "achievement");
+                exposeHeading(pi, replayed, "achievement");
             } else if (replayed.goal) {
                 renderWidget(ctx, replayed.goal, "goal");
+                exposeHeading(pi, replayed, "goal");
             } else {
                 clearWidget(ctx);
+                clearExposure(pi);
             }
         } else {
             clearWidget(ctx);
+            clearExposure(pi);
         }
     });
 
@@ -180,12 +186,14 @@ export default function (pi: ExtensionAPI) {
         agentStartedForCurrentTurn = false; // prevent late summarize from spinning
         stopSpinner(); // safety net against any dangling spinner
         ctx.ui.setWorkingVisible(true); // restore Pi's loader for next agent run
+        clearExposure(pi);
     });
 
     pi.on("session_shutdown", async (_event, ctx) => {
         if (!ctx.hasUI) return;
         clearWidget(ctx);
         ctx.ui.setWorkingVisible(true); // restore default for next session
+        clearExposure(pi);
     });
 
     // ── Summarize on every user message ────────────────────────────
@@ -247,6 +255,7 @@ export default function (pi: ExtensionAPI) {
                     return;
                 }
                 renderWidget(ctx, result.goal, mode);
+                exposeHeading(pi, state, mode);
                 logDebug(
                     makeDebugEntry(
                         prompt,
@@ -279,6 +288,7 @@ export default function (pi: ExtensionAPI) {
         const state = leafId ? getState(leafId) : undefined;
         if (state?.goal) {
             renderWidget(ctx, state.goal, "working");
+            exposeHeading(pi, state, "working");
         }
     });
 
@@ -290,6 +300,7 @@ export default function (pi: ExtensionAPI) {
         const state = leafId ? getState(leafId) : undefined;
         if (state?.goal) {
             renderWidget(ctx, state.goal, "working");
+            exposeHeading(pi, state, "working");
         }
     });
 
@@ -309,6 +320,7 @@ export default function (pi: ExtensionAPI) {
             stopSpinner();
             if (existing?.goal) {
                 renderWidget(ctx, existing.goal, "achievement");
+                exposeHeading(pi, existing, "achievement");
             }
         }
         // Intermediate turns: keep spinner running across the turn_end → turn_start gap
@@ -393,6 +405,7 @@ export default function (pi: ExtensionAPI) {
                     return;
                 }
                 renderWidget(ctx, achievement, "achievement");
+                exposeHeading(pi, state, "achievement");
                 logDebug(
                     makeDebugEntryAchievement(
                         assistantText,
@@ -444,6 +457,7 @@ export default function (pi: ExtensionAPI) {
                 persistState(pi, state);
             }
             renderWidget(ctx, goal);
+            exposeHeading(pi, state, "goal");
             ctx.ui.notify(`Heading set: ${goal}`, "info");
         },
     });

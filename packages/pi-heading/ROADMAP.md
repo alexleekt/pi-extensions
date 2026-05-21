@@ -22,6 +22,11 @@
 - [ ] If not, show a one-time warning via `ctx.ui.notify()` suggesting `/heading-model` to pick a working model
 - [ ] Cache the validation result for the session to avoid repeated checks
 
+### Model validation on startup
+- [ ] Check if the configured heading model (override or session model) has a valid API key on `session_start`
+- [ ] If not, show a one-time warning via `ctx.ui.notify()` suggesting `/heading-model` to pick a working model
+- [ ] Cache the validation result for the session to avoid repeated checks
+
 ### Cheaper model selector
 - [ ] `/heading-model` should filter to fast/cheap models by default (flash/mini/haiku/turbo)
 - [ ] Show estimated cost per 1K tokens alongside each model option
