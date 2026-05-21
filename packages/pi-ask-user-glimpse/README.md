@@ -203,7 +203,7 @@ Override the default for the current session:
 /ask-style
 ```
 
-Cycles through two states:
+Cycles through three states:
 
 | State | Behavior |
 |-------|----------|

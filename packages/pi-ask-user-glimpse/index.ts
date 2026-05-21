@@ -588,7 +588,7 @@ export default function (pi: ExtensionAPI) {
     // ── Manual style toggle for ask_user behavior ──
     pi.registerCommand("ask-style", {
         description:
-            "Cycle ask_user style: Always Dialog → Plain Text → YOLO",
+            "Cycle ask_user style: Always Dialog → Plain Text → YOLO → Always Dialog",
         handler: async (_args, ctx) => {
             const styleMode = getStyleMode(ctx.sessionManager.getEntries());
 
@@ -606,7 +606,7 @@ export default function (pi: ExtensionAPI) {
                 label = "Always Dialog (default)";
             }
 
-            pi.appendEntry("ask-user-style", { mode: nextMode });
+            await pi.appendEntry("ask-user-style", { mode: nextMode });
             ctx.ui.notify(`ask_user style: ${label}`, "info");
         },
     });
