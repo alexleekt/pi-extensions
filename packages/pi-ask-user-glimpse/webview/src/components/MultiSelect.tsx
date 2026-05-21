@@ -9,10 +9,9 @@ import { CheckIcon, CommentIcon, RadioIcon, isSelectAllOption } from "./icons";
 
 interface MultiSelectProps {
     payload: AskUserPayload;
-    showHeader?: boolean;
 }
 
-export default function MultiSelect({ payload, showHeader = true }: MultiSelectProps) {
+export default function MultiSelect({ payload }: MultiSelectProps) {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [comment, setComment] = useState("");
     const [showComment, setShowComment] = useState(false);
@@ -33,9 +32,8 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
         );
     }, [payload.options, query]);
 
-    const selectAllOpt = useMemo(() => payload.options.find((opt) => isSelectAllOption(opt.title)), [payload.options]);
+    const selectAllOption = useMemo(() => payload.options.find((opt) => isSelectAllOption(opt.title)), [payload.options]);
 
-    /* ── Refs for stable keydown handler ── */
     const stateRef = useRef({
         selected: new Set<string>(),
         comment: "",
@@ -46,15 +44,19 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
         isSubmitting: false,
         filtered: payload.options,
         allowFreeform: payload.allowFreeform,
-        selectAllOpt: undefined as typeof selectAllOpt,
+        selectAllOption: undefined as typeof selectAllOption,
     });
     stateRef.current = {
-        selected, comment, showComment, additionalComments, query, activeIndex, isSubmitting, filtered, allowFreeform: payload.allowFreeform, selectAllOpt,
+        selected, comment, showComment, additionalComments, query, activeIndex, isSubmitting, filtered, allowFreeform: payload.allowFreeform, selectAllOption,
     };
+
+    const handleFreeform = useCallback(() => {
+        sendToGlimpse({ kind: "freeform", text: stateRef.current.query });
+    }, []);
 
     const toggle = useCallback((title: string) => {
         const s = stateRef.current;
-        if (s.selectAllOpt && title === s.selectAllOpt.title) {
+        if (s.selectAllOption && title === s.selectAllOption.title) {
             const regular = s.filtered.filter((opt) => !isSelectAllOption(opt.title)).map((opt) => opt.title);
             setSelected(new Set(regular));
             return;
@@ -62,7 +64,7 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
         setSelected((prev) => {
             const next = new Set(prev);
             if (next.has(title)) next.delete(title); else next.add(title);
-            if (s.selectAllOpt && next.has(s.selectAllOpt.title)) next.delete(s.selectAllOpt.title);
+            if (s.selectAllOption && next.has(s.selectAllOption.title)) next.delete(s.selectAllOption.title);
             return next;
         });
     }, []);
@@ -83,10 +85,6 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
         if (s.additionalComments.trim()) result.additionalComments = s.additionalComments.trim();
         sendToGlimpse(result);
     }, [handleFreeform]);
-
-    const handleFreeform = useCallback(() => {
-        sendToGlimpse({ kind: "freeform", text: stateRef.current.query });
-    }, []);
 
     useDialogKeys({
         onSubmit: handleSubmit,
@@ -152,21 +150,13 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [toggle, handleSubmit, handleFreeform]);
 
-    const hasResults = filtered.length > 0;
-
     return (
         <div className="flex h-full flex-col">
             <div className="shrink-0 border-b border-border p-4">
-                {showHeader && (
-                    <div className="max-h-24 overflow-y-auto">
-                        <h1 className="text-lg font-semibold">{payload.question}</h1>
-                        {payload.context && <p className="mt-1 text-sm text-muted-foreground">{payload.context}</p>}
-                    </div>
-                )}
                 {showSearch && (
                     <input ref={searchRef} type="text" placeholder="Search options..." value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring ${showHeader ? "mt-3" : ""}`} />
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring" />
                 )}
                 {selected.size > 0 && (
                     <div className="mt-2 flex items-center gap-2">
@@ -195,7 +185,7 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
 
             <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-2" role="listbox" aria-label="Options" aria-multiselectable="true">
-                    {hasResults ? (
+                    {filtered.length > 0 ? (
                         filtered.map((opt, idx) => {
                             const isSelected = selected.has(opt.title);
                             const isSelectAll = isSelectAllOption(opt.title);

@@ -9,12 +9,10 @@ const MAX_FREEFORM_LENGTH = 2000;
 
 interface FreeformProps {
     payload: AskUserPayload;
-    showHeader?: boolean;
 }
 
 export default function Freeform({
     payload,
-    showHeader = true,
 }: FreeformProps) {
     const [text, setText] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,19 +29,6 @@ export default function Freeform({
 
     return (
         <div className="flex h-full flex-col">
-            {showHeader && (
-                <div className="shrink-0 border-b border-border p-4">
-                    <h1 className="text-lg font-semibold">
-                        {payload.question}
-                    </h1>
-                    {payload.context && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            {payload.context}
-                        </p>
-                    )}
-                </div>
-            )}
-
             <div className="flex-1 p-4">
                 <textarea
                     value={text}

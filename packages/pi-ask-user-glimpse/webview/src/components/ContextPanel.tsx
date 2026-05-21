@@ -1,11 +1,15 @@
 import mermaid from "mermaid";
 import { useEffect, useRef } from "react";
 import { marked } from "marked";
-import { sanitizeHtml } from "../util/markdown";
+import { renderMarkdownInline, sanitizeHtml } from "../util/markdown";
 import { useSettings } from "../util/settings";
+import { HelpIcon } from "./icons";
+import SettingsButton from "./SettingsButton";
 
 interface ContextPanelProps {
     context: string;
+    question?: string;
+    onShowShortcuts?: () => void;
 }
 
 class MermaidRenderer extends marked.Renderer {
@@ -28,7 +32,6 @@ function renderContextMarkdown(text: string): string {
     return sanitizeHtml(raw);
 }
 
-/* ── Mermaid theme sync ── */
 let _lastMermaidTheme: "default" | "dark" | undefined;
 
 function initMermaid(resolvedTheme: "light" | "dark") {
@@ -46,7 +49,7 @@ function initMermaid(resolvedTheme: "light" | "dark") {
     }
 }
 
-export default function ContextPanel({ context }: ContextPanelProps) {
+export default function ContextPanel({ context, question, onShowShortcuts }: ContextPanelProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const { resolvedTheme } = useSettings();
     const html = renderContextMarkdown(context);
@@ -59,12 +62,10 @@ export default function ContextPanel({ context }: ContextPanelProps) {
         const nodes = container.querySelectorAll<HTMLElement>(".mermaid");
         if (nodes.length === 0) return;
 
-        // Defer to next frame so React has fully committed the DOM.
         const id = requestAnimationFrame(() => {
             mermaid
                 .run({ nodes })
                 .catch((err: unknown) => {
-                    // Log for debugging but don't crash the panel.
                     // eslint-disable-next-line no-console
                     console.warn("[mermaid] render error:", err);
                 });
@@ -74,10 +75,43 @@ export default function ContextPanel({ context }: ContextPanelProps) {
     }, [context, resolvedTheme]);
 
     return (
-        <div
-            ref={containerRef}
-            className="markdown-body text-sm"
-            dangerouslySetInnerHTML={{ __html: html }}
-        />
+        <div className="flex h-full flex-col">
+            {question && (
+                <div className="shrink-0 border-b border-border bg-card/50">
+                    <div className="flex items-start justify-between p-4 gap-3">
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                            <span className="text-muted-foreground text-lg leading-none mt-0.5 select-none" aria-hidden="true">❝</span>
+                            <h2
+                                className="text-sm font-semibold text-foreground leading-relaxed"
+                                dangerouslySetInnerHTML={{
+                                    __html: renderMarkdownInline(question),
+                                }}
+                            />
+                        </div>
+                        {onShowShortcuts && (
+                            <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                                <button
+                                    onClick={onShowShortcuts}
+                                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                    title="Keyboard shortcuts"
+                                >
+                                    <HelpIcon />
+                                </button>
+                                <SettingsButton />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Scrollable markdown context */}
+            <div className="flex-1 overflow-y-auto scrollbar-hover">
+                <div
+                    ref={containerRef}
+                    className="markdown-body text-sm p-4"
+                    dangerouslySetInnerHTML={{ __html: html }}
+                />
+            </div>
+        </div>
     );
 }

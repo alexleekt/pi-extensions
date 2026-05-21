@@ -5,16 +5,15 @@ import { useDialogKeys } from "../hooks/useDialogKeys";
 import AdditionalComments from "./AdditionalComments";
 import DialogFooter from "./DialogFooter";
 import { modKey } from "../util/platform";
-import { CheckIcon, RadioIcon, isSelectAllOption } from "./icons";
+import { CheckIcon, CommentIcon, RadioIcon, isSelectAllOption } from "./icons";
 
 interface QuestionnaireProps {
     payload: AskUserPayload;
-    showHeader?: boolean;
 }
 
 type AnswerValue = string | string[];
 
-export default function Questionnaire({ payload, showHeader = true }: QuestionnaireProps) {
+export default function Questionnaire({ payload }: QuestionnaireProps) {
     const questions = payload.questions ?? [];
     const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
     const [comments, setComments] = useState<Record<string, string>>({});
@@ -165,13 +164,6 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
                     style={{ width: `${(answeredCount / questions.length) * 100}%` }} />
             </div>
 
-            {showHeader && (
-                <div className="shrink-0 max-h-24 overflow-y-auto border-b border-border p-4">
-                    <h1 className="text-lg font-semibold">{payload.question}</h1>
-                    {payload.context && <p className="mt-1 text-sm text-muted-foreground">{payload.context}</p>}
-                </div>
-            )}
-
             <div className="flex-1 overflow-y-auto p-4">
                 <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-medium text-muted-foreground">{answeredCount} / {questions.length} answered</span>
@@ -268,10 +260,7 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
                                         <button onClick={() => setShowCommentFor((prev) => prev === q.title ? null : q.title)}
                                             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                                             aria-expanded={showCommentFor === q.title}>
-                                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-                                                strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M14 10.5V4a1.5 1.5 0 0 0-1.5-1.5H3.5A1.5 1.5 0 0 0 2 4v6.5A1.5 1.5 0 0 0 3.5 12H5v2l2.5-2H12.5a1.5 1.5 0 0 0 1.5-1.5z" />
-                                            </svg>
+                                            <CommentIcon />
                                             {showCommentFor === q.title ? "Hide comment" : comments[q.title]?.trim() ? "Edit comment" : "Add comment"}
                                         </button>
                                         {showCommentFor === q.title && (

@@ -9,10 +9,9 @@ import { CommentIcon, RadioIcon } from "./icons";
 
 interface SingleSelectProps {
     payload: AskUserPayload;
-    showHeader?: boolean;
 }
 
-export default function SingleSelect({ payload, showHeader = true }: SingleSelectProps) {
+export default function SingleSelect({ payload }: SingleSelectProps) {
     const [selected, setSelected] = useState<string | null>(null);
     const [comment, setComment] = useState("");
     const [showComment, setShowComment] = useState(false);
@@ -33,7 +32,6 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
         );
     }, [payload.options, query]);
 
-    /* ── Refs for stable keydown handler ── */
     const stateRef = useRef({
         selected: null as string | null,
         comment: "",
@@ -92,7 +90,6 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
     useEffect(() => {
         setActiveIndex(-1);
         if (!showSearch) {
-            // Defer focus so refs are populated after render
             const id = requestAnimationFrame(() => {
                 optionRefs.current[0]?.focus();
                 setActiveIndex(0);
@@ -146,27 +143,19 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [sendResult, handleFreeform]);
 
-    const hasResults = filtered.length > 0;
-
     return (
         <div className="flex h-full flex-col">
             <div className="shrink-0 border-b border-border p-4">
-                {showHeader && (
-                    <div className="max-h-24 overflow-y-auto">
-                        <h1 className="text-lg font-semibold">{payload.question}</h1>
-                        {payload.context && <p className="mt-1 text-sm text-muted-foreground">{payload.context}</p>}
-                    </div>
-                )}
                 {showSearch && (
                     <input ref={searchRef} type="text" placeholder="Search options..." value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring ${showHeader ? "mt-3" : ""}`} />
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring" />
                 )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-2" role="listbox" aria-label="Options">
-                    {hasResults ? (
+                    {filtered.length > 0 ? (
                         filtered.map((opt, idx) => {
                             const titleHtml = highlightMatch(opt.title, query);
                             const descHtml = opt.description ? highlightMatch(opt.description, query) : null;

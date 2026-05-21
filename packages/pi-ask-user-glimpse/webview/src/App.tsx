@@ -18,16 +18,16 @@ function getPayload(): AskUserPayload {
     return raw as AskUserPayload;
 }
 
-function renderComponent(payload: AskUserPayload, showHeader = true) {
+function renderComponent(payload: AskUserPayload) {
     switch (payload.type) {
         case "single-select":
-            return <SingleSelect payload={payload} showHeader={showHeader} />;
+            return <SingleSelect payload={payload} />;
         case "multi-select":
-            return <MultiSelect payload={payload} showHeader={showHeader} />;
+            return <MultiSelect payload={payload} />;
         case "questionnaire":
-            return <Questionnaire payload={payload} showHeader={showHeader} />;
+            return <Questionnaire payload={payload} />;
         case "freeform":
-            return <Freeform payload={payload} showHeader={showHeader} />;
+            return <Freeform payload={payload} />;
         default:
             return (
                 <div className="flex h-full items-center justify-center p-4">
@@ -40,7 +40,7 @@ function renderComponent(payload: AskUserPayload, showHeader = true) {
 }
 
 const DEFAULT_PANEL_WIDTH = 70; // percent
-const MIN_PANEL_WIDTH = 20;     // percent
+const MIN_PANEL_WIDTH = 25;     // percent — ensures settings dropdown (208px) fits at 1000px window
 const MAX_PANEL_WIDTH = 80;     // percent
 
 export default function App() {
@@ -64,8 +64,6 @@ export default function App() {
 
     const hasContext = !!payload.context;
 
-    const handleMouseDown = () => setIsDragging(true);
-
     useEffect(() => {
         if (!isDragging) return;
         const handleMouseMove = (e: MouseEvent) => {
@@ -86,37 +84,36 @@ export default function App() {
             <div className="flex h-screen flex-col overflow-hidden">
                 <HeaderBar onShowShortcuts={() => setShowShortcuts(true)} question={payload.question} />
                 {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
-                <div className="flex-1 overflow-hidden">{renderComponent(payload, false)}</div>
+                <div className="flex-1 overflow-hidden">{renderComponent(payload)}</div>
             </div>
         );
     }
 
-    // Strip context from the payload passed to the question component
-    // so it doesn't duplicate what the left panel already shows.
     const componentPayload: AskUserPayload = { ...payload, context: undefined };
 
     return (
         <div className="flex h-screen flex-col overflow-hidden">
-            <HeaderBar onShowShortcuts={() => setShowShortcuts(true)} question={payload.question} />
             {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
             <div className="flex flex-1 overflow-hidden">
-                {/* Left panel: Agent context rendered as markdown */}
+                {/* Left panel */}
                 <div
                     className={`flex flex-col overflow-hidden ${
                         isCollapsed ? "w-0 opacity-0" : "opacity-100"
                     }`}
                     style={isCollapsed ? undefined : { width: `${panelWidth}%` }}
                 >
-                    <div className="flex-1 overflow-y-auto p-4 scrollbar-hover">
-                        <ErrorBoundary>
-                            {/* hasContext guarantees payload.context is defined */}
-                            <ContextPanel context={payload.context!} />
-                        </ErrorBoundary>
-                    </div>
+                    <ErrorBoundary>
+                        {/* context is defined when hasContext is true */}
+                        <ContextPanel
+                            context={payload.context!}
+                            question={payload.question}
+                            onShowShortcuts={() => setShowShortcuts(true)}
+                        />
+                    </ErrorBoundary>
                 </div>
 
-                {/* Resizable splitter — handle sits ON the boundary */}
+                {/* Resizer */}
                 <div
                     role="separator"
                     aria-orientation="vertical"
@@ -132,7 +129,7 @@ export default function App() {
                             setPanelWidth(DEFAULT_PANEL_WIDTH);
                             return;
                         }
-                        handleMouseDown();
+                        setIsDragging(true);
                     }}
                     onDoubleClick={() => {
                         if (isCollapsed) {
@@ -154,10 +151,10 @@ export default function App() {
                     />
                 </div>
 
-                {/* Right panel: Options / input */}
+                {/* Right panel */}
                 <div className="flex flex-1 flex-col overflow-hidden">
                     <ErrorBoundary>
-                        {renderComponent(componentPayload, false)}
+                        {renderComponent(componentPayload)}
                     </ErrorBoundary>
                 </div>
             </div>
