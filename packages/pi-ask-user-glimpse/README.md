@@ -37,7 +37,7 @@ The agent gets a clean selection back. You get a decision made in seconds, not m
 - **Theme toggle** — dark / light / system mode switcher in the dialog header
 - **Animation levels** — none / minimal / all, controlling transition intensity across the UI
 - **Keyboard shortcuts legend** — press `?` in the header bar to see all available shortcuts
-- **Branded header bar** — sparkle logo + "Ask User" branding with settings cog
+- **Prominent question header** — full non-truncated question text in the header bar, with settings cog and keyboard-shortcuts help
 - **Native WebView** — renders in a real window (macOS WKWebView / Linux GTK4 / Windows WebView2)
 - **Terminal fallback** — gracefully degrades to TUI prompts when glimpseui is unavailable
 
@@ -71,7 +71,7 @@ Ask the user to pick exactly one option:
 }
 ```
 
-The dialog shows a branded header bar, a full-width question header, and a two-panel layout. When `context` is provided, the left panel renders it as markdown for reference while the right panel shows the searchable option list. Option descriptions appear inline below each title, and matching text is highlighted when searching. The "Custom" button under the search box lets the user submit a freeform answer. Use ⌘+Enter (macOS) or Ctrl+Enter to submit.
+The dialog shows the full question in the header bar, and a two-panel layout when `context` is provided. The left panel renders context as markdown (with Mermaid diagram support) while the right panel shows the searchable option list. The panels are resizable via a drag handle on the boundary — double-click the handle to collapse the context panel. Option descriptions appear inline below each title, and matching text is highlighted when searching. The "Custom" button lets the user submit a freeform answer. Use ⌘+Enter (macOS) or Ctrl+Enter to submit.
 
 ### Multi Select
 
@@ -263,21 +263,23 @@ Options: `single-select`, `multi-select`, `freeform`, `questionnaire`. The resul
 - **Title bar** — reads "Pi · {sessionName} · {question}" (session name is included when set)
 - **Centered dialog** — normal stacking, not floating
 - **Size** — 1200×900 by default
+- **Context panel** — 50/50 split by default; drag the handle to resize, double-click to collapse
+- **Scrollbars** — hidden by default, appear on hover (macOS-style overlay)
 - **Cursor follow** — off by default; enable with `followCursor: true`
 - **Dark mode** — togglable via the settings cog: dark, light, or system (follows OS preference)
+- **Theme persistence** — theme and animation choices survive across dialogs and session restarts
 
 ## Architecture
 
 ```
 index.ts              → Pi extension entrypoint (tool + command registration)
+constants/            → STOPWORDS, PROTECTED_ABBREVIATIONS
 tool/ask-user.ts      → constructs payload, injects into HTML, calls glimpseui.prompt()
 tool/response-formatter.ts → normalizes WebView response for Pi
-webview/src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform, ContextPanel, ErrorBoundary, HeaderBar, ShortcutsModal
-webview/src/util/         → settings (theme + animation context), glimpse (host bridge), platform (macOS detection)
 fallback/terminal-prompt.ts → readline fallback when WebView unavailable
 webview/              → Vite + React + Tailwind app
-  src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform, HeaderBar, ShortcutsModal
-  src/util/           → settings.tsx, glimpse.ts, platform.ts
+  src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform, ContextPanel, ErrorBoundary, HeaderBar, ShortcutsModal, AdditionalComments
+  src/util/           → settings.tsx (theme/animation context), glimpse.ts (host bridge), platform.ts (modKey), html.ts (escapeHtml + highlightMatch)
   dist/index.html     → single-file bundle (inlined JS + CSS)
 ```
 

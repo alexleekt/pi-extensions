@@ -2,6 +2,38 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [0.4.1] — 2026-05-20
+
+### Security
+- **Comprehensive HTML sanitization** — `ContextPanel.sanitizeHtml()` now blocks `img`, `iframe`, `object`, `embed`, `form`, `input`, `style`, `link`, `svg`, `math`, `meta`, `base`, `noscript`, `template`, `portal`, `frame`, `frameset` tags, plus `javascript:` and `data:` URLs in `href`/`src`/`action` attributes.
+- **XSS-safe search highlighting** — `highlightMatch()` in new `webview/src/util/html.ts` escapes both display text and query strings before wrapping matches in `<mark>`. Replaces raw `.replace()` in `SingleSelect` and `MultiSelect` that was vulnerable to search query injection.
+
+### Changed
+- **Prominent question header** — Removed sparkle icon and "Ask User" branding. The header now shows the full non-truncated question text in `text-base` font, wrapping naturally.
+- **50/50 panel split** — Default context/options panel width changed from 40/60 to 50/50.
+- **Invisible splitter track** — Removed grey divider bar. Only a centered grip handle is visible (`w-1` by default, `w-1.5` on drag). Handle sits exactly at the panel boundary.
+- **Instant drag feedback** — Removed CSS transition from panel width so resize is immediate, not animated.
+- **Double-click to collapse** — Double-clicking the splitter toggles the context panel between 50% width and fully collapsed.
+- **Click-when-collapsed to expand** — If the context panel is collapsed, clicking the splitter expands it back to 50% without starting a drag.
+- **Hover-only scrollbars** — Scrollbars are hidden by default and appear as thin 6px tracks on hover (macOS overlay style). Applied to the context panel.
+- **Theme persistence across all entry points** — Extracted shared helpers `enrichWithThemeSettings()`, `createThemeSaver()`, and `runAskUserWithTheme()` in `index.ts`. All three entry points (`ask_user` tool, `/ask`, `/ask-debug`) now share identical theme read/save behavior.
+- **Type-safe theme settings** — `getThemeSettings()` now validates stored strings against `ThemeMode`/`AnimationLevel` union types before returning.
+- **Refactored constants** — Extracted `STOPWORDS` (~200 words) and `PROTECTED_ABBREVIATIONS` to `constants/stopwords.ts` and `constants/abbreviations.ts`.
+- **Fully controlled AdditionalComments** — Removed half-controlled anti-pattern. Component now requires both `value` and `onChange` props.
+- **Command rename** — `/ask-last` → `/ask` (shorter, more intuitive).
+
+### Fixed
+- **Mermaid rendering errors** — Added explicit `mermaid.initialize()` with `startOnLoad: false`. Defers `mermaid.run()` to `requestAnimationFrame` so the DOM is fully committed first. Errors now log via `console.warn` instead of being silently swallowed.
+- **Stale closure in keydown handlers** — SingleSelect and MultiSelect now use a `stateRef` pattern: all mutable state is snapshotted into a ref, and the global keydown listener has stable dependencies (`useCallback` for handlers).
+- **Short questions dropped** — `extractQuestions()` length threshold lowered from 10 to 3 characters so legitimate questions like "Why?" are not silently discarded.
+- **ARIA on splitter** — Added `role="separator"`, `aria-orientation="vertical"`, `aria-valuenow/min/max`.
+- **Option ref mutation** — Removed direct `optionRefs.current = []` mutation; uses `requestAnimationFrame` for focus timing instead.
+- **Consistent sendCancelled references** — All cancel buttons now pass `sendCancelled` directly instead of arrow wrappers.
+
+### Added
+- **`npm run test:with-context`** — New script that opens a WebView with the context panel, splitter, and Mermaid diagrams for visual testing.
+- **`webview/src/util/html.ts`** — Shared HTML utilities: `escapeHtml()` and `highlightMatch()`.
+
 ## [0.4.0] — 2026-05-20
 
 ### Added

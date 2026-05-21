@@ -15,12 +15,14 @@ This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](.
 ## Architecture
 
 ```
-index.ts              → Extension entrypoint (registers tool + slash command)
+index.ts              → Extension entrypoint (registers tool + slash commands)
+constants/            → STOPWORDS, PROTECTED_ABBREVIATIONS extracted for reuse
 tool/ask-user.ts      → Payload construction, HTML injection, glimpseui.prompt() call
 tool/response-formatter.ts → Normalizes webview response → Pi AgentToolResult
 fallback/terminal-prompt.ts → TUI fallback when glimpseui native host unavailable
 webview/              → Vite + React + Tailwind app
-  src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform
+  src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform, HeaderBar, ContextPanel
+  src/util/           → glimpse.ts (host bridge), platform.ts (modKey), settings.tsx (theme/animation context), html.ts (escapeHtml + highlightMatch)
   dist/index.html     → Single-file bundle (inlined JS + CSS) — produced by Vite + vite-plugin-singlefile
 ```
 
@@ -35,13 +37,13 @@ webview/              → Vite + React + Tailwind app
 
 | File | Role | What to know before editing |
 |------|------|----------------------------|
-| `index.ts` | Registers `ask_user` tool and `/ask-debug` command | Uses `defineTool` from `pi-coding-agent`. The tool schema must match the `AskUserParams` interface. |
+| `index.ts` | Registers `ask_user` tool and `/ask`, `/ask-debug`, `/ask-style` commands | Uses `defineTool` from `pi-coding-agent`. Theme persistence shared via `runAskUserWithTheme()` helper. |
 | `tool/ask-user.ts` | Payload construction + webview invocation | `resolveWebviewHtml()` has a two-step fallback for finding `dist/index.html`. `summarizeTitle()` extracts a window title from the question string. |
 | `tool/response-formatter.ts` | Normalizes webview JSON → Pi result | Returns `AgentToolResult<AskToolDetails>`. The `details` field is used by Pi for tool result rendering. |
 | `fallback/terminal-prompt.ts` | TUI fallback when webview unavailable | Handles all four payload types (`single-select`, `multi-select`, `freeform`, `questionnaire`). Questionnaire multi-select uses repeated single-selects. |
-| `webview/src/components/*.tsx` | React dialog components | Each component receives `payload` prop and calls `window.glimpse.send(result)` on submit. Cancel sends `{ __cancelled: true }`. |
-| `webview/src/App.tsx` | Router — dispatches to correct component based on `payload.type` | `getPayload()` reads `window.__ASK_USER_PAYLOAD__`. Error boundary shows error card if payload is missing/invalid. |
-| `types/glimpseui.d.ts` | Hand-written types for `glimpseui` package | May drift from actual API. Check `node_modules/glimpseui` types if in doubt. |
+| `webview/src/components/*.tsx` | React dialog components | Each component receives `payload` prop. Key handlers use `useCallback` + `stateRef` pattern to avoid stale closures. Cancel sends `{ __cancelled: true }`. |
+| `webview/src/App.tsx` | Router + layout — dispatches to correct component, manages resizable splitter | `getPayload()` reads `window.__ASK_USER_PAYLOAD__`. Splitter supports drag, double-click collapse, and hover-only scrollbars. |
+| `webview/src/util/html.ts` | Shared HTML utilities | `escapeHtml()` prevents XSS; `highlightMatch()` escapes text before wrapping matches in `<mark>`. Used by SingleSelect and MultiSelect. |
 
 ## Type Sharing Between Server and Webview
 
@@ -67,14 +69,21 @@ npm run validate:gui # same + opens actual WebView for visual validation
 
 1. **Validate build:** `npm run validate`
 2. **Test webview visually:** `npm run validate:gui`
-3. **Run smoke test:** `npx tsx scripts/smoke-test.ts` (opens WebView for 2s)
-4. **Full visual QA:** `npx tsx scripts/visual-qa.ts` (cycles through all 5 scenarios)
-5. **Dry-run pack:** `npm run check`
+3. **Test with context panel:** `npm run test:with-context` (opens WebView with left panel + splitter)
+4. **Run smoke test:** `npx tsx scripts/smoke-test.ts` (opens WebView for 2s)
+5. **Full visual QA:** `npx tsx scripts/visual-qa.ts` (cycles through all 5 scenarios)
+6. **Dry-run pack:** `npm run check`
 
 ## Common Pitfalls
 
 ### HTML escaping drift
-Test scripts (`scripts/validate.ts`, `scripts/smoke-test.ts`, `scripts/visual-qa.ts`) must use the **same escaping** as production code in `tool/ask-user.ts`. If you add a new escape there, add it to all three test scripts too.
+Test scripts (`scripts/validate.ts`, `scripts/smoke-test.ts`, `scripts/visual-qa.ts`, `scripts/test-with-context.ts`) must use the **same escaping** as production code in `tool/ask-user.ts`. If you add a new escape there, add it to all test scripts too.
+
+### XSS in highlightMatch
+`highlightMatch()` in `webview/src/util/html.ts` must escape BOTH the display text and the query before producing HTML. Never use raw `.replace()` with user input directly into `dangerouslySetInnerHTML`.
+
+### ContextPanel sanitization
+`sanitizeHtml()` blocks dangerous tags (`script`, `img`, `iframe`, `object`, `embed`, `form`, `svg`, etc.) and strips `javascript:` / `data:` URLs. If adding new rich content support (e.g., video, audio), audit the sanitizer first.
 
 ### MultiSelect submit logic
 The submit handler must block when `selected.size === 0`. The search `query` is NOT a valid submission — the freeform "Other" button exists for that purpose.
@@ -94,4 +103,5 @@ This is a Pi extension — Pi loads `.ts` files directly. `tsconfig.json` uses `
 
 ## Known Issues / Deferred Work
 
-- *No known issues at this time.*
+- **Keyboard listeners not centralized** — Each component (SingleSelect, MultiSelect, Questionnaire, Freeform) adds its own global `keydown` listener. In practice only one is mounted at a time, but a future refactor should move keyboard handling to `App.tsx` or a provider context.
+- **Glimpse does not support custom window icons** — Only the window title is customizable. No application icon API exists in glimpseui v0.8.1.
