@@ -21,6 +21,7 @@ jobs:
                   node-version: "24"
                   registry-url: "https://registry.npmjs.org"
                   cache: "npm"
+                  token: ${{ secrets.NPM_TOKEN }}
 
             - name: Install dependencies
               run: npm ci
@@ -65,6 +66,17 @@ jobs:
                   else
                       echo "exists=false" >> "$GITHUB_OUTPUT"
                       echo "⚠️ Package does NOT exist on npm — first publish requires manual bootstrap or NPM_TOKEN"
+                  fi
+
+            - name: Verify npm auth
+              working-directory: packages/${{ steps.pkg.outputs.dir }}
+              run: |
+                  echo "npm config registry: $(npm config get registry)"
+                  echo "npm config userconfig: $(npm config get userconfig)"
+                  if npm whoami 2>/dev/null; then
+                      echo "✅ npm auth verified"
+                  else
+                      echo "⚠️ npm whoami failed — proceeding anyway (auth may be token-based)"
                   fi
 
             - name: Publish to npm
