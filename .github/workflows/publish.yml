@@ -68,6 +68,17 @@ jobs:
                       echo "⚠️ Package does NOT exist on npm — first publish requires manual bootstrap or NPM_TOKEN"
                   fi
 
+            - name: Configure npm auth
+              working-directory: packages/${{ steps.pkg.outputs.dir }}
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: |
+                  echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+                  echo "registry=https://registry.npmjs.org/" >> .npmrc
+                  echo "always-auth=true" >> .npmrc
+                  echo "✅ Wrote .npmrc with auth token"
+                  cat .npmrc | sed 's/_authToken=.*/_authToken=***/g'
+
             - name: Verify npm auth
               working-directory: packages/${{ steps.pkg.outputs.dir }}
               run: |
