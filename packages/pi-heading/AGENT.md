@@ -102,7 +102,7 @@ Message: {message}
 
 ## Testing
 
-- **Unit tests**: `bun test` (70 tests across 6 files: `summarize.test.ts`, `summarize-pipeline.test.ts`, `picker.test.ts`, `guard.test.ts`, `store.test.ts`, `widget.test.ts`)
+- **Unit tests**: `bun test` (112 tests across 7 files: `summarize.test.ts`, `summarize-pipeline.test.ts`, `picker.test.ts`, `guard.test.ts`, `store.test.ts`, `widget.test.ts`, `index.test.ts`)
 - **Type-check**: `npm run check`
 - **Manual**: Symlink into `~/.pi/agent/extensions/`, start Pi, send a message
 
