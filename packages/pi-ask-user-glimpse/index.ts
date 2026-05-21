@@ -143,7 +143,7 @@ function extractTextFromAssistantEntry(entry: unknown): string {
         .join("\n");
 }
 
-/* ── /ask-last: extract questions & implicit requests ── */
+/* ── /ask: extract questions & implicit requests ── */
 
 const PROTECTED_ABBREVIATIONS = new Set([
     "etc",
@@ -561,13 +561,13 @@ export default function (pi: ExtensionAPI) {
         },
     });
 
-    pi.registerCommand("ask-last", {
+    pi.registerCommand("ask", {
         description:
             "Extract questions from the last assistant message and ask them via ask_user",
         handler: async (_args, ctx) => {
             if (!ctx.hasUI) {
                 console.warn(
-                    "[pi-ask-user-glimpse] ask-last requires interactive mode",
+                    "[pi-ask-user-glimpse] /ask requires interactive mode",
                 );
                 return;
             }

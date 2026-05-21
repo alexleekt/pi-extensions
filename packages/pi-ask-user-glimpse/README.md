@@ -227,12 +227,12 @@ The setting is persisted in the session and survives restarts.
 
 The injected mandate is ~100 tokens. It is only appended when detection triggers, so normal conversations pay nothing extra.
 
-## Slash Command: `/ask-last`
+## Slash Command: `/ask`
 
 When the assistant writes a question as free-form text (bypassing `ask_user`), use this command to retroactively open the rich dialog:
 
 ```
-/ask-last
+/ask
 ```
 
 ### How it works
