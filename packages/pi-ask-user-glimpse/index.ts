@@ -15,6 +15,7 @@ import type {
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type AskUserParams, askUserHandler } from "./tool/ask-user.js";
 import type { AnimationLevel, ThemeMode } from "./shared/ask-user.js";
+import { PROTECTED_ABBREVIATIONS } from "./constants/abbreviations.js";
 
 /* ── Module-level reference to ExtensionAPI for tool execute closure ── */
 let _pi: ExtensionAPI | undefined;
@@ -128,16 +129,25 @@ async function runAskUserWithTheme(
     return result;
 }
 
+/** Extract plain text from a Pi journal assistant entry. */
 function extractTextFromAssistantEntry(entry: unknown): string {
-    const message = (entry as unknown as Record<string, unknown>)?.message;
-    const content = (message as unknown as Record<string, unknown>)?.content;
+    if (!entry || typeof entry !== "object") return "";
+    const e = entry as Record<string, unknown>;
+    const message = e.message;
+    if (!message || typeof message !== "object") return "";
+    const msg = message as Record<string, unknown>;
+
+    const content = msg.content;
     if (typeof content === "string") return content;
     if (!Array.isArray(content)) return "";
+
     return content
         .filter(
             (c): c is { type: string; text: string } =>
-                typeof (c as Record<string, unknown>)?.type === "string" &&
-                typeof (c as Record<string, unknown>)?.text === "string",
+                typeof c === "object" &&
+                c !== null &&
+                typeof (c as Record<string, unknown>).type === "string" &&
+                typeof (c as Record<string, unknown>).text === "string",
         )
         .map((c) => c.text)
         .join("\n");
@@ -145,33 +155,7 @@ function extractTextFromAssistantEntry(entry: unknown): string {
 
 /* ── /ask: extract questions & implicit requests ── */
 
-const PROTECTED_ABBREVIATIONS = new Set([
-    "etc",
-    "vs",
-    "fig",
-    "dr",
-    "mr",
-    "mrs",
-    "ms",
-    "prof",
-    "jr",
-    "sr",
-    "inc",
-    "ltd",
-    "corp",
-    "co",
-    "llc",
-    "al",
-    "et",
-    "vol",
-    "vols",
-    "pg",
-    "pp",
-    "ch",
-    "chap",
-    "sec",
-    "secs",
-]);
+
 
 function splitSentences(text: string): string[] {
     const PLACEHOLDER = "\x00";
@@ -229,7 +213,7 @@ function extractQuestions(text: string): string[] {
         if (sentence.endsWith("?")) {
             if (hasQuotedQuestion(sentence)) continue;
             if (looksLikeTernary(sentence)) continue;
-            if (sentence.length < 10) continue;
+            if (sentence.length < 3) continue;
             explicit.push(sentence);
             continue;
         }
@@ -574,12 +558,11 @@ export default function (pi: ExtensionAPI) {
 
             const entries = ctx.sessionManager.getEntries();
             const lastAssistant = [...entries].reverse().find((e) => {
-                const msg = (e as unknown as Record<string, unknown>).message;
-                return (
-                    typeof msg === "object" &&
-                    msg !== null &&
-                    (msg as Record<string, unknown>).role === "assistant"
-                );
+                if (!e || typeof e !== "object") return false;
+                const entry = e as unknown as Record<string, unknown>;
+                const msg = entry.message;
+                if (!msg || typeof msg !== "object" || msg === null) return false;
+                return (msg as Record<string, unknown>).role === "assistant";
             });
 
             if (!lastAssistant) {

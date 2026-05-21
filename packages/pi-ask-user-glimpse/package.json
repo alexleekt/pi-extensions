@@ -49,7 +49,8 @@
         "prepack": "npm run build",
         "dev:webview": "npx vite --config ./webview/vite.config.ts",
         "validate": "npx tsx scripts/validate.ts",
-        "validate:gui": "npx tsx scripts/validate.ts --gui"
+        "validate:gui": "npx tsx scripts/validate.ts --gui",
+        "test:with-context": "npx tsx scripts/test-with-context.ts"
     },
     "dependencies": {
         "@alexleekt/pi-shared": "^0.1.0",

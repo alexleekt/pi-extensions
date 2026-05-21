@@ -298,7 +298,7 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
                         <span className="opacity-60">· {modKey()}+Enter to submit</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => sendCancelled()}
+                        <button onClick={sendCancelled}
                             className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Cancel</button>
                         <button onClick={handleSubmit} disabled={isSubmitting}
                             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40">

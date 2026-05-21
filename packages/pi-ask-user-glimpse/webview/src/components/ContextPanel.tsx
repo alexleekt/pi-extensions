@@ -7,15 +7,54 @@ interface ContextPanelProps {
 }
 
 /**
- * Lightweight sanitizer: strips <script> tags and event handlers.
- * Context comes from the agent, but defense in depth against a
- * compromised or confused LLM emitting raw HTML.
+ * Lightweight sanitizer: strips dangerous tags, event handlers, and
+ * malicious URLs. Context comes from the agent; defense in depth
+ * against a compromised or confused LLM emitting raw HTML.
  */
 function sanitizeHtml(html: string): string {
-    return html
-        .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-        .replace(/<script\b[^>]*\/>/gi, "")
-        .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "");
+    // Block dangerous tags entirely
+    const dangerousTags = [
+        "script", "style", "iframe", "object", "embed", "form",
+        "input", "textarea", "button", "select", "option", "img",
+        "svg", "math", "meta", "base", "link", "noscript",
+        "template", "portal", "frame", "frameset",
+    ];
+    for (const tag of dangerousTags) {
+        html = html.replace(
+            new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, "gi"),
+            "",
+        );
+        html = html.replace(
+            new RegExp(`<${tag}\\b[^>]*\\/>`, "gi"),
+            "",
+        );
+        html = html.replace(
+            new RegExp(`<${tag}\\b[^>]*>`, "gi"),
+            "",
+        );
+    }
+
+    // Strip inline event handlers
+    html = html.replace(/on\w+\s*=\s*["'][^"']*["']/gi, "");
+    html = html.replace(/on\w+\s*=\s*[^\s>]+/gi, "");
+
+    // Strip javascript: and data: URLs from href/src/action
+    html = html.replace(
+        /(href|src|action|formaction)\s*=\s*["']\s*(javascript|data):[^"']*["']/gi,
+        '$1=""',
+    );
+    html = html.replace(
+        /(href|src|action|formaction)\s*=\s*[^\s>]+/gi,
+        (match) => {
+            const lower = match.toLowerCase();
+            if (lower.includes("javascript:") || lower.includes("data:")) {
+                return 'href=""';
+            }
+            return match;
+        },
+    );
+
+    return html;
 }
 
 class MermaidRenderer extends marked.Renderer {

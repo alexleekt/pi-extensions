@@ -81,7 +81,7 @@ export default function Freeform({
                     </div>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => sendCancelled()}
+                            onClick={sendCancelled}
                             className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
                         >
                             Cancel

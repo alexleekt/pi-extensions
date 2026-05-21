@@ -118,6 +118,12 @@ export default function App() {
 
                 {/* Resizable splitter — handle sits ON the boundary */}
                 <div
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize panels"
+                    aria-valuenow={isCollapsed ? 0 : Math.round(panelWidth)}
+                    aria-valuemin={MIN_PANEL_WIDTH}
+                    aria-valuemax={MAX_PANEL_WIDTH}
                     className="group relative flex w-3 shrink-0 cursor-col-resize items-center justify-start"
                     onMouseDown={(e) => {
                         if (isCollapsed) {

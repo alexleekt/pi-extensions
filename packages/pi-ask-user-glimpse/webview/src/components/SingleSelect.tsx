@@ -1,16 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
+import { highlightMatch } from "../util/html";
 import { modKey } from "../util/platform";
 import AdditionalComments from "./AdditionalComments";
 import { CommentIcon, RadioIcon } from "./icons";
-
-function highlightMatch(text: string, query: string): string {
-    if (!query) return text;
-    const q = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(${q})`, "gi");
-    return text.replace(re, '<mark class="bg-yellow-200 dark:bg-yellow-700 rounded px-0.5">$1</mark>');
-}
 
 interface SingleSelectProps {
     payload: AskUserPayload;
@@ -38,46 +32,57 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
         );
     }, [payload.options, query]);
 
-    useEffect(() => {
-        setActiveIndex(-1);
-        optionRefs.current = [];
-        if (!showSearch && optionRefs.current[0]) {
-            optionRefs.current[0]?.focus();
-            setActiveIndex(0);
-        }
-    }, [showSearch]);
+    /* ── Refs for stable keydown handler ── */
+    const stateRef = useRef({
+        selected: null as string | null,
+        comment: "",
+        showComment: false,
+        additionalComments: "",
+        query: "",
+        activeIndex: -1,
+        isSubmitting: false,
+        filtered: payload.options,
+        allowFreeform: payload.allowFreeform,
+    });
+    stateRef.current = {
+        selected, comment, showComment, additionalComments, query, activeIndex, isSubmitting, filtered, allowFreeform: payload.allowFreeform,
+    };
 
-    const sendResult = (selection: string | null) => {
+    const sendResult = useCallback((selection: string | null) => {
+        const s = stateRef.current;
         const result: Record<string, unknown> = {
             kind: "selection",
             selections: selection ? [selection] : [],
         };
-        if (showComment && comment.trim()) result.comment = comment.trim();
-        if (additionalComments.trim()) result.additionalComments = additionalComments.trim();
+        if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
+        if (s.additionalComments.trim()) result.additionalComments = s.additionalComments.trim();
         sendToGlimpse(result);
-    };
+    }, []);
 
-    const canSubmit = () => {
-        return selected !== null || (query && payload.allowFreeform);
-    };
+    const handleFreeform = useCallback(() => {
+        sendToGlimpse({ kind: "freeform", text: stateRef.current.query });
+    }, []);
 
-    const handleSubmit = () => {
-        if (isSubmitting) return;
-        setIsSubmitting(true);
-        sendResult(selected);
-    };
-
-    const handleFreeform = () => {
-        sendToGlimpse({ kind: "freeform", text: query });
-    };
+    useEffect(() => {
+        setActiveIndex(-1);
+        if (!showSearch) {
+            // Defer focus so refs are populated after render
+            const id = requestAnimationFrame(() => {
+                optionRefs.current[0]?.focus();
+                setActiveIndex(0);
+            });
+            return () => cancelAnimationFrame(id);
+        }
+    }, [showSearch]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            const s = stateRef.current;
             const target = e.target as HTMLElement;
             const isInInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
 
             if (e.key === "Escape") {
-                if (showComment) { e.preventDefault(); setShowComment(false); return; }
+                if (s.showComment) { e.preventDefault(); setShowComment(false); return; }
                 sendCancelled();
                 return;
             }
@@ -90,7 +95,7 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
             if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setActiveIndex((prev) => {
-                    const next = Math.min(prev + 1, filtered.length - 1);
+                    const next = Math.min(prev + 1, s.filtered.length - 1);
                     optionRefs.current[next]?.focus();
                     optionRefs.current[next]?.scrollIntoView({ block: "nearest" });
                     return next;
@@ -105,29 +110,30 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
                 });
             } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
-                if (isSubmitting) return;
-                if (canSubmit()) {
+                if (s.isSubmitting) return;
+                const canSubmit = s.selected !== null || (s.query && s.allowFreeform);
+                if (canSubmit) {
                     setIsSubmitting(true);
-                    if (query && payload.allowFreeform && activeIndex < 0) {
+                    if (s.query && s.allowFreeform && s.activeIndex < 0) {
                         handleFreeform();
                     } else {
-                        sendResult(selected);
+                        sendResult(s.selected);
                     }
                 }
             } else if (e.key === "Enter") {
                 e.preventDefault();
-                if (isSubmitting) return;
-                if (activeIndex >= 0 && activeIndex < filtered.length) {
-                    const opt = filtered[activeIndex];
+                if (s.isSubmitting) return;
+                if (s.activeIndex >= 0 && s.activeIndex < s.filtered.length) {
+                    const opt = s.filtered[s.activeIndex];
                     setSelected(opt.title); setIsSubmitting(true); sendResult(opt.title);
-                } else if (query && payload.allowFreeform) {
+                } else if (s.query && s.allowFreeform) {
                     setIsSubmitting(true); handleFreeform();
                 }
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [filtered, activeIndex, selected, showComment, query, payload.allowFreeform, isSubmitting, sendResult, handleFreeform]);
+    }, [sendResult, handleFreeform]);
 
     const hasResults = filtered.length > 0;
 
@@ -174,7 +180,7 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
                     ) : (
                         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
                             No matching options.
-                            {payload.allowFreeform && <span> Use “My answer isn't listed above” below to submit your own.</span>}
+                            {payload.allowFreeform && <span> Use "My answer isn't listed above" below to submit your own.</span>}
                         </div>
                     )}
                 </div>
@@ -208,9 +214,9 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
                 <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground">↑↓ to navigate · Enter to select · {modKey()}+Enter to submit</span>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => sendCancelled()}
+                        <button onClick={sendCancelled}
                             className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Cancel</button>
-                        <button onClick={handleSubmit} disabled={isSubmitting}
+                        <button onClick={() => { setIsSubmitting(true); sendResult(selected); }} disabled={isSubmitting}
                             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40">
                             {isSubmitting ? "Submitting…" : "Submit"}
                         </button>

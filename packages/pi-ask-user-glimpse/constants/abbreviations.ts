@@ -1,0 +1,6 @@
+/** Protected abbreviations for sentence splitting. */
+export const PROTECTED_ABBREVIATIONS = new Set([
+    "etc", "vs", "fig", "dr", "mr", "mrs", "ms", "prof", "jr", "sr",
+    "inc", "ltd", "corp", "co", "llc", "al", "et", "vol", "vols",
+    "pg", "pp", "ch", "chap", "sec", "secs",
+]);
