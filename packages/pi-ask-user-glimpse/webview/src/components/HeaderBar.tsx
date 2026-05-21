@@ -23,7 +23,7 @@ export default function HeaderBar({ onShowShortcuts, question }: HeaderBarProps)
             <div className="flex shrink-0 items-center gap-1 pt-0.5">
                 <button
                     onClick={onShowShortcuts}
-                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                     title="Keyboard shortcuts"
                 >
                     <HelpIcon />

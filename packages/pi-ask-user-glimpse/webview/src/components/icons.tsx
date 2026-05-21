@@ -22,7 +22,7 @@ export function CheckIcon({ checked }: { checked: boolean }) {
 
 export function HelpIcon() {
     return (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="8" cy="8" r="6" />
             <path d="M8 11.8V11.5" />
             <path d="M8 8.5c0-1.5 2-1 2-2.5C10 4.7 9.1 4 8 4s-2 .7-2 2" />

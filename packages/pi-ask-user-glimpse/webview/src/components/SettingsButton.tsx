@@ -4,7 +4,7 @@ import { useSettings } from "../util/settings";
 
 function CogIcon() {
     return (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="8" cy="8" r="2.5" />
             <path d="M12.8 8a4.8 4.8 0 0 0 .2-1.2l1.8-.5-.9-2.4-1.8.5a4.8 4.8 0 0 0-1.2-.7l.2-1.9h-2.6l.2 1.9a4.8 4.8 0 0 0-1.2.7l-1.8-.5-.9 2.4 1.8.5a4.8 4.8 0 0 0 .2 1.2l-1.8.5.9 2.4 1.8-.5a4.8 4.8 0 0 0 1.2.7l-.2 1.9h2.6l-.2-1.9a4.8 4.8 0 0 0 1.2-.7l1.8.5.9-2.4-1.8-.5z" />
         </svg>
@@ -55,7 +55,7 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
         <div className="relative">
             <button
                 onClick={() => setOpen((s) => !s)}
-                className={buttonClassName ?? "rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"}
+                className={buttonClassName ?? "rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"}
                 title="Settings"
             >
                 <CogIcon />

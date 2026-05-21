@@ -19,7 +19,8 @@
 1. Run `npm run typecheck` in the affected package
 2. Run `just lint` or `npx @biomejs/biome check` for the affected files
 3. Run `npm test` if the package has tests
-4. Review `PUBLISH.md` before any release-related changes
+4. **If you changed webview code** (`webview/src/`), run `npm run build` in the affected package to regenerate `dist/index.html`
+5. Review `PUBLISH.md` before any release-related changes
 
 ## Design Journals (Required)
 

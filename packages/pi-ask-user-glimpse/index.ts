@@ -3,8 +3,8 @@
  */
 
 import {
-    type CustomJournalEntry,
     isCustomEntry as _isCustomEntry,
+    type CustomJournalEntry,
 } from "@alexleekt/pi-shared/types";
 
 /* ── Defensive: isCustomEntry may resolve to undefined in some jiti cache states ── */
@@ -21,15 +21,17 @@ const isCustomEntry: typeof _isCustomEntry =
                   entry.data !== null
               );
           };
+
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { StringEnum, Type } from "@earendil-works/pi-ai";
 import type {
     ExtensionAPI,
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
-import { type AskUserParams, askUserHandler } from "./tool/ask-user.js";
-import type { AnimationLevel, ThemeMode } from "./shared/ask-user.js";
 import { PROTECTED_ABBREVIATIONS } from "./constants/abbreviations.js";
+import type { AnimationLevel, ThemeMode } from "./shared/ask-user.js";
+import { type AskUserParams, askUserHandler } from "./tool/ask-user.js";
 
 /* ── Module-level reference to ExtensionAPI for tool execute closure ── */
 let _pi: ExtensionAPI | undefined;
@@ -88,18 +90,69 @@ function getStyleMode(entries: unknown[]): StyleMode {
     return "always"; // true, null, or missing → default
 }
 
-function getThemeSettings(entries: unknown[]): { theme?: ThemeMode; animationLevel?: AnimationLevel } {
+function getThemeSettings(entries: unknown[]): {
+    theme?: ThemeMode;
+    animationLevel?: AnimationLevel;
+} {
     const entry = entries.find(
         (e): e is CustomJournalEntry =>
             isCustomEntry(e) && e.customType === "ask-user-theme",
     );
     const data = entry?.data as Record<string, unknown> | undefined;
     const theme = typeof data?.theme === "string" ? data.theme : undefined;
-    const animationLevel = typeof data?.animationLevel === "string" ? data.animationLevel : undefined;
+    const animationLevel =
+        typeof data?.animationLevel === "string"
+            ? data.animationLevel
+            : undefined;
     return {
-        theme: theme === "light" || theme === "dark" || theme === "system" ? theme : undefined,
-        animationLevel: animationLevel === "none" || animationLevel === "minimal" || animationLevel === "all" ? animationLevel : undefined,
+        theme:
+            theme === "light" || theme === "dark" || theme === "system"
+                ? theme
+                : undefined,
+        animationLevel:
+            animationLevel === "none" ||
+            animationLevel === "minimal" ||
+            animationLevel === "all"
+                ? animationLevel
+                : undefined,
     };
+}
+
+/* ── Auto-catch helpers ── */
+
+function isTextContent(c: unknown): c is { type: "text"; text: string } {
+    return (
+        typeof c === "object" &&
+        c !== null &&
+        (c as Record<string, unknown>).type === "text" &&
+        typeof (c as Record<string, unknown>).text === "string"
+    );
+}
+
+function extractTextFromAgentMessage(message: AgentMessage): string {
+    if (message.role !== "assistant") return "";
+    const content = message.content;
+    if (!Array.isArray(content)) return "";
+    return content
+        .filter(isTextContent)
+        .map((c) => c.text)
+        .join("\n");
+}
+
+function findLastAssistantMessage(
+    messages: AgentMessage[],
+): AgentMessage | undefined {
+    return [...messages].reverse().find((m) => m.role === "assistant");
+}
+
+/** Track which assistant messages we've already auto-caught. */
+function wasAutoCaught(entries: unknown[], messageText: string): boolean {
+    return entries.some(
+        (e) =>
+            isCustomEntry(e) &&
+            e.customType === "ask-user-auto-caught" &&
+            (e.data as Record<string, unknown>)?.text === messageText,
+    );
 }
 
 /* ── Shared helpers for consistent ask_user UX across all entry points ── */
@@ -133,7 +186,6 @@ async function runAskUserWithTheme(
 ): Promise<ReturnType<typeof askUserHandler>> {
     const entries = ctx.sessionManager.getEntries();
     const params = enrichWithThemeSettings(rawParams, entries);
-
     let metadata: import("./tool/ask-user.js").AskUserMetadata = {};
 
     // Capture the agent's preceding message as additional context
@@ -222,8 +274,6 @@ function buildAgentPreamble(
 }
 
 /* ── /ask: extract questions & implicit requests ── */
-
-
 
 function splitSentences(text: string): string[] {
     const PLACEHOLDER = "\x00";
@@ -328,6 +378,15 @@ function buildAskLastParams(
     };
 }
 
+/** Build a user-facing prefix for an auto-caught or manual /ask answer. */
+function answerPrefix(questionCount: number): string {
+    if (questionCount === 0) {
+        return "Responding to your last message:";
+    }
+    const plural = questionCount > 1 ? "s" : "";
+    return `Answering the question${plural} from your last message:`;
+}
+
 function buildDebugParams(mode: string): AskUserParams | null {
     switch (mode) {
         case "single-select":
@@ -397,10 +456,17 @@ function buildDebugParams(mode: string): AskUserParams | null {
             };
         case "long-question":
             return {
-                question: "This is a very long question that exceeds one hundred and twenty characters so it should trigger the auto-split behavior. The first sentence becomes the dialog title, and the rest flows to the context panel.",
+                question:
+                    "This is a very long question that exceeds one hundred and twenty characters so it should trigger the auto-split behavior. The first sentence becomes the dialog title, and the rest flows to the context panel.",
                 options: [
-                    { title: "Split worked", description: "Title is short, context has the rest" },
-                    { title: "Not split", description: "Everything is still in the title" },
+                    {
+                        title: "Split worked",
+                        description: "Title is short, context has the rest",
+                    },
+                    {
+                        title: "Not split",
+                        description: "Everything is still in the title",
+                    },
                 ],
                 allowComment: true,
             };
@@ -429,9 +495,125 @@ sequenceDiagram
 \`\`\`
 `,
                 options: [
-                    { title: "Looks good", description: "Diagrams render correctly" },
+                    {
+                        title: "Looks good",
+                        description: "Diagrams render correctly",
+                    },
                     { title: "Broken", description: "Something is wrong" },
                 ],
+                allowComment: true,
+            };
+        case "html-context":
+            return {
+                question: "Test: HTML Context",
+                context: `<div style="text-align:center; padding: 1rem;">
+    <h2 style="color: hsl(var(--primary)); margin-bottom: 0.5rem;">Sample Visualization</h2>
+    <div style="display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0;">
+        <div style="width: 40px; height: 80px; background: hsl(var(--primary)); border-radius: 4px;"></div>
+        <div style="width: 40px; height: 120px; background: hsl(var(--secondary)); border-radius: 4px;"></div>
+        <div style="width: 40px; height: 60px; background: hsl(var(--muted)); border-radius: 4px;"></div>
+        <div style="width: 40px; height: 100px; background: hsl(var(--accent)); border-radius: 4px;"></div>
+    </div>
+    <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem;">This bar chart uses the wrapper's CSS variables for theme consistency.</p>
+    <script>
+        document.querySelectorAll('div > div').forEach((bar, i) => {
+            const target = bar.style.height;
+            bar.style.height = '0px';
+            bar.style.transition = 'height 0.6s ease ' + (i * 0.1) + 's';
+            setTimeout(() => bar.style.height = target, 50);
+        });
+    </script>
+</div>`,
+                contextFormat: "html",
+                options: [
+                    {
+                        title: "Looks good",
+                        description: "HTML renders with theme colors",
+                    },
+                    { title: "Broken", description: "Something is wrong" },
+                ],
+                allowComment: true,
+            };
+        case "recommended-badges":
+            return {
+                question: "Test: Recommendation Badges",
+                context: "Each option with `recommended: true` should show a **Recommended** badge next to its title. This tests both single-select rendering and the badge styling.",
+                options: [
+                    { title: "Use **React**", description: "Popular, ecosystem-rich. `recommended` is set.", recommended: true },
+                    { title: "Use *Vue*", description: "Approachable, progressive. No badge." },
+                    { title: "Use `Svelte`", description: "Compiler-based, minimal. No badge." },
+                ],
+                allowComment: true,
+            };
+        case "tic-tac-toe":
+            return {
+                question: "Test: Tic-Tac-Toe Game",
+                context: `<div style="text-align:center; font-family: ui-sans-serif, system-ui, sans-serif;">
+    <h2 style="color: hsl(var(--primary)); margin-bottom: 0.5rem;">Tic-Tac-Toe</h2>
+    <p id="status" style="color: hsl(var(--muted-foreground)); margin-bottom: 1rem; min-height: 1.5rem;">X's turn</p>
+    <div id="board" style="display: grid; grid-template-columns: repeat(3, 80px); gap: 4px; justify-content: center; margin-bottom: 1rem;">
+        ${Array.from({ length: 9 }, (_, i) => `<div data-idx="${i}" style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:bold; cursor:pointer; background: hsl(var(--muted) / 0.3); border-radius: 8px; color: hsl(var(--foreground));"></div>`).join('')}
+    </div>
+    <button id="reset" style="padding: 8px 16px; border: 1px solid hsl(var(--border)); border-radius: 6px; background: hsl(var(--card)); color: hsl(var(--foreground)); cursor: pointer; font-size: 0.875rem;">Reset Game</button>
+    <script>
+        (function() {
+            const cells = document.querySelectorAll('#board > div');
+            const status = document.getElementById('status');
+            const resetBtn = document.getElementById('reset');
+            let board = Array(9).fill('');
+            let current = 'X';
+            let gameOver = false;
+            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+            function checkWin() {
+                for (const [a,b,c] of wins) {
+                    if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
+                }
+                if (board.every(Boolean)) return 'Draw';
+                return null;
+            }
+
+            function render() {
+                cells.forEach((cell, i) => {
+                    cell.textContent = board[i];
+                    cell.style.color = board[i] === 'X' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
+                });
+                const winner = checkWin();
+                if (winner) {
+                    gameOver = true;
+                    status.textContent = winner === 'Draw' ? "It's a draw!" : winner + ' wins!';
+                    status.style.color = 'hsl(var(--primary))';
+                } else {
+                    status.textContent = current + "'s turn";
+                    status.style.color = 'hsl(var(--muted-foreground))';
+                }
+            }
+
+            cells.forEach(cell => {
+                cell.addEventListener('click', () => {
+                    const i = +cell.dataset.idx;
+                    if (board[i] || gameOver) return;
+                    board[i] = current;
+                    current = current === 'X' ? 'O' : 'X';
+                    render();
+                });
+            });
+
+            resetBtn.addEventListener('click', () => {
+                board = Array(9).fill('');
+                current = 'X';
+                gameOver = false;
+                render();
+            });
+        })();
+    </script>
+</div>`,
+                contextFormat: "html",
+                options: [
+                    { title: "Game works", description: "Interactive tic-tac-toe renders and plays" },
+                    { title: "Broken", description: "Something is wrong" },
+                ],
+                allowFreeform: true,
                 allowComment: true,
             };
         default:
@@ -450,17 +632,27 @@ const askUserTool = defineTool({
         "Always use ask_user instead of guessing when user input would improve the answer.",
         "Keep the question field short and focused (ideally one sentence). Put background, examples, or elaboration in the context field.",
         "Include Mermaid diagrams in the context field when visualizing architecture, data flows, or decision trees would help the user understand the question.",
+        "Use contextFormat: 'html' for throwaway visualizations (charts, tables, layouts) that text cannot communicate. The iframe inherits the wrapper's CSS variables for theme consistency.",
         "Pass a concise question and, when applicable, a list of options with short titles and optional longer descriptions.",
         "List options from most recommended to least recommended.",
         "Set allowMultiple: true when more than one choice is valid.",
         "Set allowFreeform: true (default) when the user might want to answer in their own words.",
     ],
     parameters: Type.Object({
-        question: Type.String({ description: "A short, focused question (ideally one sentence). Put background detail in context." }),
+        question: Type.String({
+            description:
+                "A short, focused question (ideally one sentence). Put background detail in context.",
+        }),
         context: Type.Optional(
             Type.String({
                 description:
-                    "Background, examples, or elaboration that helps the user understand the question. Shown in a side panel, so keep the question itself concise. Supports Mermaid diagrams (flowcharts, sequence diagrams, etc.) — wrap them in ```mermaid code blocks.",
+                    "Background, examples, or elaboration that helps the user understand the question. Shown in a side panel, so keep the question itself concise. Supports Mermaid diagrams (flowcharts, sequence diagrams, etc.) — wrap them in ```mermaid code blocks. Use contextFormat: 'html' for rich visualizations.",
+            }),
+        ),
+        contextFormat: Type.Optional(
+            StringEnum(["markdown", "html"], {
+                description:
+                    "Format of the context field. 'markdown' (default) renders as formatted text. 'html' renders in a sandboxed iframe — useful for throwaway charts, tables, or interactive visualizations. The iframe inherits the wrapper's CSS variables for theme consistency.",
             }),
         ),
         options: Type.Optional(
@@ -573,7 +765,7 @@ const askUserTool = defineTool({
     }),
 
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-        return runAskUserWithTheme(params, signal, ctx);
+        return runAskUserWithTheme(params as AskUserParams, signal, ctx);
     },
 });
 
@@ -596,6 +788,58 @@ export default function (pi: ExtensionAPI) {
             return { systemPrompt: event.systemPrompt + YOLO_MANDATE };
         }
         // "plain" → no injection
+    });
+
+    // ── Auto-catch: detect free-form questions and auto-trigger dialog ──
+    pi.on("agent_end", async (event, ctx) => {
+        if (!ctx.hasUI) return;
+
+        const entries = ctx.sessionManager.getEntries();
+        const styleMode = getStyleMode(entries);
+        // Auto-catch only when the agent is expected to use dialogs
+        if (styleMode !== "always") return;
+
+        const lastAssistant = findLastAssistantMessage(event.messages);
+        if (!lastAssistant) return;
+
+        const text = extractTextFromAgentMessage(lastAssistant).trim();
+        if (!text) return;
+
+        // Skip if we already auto-caught this exact text
+        if (wasAutoCaught(entries, text)) return;
+
+        const questions = extractQuestions(text);
+        if (questions.length === 0) return;
+
+        // Don't auto-catch if the user has already started typing a response
+        const editorText = ctx.ui.getEditorText().trim();
+        if (editorText.length > 0) {
+            ctx.ui.notify(
+                "The assistant asked a question — use /ask to answer via dialog, or /ask-style plain to disable auto-catch",
+                "info",
+            );
+            return;
+        }
+
+        const result = await runAskUserWithTheme(
+            buildAskLastParams(questions, text),
+            undefined,
+            ctx,
+        );
+
+        // Mark as caught so we don't re-trigger on the same message
+        await pi.appendEntry("ask-user-auto-caught", { text });
+
+        if (result.details.cancelled) return;
+
+        const textContent = result.content[0];
+        const answer = textContent?.type === "text" ? textContent.text : "";
+        if (!answer) return;
+
+        pi.sendUserMessage(
+            `${answerPrefix(questions.length)}\n\n${answer}`,
+            { deliverAs: "followUp" },
+        );
     });
 
     // ── Manual style toggle for ask_user behavior ──
@@ -672,14 +916,10 @@ export default function (pi: ExtensionAPI) {
             const answer = textContent?.type === "text" ? textContent.text : "";
             if (!answer) return;
 
-            let prefix: string;
-            if (questions.length === 0) {
-                prefix = "Responding to your last message:";
-            } else {
-                const plural = questions.length > 1 ? "s" : "";
-                prefix = `Answering the question${plural} from your last message:`;
-            }
-            pi.sendUserMessage(`${prefix}\n\n${answer}`);
+            pi.sendUserMessage(
+                `${answerPrefix(questions.length)}\n\n${answer}`,
+                { deliverAs: "steer" },
+            );
         },
     });
 
@@ -700,6 +940,9 @@ export default function (pi: ExtensionAPI) {
                 "questionnaire",
                 "long-question",
                 "mermaid",
+                "html-context",
+                "tic-tac-toe",
+                "recommended-badges",
             ]);
             if (!mode) return;
 
