@@ -5,6 +5,10 @@
 Monorepo for [Pi](https://github.com/earendil-works/pi-coding-agent) coding agent extensions.
 All packages are published under the `@alexleekt/` scope on npm.
 
+## Development
+
+This is a monorepo with multiple independently-published packages. Keep changes scoped to the package you're working on; avoid mixing unrelated changes in a single commit.
+
 ## Packages
 
 | Package | Description |

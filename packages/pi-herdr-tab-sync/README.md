@@ -1,5 +1,7 @@
 # @alexleekt/pi-herdr-tab-sync
 
+> Part of the [`pi-extensions`](../../) monorepo.
+
 Sync pi session name to [herdr](https://herdr.dev) tab label.
 
 ## Behavior

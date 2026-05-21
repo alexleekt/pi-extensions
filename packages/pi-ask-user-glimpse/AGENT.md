@@ -4,104 +4,57 @@ parent: ../../AGENT.md
 
 # AGENT.md — pi-ask-user-glimpse
 
-> Project-specific guidelines for AI agents working on this codebase.
+> Behavioral rules for AI agents working on this codebase.
 
 ## Monorepo Context
 
-This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](../../AGENT.md) for monorepo-wide conventions (shared tooling, just commands, release process, CI setup).
+This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](../../AGENT.md) for monorepo-wide conventions.
 
 > This file is authoritative for this repository. If it conflicts with general agent guidelines, this file wins.
 
-## Architecture
+## Invariants (Never Break These)
 
-```
-index.ts              → Extension entrypoint (registers tool + slash commands)
-constants/            → STOPWORDS, PROTECTED_ABBREVIATIONS extracted for reuse
-tool/ask-user.ts      → Payload construction, HTML injection, glimpseui.prompt() call
-tool/response-formatter.ts → Normalizes webview response → Pi AgentToolResult
-fallback/terminal-prompt.ts → TUI fallback when glimpseui native host unavailable
-webview/              → Vite + React + Tailwind app
-  src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform, HeaderBar, ContextPanel
-  src/util/           → glimpse.ts (host bridge), platform.ts (modKey), settings.tsx (theme/animation context), html.ts (escapeHtml + highlightMatch)
-  dist/index.html     → Single-file bundle (inlined JS + CSS) — produced by Vite + vite-plugin-singlefile
-```
+1. **Self-contained bundle** — `dist/index.html` must have zero external network requests. All JS, CSS, and assets inlined.
+2. **Payload injection contract** — The `/*ASK_USER_PAYLOAD*/` placeholder replacement MUST escape `<`, `>`, and `&` as `\u003c`, `\u003e`, `\u0026` to prevent HTML injection.
+3. **Terminal fallback** — If `glimpseui.prompt()` throws, fall back to `fallback/terminal-prompt.ts` via `ctx.ui` TUI methods. Never crash Pi.
+4. **No setTimeout in extension factory** — The factory function must never use `setTimeout`, `setImmediate`, or deferred callbacks. Unhandled errors in deferred callbacks crash Pi.
+5. **`noEmit` tsconfig** — Pi loads `.ts` files directly. Do NOT add `outDir` or `declaration` settings.
 
-## Key Invariants (Never Break These)
+## Critical Rules
 
-1. **Self-contained bundle** — `dist/index.html` must have zero external network requests. All JS, CSS, and assets are inlined by `vite-plugin-singlefile`.
-2. **Payload injection contract** — The placeholder `/*ASK_USER_PAYLOAD*/` in `index.html` is replaced at runtime with JSON-serialized payload. The replacement string MUST escape `<`, `>`, and `&` as `\u003c`, `\u003e`, `\u0026` to prevent HTML injection.
-3. **Terminal fallback** — If `glimpseui.prompt()` throws (native host unavailable), the extension must fall back to `fallback/terminal-prompt.ts` using `ctx.ui` TUI methods. Never crash the Pi process.
-4. **No setTimeout in extension factory** — The extension factory function (`export default function (pi: ExtensionAPI)`) must never use `setTimeout`, `setImmediate`, or deferred callbacks. Unhandled errors in deferred callbacks crash Pi.
+### HTML escaping
+Test scripts must use the **same escaping** as production code in `tool/ask-user.ts`. Add new escapes to both production and all test scripts.
 
-## File Responsibilities
+### XSS prevention
+`highlightMatch()` must escape BOTH display text and query before producing HTML. Never use raw `.replace()` with user input into `dangerouslySetInnerHTML`.
 
-| File | Role | What to know before editing |
-|------|------|----------------------------|
-| `index.ts` | Registers `ask_user` tool and `/ask`, `/ask-debug`, `/ask-style` commands | Uses `defineTool` from `pi-coding-agent`. Theme persistence shared via `runAskUserWithTheme()` helper. |
-| `tool/ask-user.ts` | Payload construction + webview invocation | `resolveWebviewHtml()` has a two-step fallback for finding `dist/index.html`. `summarizeTitle()` extracts a window title from the question string. |
-| `tool/response-formatter.ts` | Normalizes webview JSON → Pi result | Returns `AgentToolResult<AskToolDetails>`. The `details` field is used by Pi for tool result rendering. |
-| `fallback/terminal-prompt.ts` | TUI fallback when webview unavailable | Handles all four payload types (`single-select`, `multi-select`, `freeform`, `questionnaire`). Questionnaire multi-select uses repeated single-selects. |
-| `webview/src/components/*.tsx` | React dialog components | Each component receives `payload` prop. Key handlers use `useCallback` + `stateRef` pattern to avoid stale closures. Cancel sends `{ __cancelled: true }`. |
-| `webview/src/App.tsx` | Router + layout — dispatches to correct component, manages resizable splitter | `getPayload()` reads `window.__ASK_USER_PAYLOAD__`. Splitter supports drag, double-click collapse, and hover-only scrollbars. |
-| `webview/src/util/html.ts` | Shared HTML utilities | `escapeHtml()` prevents XSS; `highlightMatch()` escapes text before wrapping matches in `<mark>`. Used by SingleSelect and MultiSelect. |
+### Sanitizer audits
+When adding new rich content support (video, audio, etc.), audit `sanitizeHtml()` first. It blocks `script`, `img`, `iframe`, `object`, `embed`, `form`, `svg`, and strips `javascript:` / `data:` URLs.
 
-## Type Sharing Between Server and Webview
+### MultiSelect submit
+The submit handler must block when `selected.size === 0`. The search `query` is NOT a valid submission.
 
-Shared types live in `shared/ask-user.ts` and are imported by both the server (`tool/ask-user.ts`) and the webview (`webview/src/App.tsx`, `webview/src/components/*.tsx`).
-
-The root `tsconfig.json` includes `shared/**/*.ts`. The webview `tsconfig.json` includes `../shared/ask-user.ts`.
-
-**Import path divergence:** The server uses NodeNext module resolution and imports with `.js` extension (`../shared/ask-user.js`). The webview uses bundler resolution and imports without extension (`../../shared/ask-user`). This is standard and expected.
-
-## Build Pipeline
-
-```bash
-npm run build        # build:css + build:webview
-npm run build:css    # tailwindcss compilation → webview/src/index.generated.css
-npm run build:webview # vite build → dist/index.html
-npm run validate     # checks dist exists, payload placeholder present, glimpse binary found
-npm run validate:gui # same + opens actual WebView for visual validation
-```
-
-**Critical:** `dist/index.html` is generated by `vite build` and is NOT checked into git (see `.gitignore`). The `prepack` script ensures it's built before `npm publish`.
-
-## Testing Changes
-
-1. **Validate build:** `npm run validate`
-2. **Test webview visually:** `npm run validate:gui`
-3. **Test with context panel:** `npm run test:with-context` (opens WebView with left panel + splitter)
-4. **Run smoke test:** `npx tsx scripts/smoke-test.ts` (opens WebView for 2s)
-5. **Full visual QA:** `npx tsx scripts/visual-qa.ts` (cycles through all 5 scenarios)
-6. **Dry-run pack:** `npm run check`
-
-## Common Pitfalls
-
-### HTML escaping drift
-Test scripts (`scripts/validate.ts`, `scripts/smoke-test.ts`, `scripts/visual-qa.ts`, `scripts/test-with-context.ts`) must use the **same escaping** as production code in `tool/ask-user.ts`. If you add a new escape there, add it to all test scripts too.
-
-### XSS in highlightMatch
-`highlightMatch()` in `webview/src/util/html.ts` must escape BOTH the display text and the query before producing HTML. Never use raw `.replace()` with user input directly into `dangerouslySetInnerHTML`.
-
-### ContextPanel sanitization
-`sanitizeHtml()` blocks dangerous tags (`script`, `img`, `iframe`, `object`, `embed`, `form`, `svg`, etc.) and strips `javascript:` / `data:` URLs. If adding new rich content support (e.g., video, audio), audit the sanitizer first.
-
-### MultiSelect submit logic
-The submit handler must block when `selected.size === 0`. The search `query` is NOT a valid submission — the freeform "Other" button exists for that purpose.
-
-### Questionnaire dead code
-The server never sends a `questionnaire` payload without `questions` array. The `getQuestions` fallback in `Questionnaire.tsx` is unreachable. Don't add more defensive code there.
-
-### `noEmit` tsconfig
-This is a Pi extension — Pi loads `.ts` files directly. `tsconfig.json` uses `"noEmit": true` for pure type-checking. Do NOT add `outDir` or `declaration` settings.
+### No defensive code for dead paths
+The server never sends a `questionnaire` without `questions`. Don't add defensive code for unreachable states.
 
 ## Extension-Specific Rules
 
-- **Indentation:** 2 spaces (TypeScript), tabs (not enforced but existing code uses 2-space)
+- **Indentation:** 2 spaces (TypeScript)
 - **Imports:** Use `.js` extensions on relative imports (NodeNext module resolution)
-- **Console output:** Use `[pi-ask-user-glimpse]` prefix for all `console.warn`/`console.error` calls
+- **Console output:** Use `[pi-ask-user-glimpse]` prefix for all `console.warn`/`console.error`
 - **Peer deps:** List `@earendil-works/pi-coding-agent` and `@earendil-works/pi-ai` in `peerDependencies`. Do NOT add `@earendil-works/pi-tui` — it's not used.
 
-## Known Issues / Deferred Work
+## Decision Making
 
-- **Keyboard listeners not centralized** — Each component (SingleSelect, MultiSelect, Questionnaire, Freeform) adds its own global `keydown` listener. In practice only one is mounted at a time, but a future refactor should move keyboard handling to `App.tsx` or a provider context.
-- **Glimpse does not support custom window icons** — Only the window title is customizable. No application icon API exists in glimpseui v0.8.1.
+| Scenario | Action |
+|----------|--------|
+| Adding new webview dependencies | Ask first |
+| Modifying HTML escaping logic | Proceed with extreme caution — test scripts must match |
+| Adding new rich content types | Proceed, but audit sanitizer first |
+| Refactoring component state | Proceed, verify with `npm run validate` |
+| Bug fixes with clear solution | Proceed |
+
+## Deferred Work (Do Not Touch Without Discussion)
+
+- Centralizing keyboard listeners from components into `App.tsx` or a provider context
+- Custom window icons in glimpseui (API does not exist in v0.8.1)
