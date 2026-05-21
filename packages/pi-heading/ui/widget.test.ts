@@ -94,6 +94,29 @@ describe("working mode", () => {
     expect(prefixes[0]).toBe("⠋");
     expect(prefixes[prefixes.length - 1]).not.toBe("⠋");
   });
+
+  test("spinner is a no-op when already running with same text", async () => {
+    const ctx = createMockCtx();
+    const calls: [string, string[] | undefined][] = [];
+    ctx.ui.setWidget = (key: string, lines: string[] | undefined) => {
+      calls.push([key, lines]);
+    };
+    renderWidget(ctx, "Working", "working");
+
+    // Wait for one tick
+    await new Promise((r) => setTimeout(r, 200));
+    const callCountAfterFirst = calls.length;
+
+    // Re-render with same text — should not thrash the interval
+    renderWidget(ctx, "Working", "working");
+
+    // Wait for another tick
+    await new Promise((r) => setTimeout(r, 200));
+
+    // The second render should not have reset the interval; total calls should
+    // continue accumulating smoothly (not restart from frame 0).
+    expect(calls.length).toBeGreaterThan(callCountAfterFirst + 1);
+  });
 });
 
 describe("clearWidget", () => {

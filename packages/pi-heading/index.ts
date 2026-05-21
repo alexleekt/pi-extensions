@@ -245,16 +245,28 @@ export default function (pi: ExtensionAPI) {
     const leafId = ctx.sessionManager.getLeafId();
     const existing = leafId ? getState(leafId) : undefined;
 
-    // Stop spinner and show completion prefix (don't restore Pi's loader yet —
-    // agent may still be running between turns with tool calls)
-    stopSpinner();
-    if (existing?.goal) {
-      renderWidget(ctx, existing.goal, "achievement");
+    const hasToolResults = event.toolResults && event.toolResults.length > 0;
+
+    if (!hasToolResults) {
+      // Final turn: stop spinner and show completion prefix
+      stopSpinner();
+      if (existing?.goal) {
+        renderWidget(ctx, existing.goal, "achievement");
+      }
     }
+    // Intermediate turns: keep spinner running across the turn_end → turn_start gap
 
     // Extract the assistant's final message text for this turn
     const assistantText = extractAgentText(event.message);
     if (!assistantText.trim()) return;
+
+    if (hasToolResults) {
+      // Intermediate turns carry tool requests, not accomplishments.
+      // Skip achievement summarization to avoid wasting LLM calls
+      // on transitional messages like "Let me search for that…"
+      logDebug(makeDebugEntryError(assistantText.slice(0, 200), existing, "skipped-achievement: intermediate tool turn", ctx.model?.id));
+      return;
+    }
 
     const myGeneration = turnGeneration;
 

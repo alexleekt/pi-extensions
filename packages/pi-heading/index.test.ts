@@ -387,18 +387,44 @@ describe("headingExtension", () => {
 
   // ── turn_end ───────────────────────────────────────────────
 
-  test("turn_end stops spinner, shows achievement prefix, and triggers summarize", async () => {
+  test("turn_end stops spinner and shows achievement prefix on final turn", async () => {
     setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
     headingExtension(pi as any);
     const ctx = makeMockCtx();
     const msg = { content: "I fixed the bug" };
-    pi.handlers["turn_end"][0]({ message: msg }, ctx);
+    // Final turn: no tool results
+    pi.handlers["turn_end"][0]({ message: msg, toolResults: [] }, ctx);
     expect(isSpinnerRunning()).toBe(false);
     // Initial achievement prefix render
     expect(ctx.widgetCalls.length).toBeGreaterThan(0);
     await new Promise((r) => setTimeout(r, 50));
     // Should have the achievement summarization result too
     expect(ctx.widgetCalls.some((w) => w.lines?.[0]?.includes("Docker setup"))).toBe(true);
+  });
+
+  test("turn_end keeps spinner running for intermediate tool-call turns", () => {
+    setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
+    headingExtension(pi as any);
+    const ctx = makeMockCtx();
+    // Prime with a running spinner (as if agent_start happened)
+    pi.handlers["agent_start"][0]({}, ctx);
+    expect(isSpinnerRunning()).toBe(true);
+    // Intermediate turn with tool results — spinner should stay running
+    pi.handlers["turn_end"][0]({ message: { content: "Let me search" }, toolResults: [{ role: "tool", content: "result" }] }, ctx);
+    expect(isSpinnerRunning()).toBe(true);
+    // Should not have rendered achievement prefix (✓)
+    expect(ctx.widgetCalls.some((w) => w.lines?.[0]?.startsWith("✓"))).toBe(false);
+  });
+
+  test("turn_end skips async summarize for intermediate tool-call turns", async () => {
+    setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
+    headingExtension(pi as any);
+    const ctx = makeMockCtx();
+    mockCompleteSimple.mockClear();
+    pi.handlers["turn_end"][0]({ message: { content: "Let me search" }, toolResults: [{ role: "tool", content: "result" }] }, ctx);
+    await new Promise((r) => setTimeout(r, 50));
+    // No API call should have been made for achievement summarize
+    expect(mockCompleteSimple.mock.calls.length).toBe(0);
   });
 
   test("turn_end does nothing when hasUI is false", () => {

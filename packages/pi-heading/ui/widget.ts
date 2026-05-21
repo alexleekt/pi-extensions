@@ -46,6 +46,10 @@ export function renderWidget(
 }
 
 function startSpinner(ctx: ExtensionContext, text: string): void {
+  if (spinnerTimer && currentSpinnerText === text) {
+    // Already running with same text — don't thrash between turn_start events
+    return;
+  }
   if (spinnerTimer) {
     clearInterval(spinnerTimer);
     // Preserve spinnerIndex for smooth restarts between turn_start events

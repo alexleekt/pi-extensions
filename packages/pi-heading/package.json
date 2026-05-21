@@ -1,6 +1,6 @@
 {
   "name": "@alexleekt/pi-heading",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "One-line session heading widget for the Pi coding agent",
   "type": "module",
   "main": "index.ts",
