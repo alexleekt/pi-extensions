@@ -26,16 +26,19 @@ A **one-line session heading widget** for the Pi coding agent.
 ```
 index.ts              → Extension entrypoint (hooks + slash commands)
 llm/
-  summarize.ts        → Reads prompt files, calls stream() from @earendil-works/pi-ai
+  summarize.ts        → Reads prompt files, calls completeSimple() from @earendil-works/pi-ai
   picker.ts           → Model selection: session model default, user override via config.json
 state/
   store.ts            → In-memory Map keyed by leafId + per-branch replay via appendEntry
   guard.ts            → Topic stability filter (word-overlap ≥ 70%)
+  debug.ts            → Debug log persistence to temp file, entry formatting
+debug.log             → Runtime debug log (auto-created in temp dir when debug enabled)
 ui/
   widget.ts           → One-line setWidget renderer (no components, no borders)
 prompts/
   topic.md            → Default topic prompt (max_words: 4)
   goal.md             → Default goal prompt (max_words: 12)
+  achievement.md      → Default achievement prompt (max_words: 12, uses {goal} placeholder)
 ```
 
 ## Key Invariants (Never Break These)
@@ -45,16 +48,18 @@ prompts/
 3. **Passive widget** — No keyboard focus, no hotkeys, no `handleInput`. The widget is read-only.
 4. **Prompt file frontmatter** — `readPromptFile()` parses YAML frontmatter for `max_words`. The regex must handle empty frontmatter (`---\n---\n`) and missing trailing newlines.
 5. **Symlink-safe paths** — `import.meta.dirname` resolves to the symlink target (`~/.pi/agent/extensions/pi-heading/`), so `prompts/` is a sibling, NOT `../prompts`.
+6. **Placeholder substitution in instructions** — `runPrompt()` replaces `{goal}` and `{max_words}` in both the instructions (system prompt) and template (user message) before sending to the LLM.
 
 ## File Responsibilities
 
 | File | Role | What to know before editing |
 |------|------|----------------------------|
-| `index.ts` | Hooks `session_start`, `before_agent_start`, `session_shutdown`; registers `/heading`, `/heading-model` | The `before_agent_start` handler must NOT await `summarize()`. Use fire-and-forget. |
-| `llm/summarize.ts` | Prompt file reading + LLM streaming | `readPromptFile()` is exported for tests. `runPrompt()` calls `stream()` from `@earendil-works/pi-ai` directly. |
+| `index.ts` | Hooks `session_start`, `before_agent_start`, `session_shutdown`; registers `/heading`, `/heading-model`, `/heading-debug` | The `before_agent_start` handler must NOT await `summarize()`. Use fire-and-forget. |
+| `llm/summarize.ts` | Prompt file reading + LLM calls | `readPromptFile()` is exported for tests. `runPrompt()` calls `completeSimple()` from `@earendil-works/pi-ai` directly. |
 | `llm/picker.ts` | Config-based model override | `configDir` parameter is injected for testability. Default path is `~/.pi/agent/extensions/pi-heading/`. |
 | `state/store.ts` | In-memory state + branch replay | `replayBranch()` walks `ctx.sessionManager.getBranch()` backwards for `"heading"` custom entries. |
 | `state/guard.ts` | Topic stability | Word-overlap threshold is 0.7 (70%). Normalization strips punctuation but preserves word boundaries. |
+| `state/debug.ts` | Debug log persistence | Structured JSON-line log to temp file. `logDebug()` is no-op when debug disabled. |
 | `ui/widget.ts` | Widget rendering | Uses `ctx.ui.theme.fg("muted", "▸ ")` + `ctx.ui.theme.fg("text", goal)`. Never add borders. |
 
 
@@ -65,14 +70,18 @@ We call `@earendil-works/pi-ai` directly (not through Pi's agent loop):
 ```typescript
 const model = registry.getAvailable().find(m => m.id === modelId);
 const auth = await registry.getApiKeyAndHeaders(model);
-const events = stream(model, { messages }, {
-  apiKey: auth.apiKey,
-  maxTokens: 256,
-  temperature: 0,
-});
-for await (const event of events) {
-  if (event.type === "text_delta") { /* ... */ }
-}
+const result = await completeSimple(
+  model,
+  { systemPrompt, messages: [{ role: "user", content: [{ type: "text", text: userText }], timestamp: Date.now() }] },
+  {
+    apiKey: auth.apiKey,
+    headers: auth.headers || {},
+    maxTokens: Math.min(128, promptFile.maxWords * 2 + 8),
+    temperature: 0,
+    ...thinkingOffOpts(model),
+    onPayload: (payload: any) => { payload.response_format = { type: "json_object" }; return payload; },
+  },
+);
 ```
 
 ## Prompt File Format
@@ -83,17 +92,17 @@ max_words: 4
 ---
 Summarize the user's message as a concise topic label.
 
-User message:
-{message}
+Message: {message}
 ```
 
 - `max_words` is read by `readPromptFile()` and enforced by `truncateToWords()` post-generation
-- `{message}` is the only supported placeholder
+- `{message}` is supported in all prompts; `{goal}` is supported in `achievement.md`
+- `{max_words}` is substituted in instructions before sending to the LLM
 - Files live in `~/.pi/agent/extensions/pi-heading/prompts/` (user-editable)
 
 ## Testing
 
-- **Unit tests**: `bun test` (29 tests across 3 files)
+- **Unit tests**: `bun test` (70 tests across 6 files: `summarize.test.ts`, `summarize-pipeline.test.ts`, `picker.test.ts`, `guard.test.ts`, `store.test.ts`, `widget.test.ts`)
 - **Type-check**: `npm run check`
 - **Manual**: Symlink into `~/.pi/agent/extensions/`, start Pi, send a message
 

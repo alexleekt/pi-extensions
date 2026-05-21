@@ -1,8 +1,10 @@
 # Integrating with pi-heading
 
-pi-heading broadcasts its current heading state on the shared Pi `EventBus` so other extensions can react to what the user is working on — without coupling to herdr, tmux, or any specific multiplexer.
+> ⚠️ **NOT YET IMPLEMENTED** — This document describes the *planned* event-bus integration. The current codebase does not emit `heading:state` events. This integration is on the roadmap for a future release.
 
-## What you get
+pi-heading will broadcast its current heading state on the shared Pi `EventBus` so other extensions can react to what the user is working on — without coupling to herdr, tmux, or any specific multiplexer.
+
+## What you will get
 
 Subscribe to the `heading:state` channel on `pi.events`:
 
@@ -24,18 +26,18 @@ interface HeadingExposure {
 }
 ```
 
-### Mode semantics
+### Mode semantics (planned)
 
-| Mode | When it fires | What it means |
+| Mode | When it will fire | What it means |
 |------|--------------|---------------|
 | `goal` | After the user sends a message and the goal is summarized | The agent is about to start working on this goal |
 | `working` | When the agent loop starts, and at the start of each tool-call turn | The agent is actively executing |
 | `achievement` | After a turn completes and the achievement is summarized | The agent finished that turn; check `achievement` for what got done |
 | `idle` | When the overall agent run ends | The agent is idle, waiting for the next user message |
 
-A `clearExposure()` (empty topic/goal, mode `idle`) fires on `session_shutdown` so consumers can clean up any transient UI they built.
+A `clearExposure()` (empty topic/goal, mode `idle`) will fire on `session_shutdown` so consumers can clean up any transient UI they built.
 
-## When events fire
+## When events will fire
 
 ```
 session_start  → exposeHeading(replayedState,  "achievement" | "goal")
@@ -87,6 +89,6 @@ export default function (pi: ExtensionAPI) {
 
 ## Design philosophy
 
-- **Pi-heading does not know you exist.** It just broadcasts. No callbacks, no registries, no coupling.
+- **Pi-heading will not know you exist.** It will just broadcast. No callbacks, no registries, no coupling.
 - **Best effort.** The event bus is in-process; if your extension loads after pi-heading, you'll still receive all future events.
-- **Not a log.** Only the *latest* state is emitted. If you need history, track it yourself in your extension.
+- **Not a log.** Only the *latest* state will be emitted. If you need history, track it yourself in your extension.

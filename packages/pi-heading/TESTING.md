@@ -58,7 +58,14 @@ Type `/heading-model` and pick a different model (or "Reset to session model").
 
 **Expected:** Notification confirms the change.
 
-### 7. Ghosting check
+### 7. Test `/heading-debug`
+Type `/heading-debug on` to enable debug logging. Send another message, then type `/heading-debug` (no arguments) to view the last entries.
+
+**Expected:** A notification shows recent debug entries with timestamps, goal text, and model IDs.
+
+Type `/heading-debug off` to disable logging, and `/heading-debug clear` to wipe the log.
+
+### 8. Ghosting check
 Resize the terminal window (make it narrower, then wider).
 
 **Expected:** No stacked border fragments. The single line may re-wrap but there's nothing to orphan.
@@ -72,21 +79,31 @@ Scroll up with your mouse/trackpad.
 
 If the widget doesn't appear:
 
-1. Check the prompt files were bootstrapped:
+1. Enable debug mode and inspect the log:
+   ```
+   /heading-debug on
+   ```
+   Send a message, then:
+   ```
+   /heading-debug
+   ```
+   Look for `❌` errors or `⚠️FRONTMATTER_LEAK` warnings in the output.
+
+2. Check the prompt files were bootstrapped:
    ```bash
    ls ~/.pi/agent/extensions/pi-heading/prompts/
    ```
-   Should show `topic.md` and `goal.md`.
+   Should show `topic.md`, `goal.md`, and `achievement.md`.
 
-2. Check pi's debug log for errors:
+3. Check pi's debug log for errors:
    ```bash
    grep "pi-heading" ~/.pi/agent/logs/*.log 2>/dev/null || echo "no log dir"
    ```
 
-3. Check if the model call failed (e.g., no API key):
+4. Check if the model call failed (e.g., no API key):
    The error is caught and logged to stderr. Look for `[pi-heading] Summarize failed:`.
 
-4. Try setting a manual heading first to verify the widget mechanism works:
+5. Try setting a manual heading first to verify the widget mechanism works:
    ```
    /heading Test heading
    ```

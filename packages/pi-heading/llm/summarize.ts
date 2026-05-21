@@ -105,15 +105,18 @@ async function runPrompt(
   goal?: string,
 ): Promise<RunPromptResult> {
   const promptFile = readPromptFile(fileName);
+  let instructions = promptFile.instructions;
   let userText = promptFile.template.replace(/\{message\}/g, message);
   if (goal !== undefined) {
+    instructions = instructions.replace(/\{goal\}/g, goal);
     userText = userText.replace(/\{goal\}/g, goal);
   }
+  instructions = instructions.replace(/\{max_words\}/g, String(promptFile.maxWords));
   const example =
     fileName === "topic" ? "Rust memory leak" :
     fileName === "achievement" ? "Fixed JWT middleware in 3 files" :
     "Fix the memory leak in the Rust service.";
-  const systemPrompt = buildSystemPrompt(promptFile.instructions, promptFile.maxWords, example);
+  const systemPrompt = buildSystemPrompt(instructions, promptFile.maxWords, example);
   const fullPrompt = `${systemPrompt}\n\nMessage: ${userText}`;
 
   const modelId = resolveModelId(ctx);

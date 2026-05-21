@@ -88,6 +88,17 @@ Lock in a goal when the auto-summary isn't quite right:
 
 By default, pi-heading uses your **session's configured model**. You can override to a cheaper one (e.g. Haiku, Flash, Mini) to keep costs near zero.
 
+### `/heading-debug` — toggle debug logging
+
+```
+/heading-debug on     → Enable structured debug logging
+/heading-debug off    → Disable debug logging
+/heading-debug clear → Wipe the debug log
+/heading-debug        → Show last 10 debug entries
+```
+
+When debug is on, every summarization call (topic, goal, achievement) is logged to a temp file with full prompts, raw responses, stream metadata, and any errors. Use this to diagnose missing headings or model failures.
+
 ## Customizing prompts
 
 The LLM prompts live in:
@@ -108,13 +119,12 @@ Summarize the user's message as a concise topic label.
 
 Output ONLY the topic label — no punctuation, no quotes, no explanation.
 
-User message:
-{message}
+Message: {message}
 ```
 
 - `{message}` — the agent's output text (required for all prompts)
 - `{goal}` — the current goal text (available in `achievement.md` only)
-- `max_words` is enforced after generation (output is truncated if the LLM exceeds it)
+- `max_words` is read from frontmatter and injected into the prompt; output is truncated if the LLM exceeds it
 
 The **achievement** prompt receives both `{goal}` and `{message}` so the LLM can echo the goal's terminology in its summary.
 - Edit these files, then `/reload` or restart Pi to pick up changes

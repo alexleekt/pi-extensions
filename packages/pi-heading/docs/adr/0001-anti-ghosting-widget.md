@@ -31,3 +31,10 @@ Message: {message}
 ```
 
 The `max_words` field is read by the extension and injected into the prompt as a hard constraint. Post-generation, the output is truncated to the nearest word boundary if the LLM exceeds the limit.
+
+### Amendment (2026-05-20)
+
+The prompt system now supports three placeholders:
+- `{message}` — the user's message (all prompts)
+- `{goal}` — the current goal text (`achievement.md` only)
+- `{max_words}` — substituted with the frontmatter value in instructions before sending to the LLM
