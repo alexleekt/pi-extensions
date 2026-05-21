@@ -55,6 +55,11 @@ just release pi-bump 0.3.0
 
 This bumps version, commits, tags (`@alexleekt/pi-bump@0.3.0`), and pushes — triggering `.github/workflows/publish.yml`.
 
+**Before releasing, consult [`PUBLISH.md`](./PUBLISH.md)** for the pre-release checklist and troubleshooting. Key checks:
+- `repository.url` is set in `package.json` (required for Trusted Publishing provenance)
+- Package is already bootstrapped on npm if it's a first-time publish
+- `npm run typecheck` passes
+
 ## Pi Extension Development Setup
 
 For local dev loading into the Pi agent:
