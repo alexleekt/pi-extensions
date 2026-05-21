@@ -38,18 +38,45 @@ function renderMarkdown(text: string): string {
     return sanitizeHtml(raw);
 }
 
+/* ── One-time mermaid init ── */
+let _mermaidInitialized = false;
+function ensureMermaidInit() {
+    if (_mermaidInitialized) return;
+    try {
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: "loose",
+        });
+        _mermaidInitialized = true;
+    } catch {
+        // ignore init errors — mermaid.run() may still work
+    }
+}
+
 export default function ContextPanel({ context }: ContextPanelProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const html = renderMarkdown(context);
 
     useEffect(() => {
-        if (!containerRef.current) return;
-        mermaid
-            .run({ nodes: containerRef.current.querySelectorAll(".mermaid") })
-            .catch(() => {
-                // Silently ignore mermaid parse errors so broken diagrams
-                // don't crash the entire panel.
-            });
+        ensureMermaidInit();
+        const container = containerRef.current;
+        if (!container) return;
+
+        const nodes = container.querySelectorAll<HTMLElement>(".mermaid");
+        if (nodes.length === 0) return;
+
+        // Defer to next frame so React has fully committed the DOM.
+        const id = requestAnimationFrame(() => {
+            mermaid
+                .run({ nodes })
+                .catch((err: unknown) => {
+                    // Log for debugging but don't crash the panel.
+                    // eslint-disable-next-line no-console
+                    console.warn("[mermaid] render error:", err);
+                });
+        });
+
+        return () => cancelAnimationFrame(id);
     }, [context]);
 
     return (
