@@ -15,75 +15,75 @@ let currentSpinnerText = "";
 export type WidgetMode = "goal" | "working" | "achievement";
 
 export function renderWidget(
-  ctx: ExtensionContext,
-  text: string,
-  mode: WidgetMode = "goal",
+    ctx: ExtensionContext,
+    text: string,
+    mode: WidgetMode = "goal",
 ): void {
-  const trimmed = text.trim();
-  if (!trimmed) {
-    clearWidget(ctx);
-    return;
-  }
+    const trimmed = text.trim();
+    if (!trimmed) {
+        clearWidget(ctx);
+        return;
+    }
 
-  if (mode !== "working") {
-    stopSpinner();
-  }
+    if (mode !== "working") {
+        stopSpinner();
+    }
 
-  const theme = ctx.ui.theme;
-  let prefix: string;
+    const theme = ctx.ui.theme;
+    let prefix: string;
 
-  if (mode === "working") {
-    prefix = SPINNER_CHARS[spinnerIndex];
-    startSpinner(ctx, trimmed);
-  } else if (mode === "achievement") {
-    prefix = "✓";
-  } else {
-    prefix = "▸";
-  }
+    if (mode === "working") {
+        prefix = SPINNER_CHARS[spinnerIndex];
+        startSpinner(ctx, trimmed);
+    } else if (mode === "achievement") {
+        prefix = "✓";
+    } else {
+        prefix = "▸";
+    }
 
-  const line = `${theme.fg("muted", prefix + " ")}${theme.fg("text", trimmed)}`;
-  ctx.ui.setWidget(WIDGET_KEY, [line]);
+    const line = `${theme.fg("muted", `${prefix} `)}${theme.fg("text", trimmed)}`;
+    ctx.ui.setWidget(WIDGET_KEY, [line]);
 }
 
 function startSpinner(ctx: ExtensionContext, text: string): void {
-  if (spinnerTimer && currentSpinnerText === text) {
-    // Already running with same text — don't thrash between turn_start events
-    return;
-  }
-  if (spinnerTimer) {
-    clearInterval(spinnerTimer);
-    // Preserve spinnerIndex for smooth restarts between turn_start events
-  } else {
-    spinnerIndex = 0;
-  }
-  currentSpinnerText = text;
-  spinnerTimer = setInterval(() => {
-    try {
-      spinnerIndex = (spinnerIndex + 1) % SPINNER_CHARS.length;
-      const prefix = SPINNER_CHARS[spinnerIndex];
-      const theme = ctx.ui.theme;
-      const line = `${theme.fg("muted", prefix + " ")}${theme.fg("text", currentSpinnerText)}`;
-      ctx.ui.setWidget(WIDGET_KEY, [line]);
-    } catch {
-      // Defensive: don't let widget errors kill the spinner interval.
+    if (spinnerTimer && currentSpinnerText === text) {
+        // Already running with same text — don't thrash between turn_start events
+        return;
     }
-  }, SPINNER_INTERVAL_MS);
+    if (spinnerTimer) {
+        clearInterval(spinnerTimer);
+        // Preserve spinnerIndex for smooth restarts between turn_start events
+    } else {
+        spinnerIndex = 0;
+    }
+    currentSpinnerText = text;
+    spinnerTimer = setInterval(() => {
+        try {
+            spinnerIndex = (spinnerIndex + 1) % SPINNER_CHARS.length;
+            const prefix = SPINNER_CHARS[spinnerIndex];
+            const theme = ctx.ui.theme;
+            const line = `${theme.fg("muted", `${prefix} `)}${theme.fg("text", currentSpinnerText)}`;
+            ctx.ui.setWidget(WIDGET_KEY, [line]);
+        } catch {
+            // Defensive: don't let widget errors kill the spinner interval.
+        }
+    }, SPINNER_INTERVAL_MS);
 }
 
 export function stopSpinner(): void {
-  if (spinnerTimer) {
-    clearInterval(spinnerTimer);
-    spinnerTimer = null;
-  }
-  currentSpinnerText = "";
+    if (spinnerTimer) {
+        clearInterval(spinnerTimer);
+        spinnerTimer = null;
+    }
+    currentSpinnerText = "";
 }
 
 /** Returns true if the Braille spinner interval is currently active. */
 export function isSpinnerRunning(): boolean {
-  return spinnerTimer !== null;
+    return spinnerTimer !== null;
 }
 
 export function clearWidget(ctx: ExtensionContext): void {
-  stopSpinner();
-  ctx.ui.setWidget(WIDGET_KEY, undefined);
+    stopSpinner();
+    ctx.ui.setWidget(WIDGET_KEY, undefined);
 }

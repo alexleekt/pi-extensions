@@ -1,42 +1,42 @@
 [
-  {
-    "input": "How do I fix the memory leak in my Rust service?",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "hi there",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "Can you help me write a Python script to parse JSON?",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "actually i want to use kubernetes instead",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "lets try it. btw we should probably move the debug log to /tmp and give it a better name so that it doesn't accidentally get committed to version control",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "help me set up docker for this project",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "The user is suggesting a full code review of the extension logic",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "I think the topic response quality is really low, it's giving me paragraphs of things",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  }
+    {
+        "input": "How do I fix the memory leak in my Rust service?",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "hi there",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "Can you help me write a Python script to parse JSON?",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "actually i want to use kubernetes instead",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "lets try it. btw we should probably move the debug log to /tmp and give it a better name so that it doesn't accidentally get committed to version control",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "help me set up docker for this project",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "The user is suggesting a full code review of the extension logic",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "I think the topic response quality is really low, it's giving me paragraphs of things",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    }
 ]

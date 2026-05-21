@@ -16,6 +16,7 @@ jobs:
                     - pi-bump
                     - pi-pkg-guard
                     - pi-ask-user-glimpse
+                    - pi-heading
         steps:
             - name: Checkout
               uses: actions/checkout@v6

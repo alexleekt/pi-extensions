@@ -34,24 +34,10 @@ export interface MessageJournalEntry {
 export type JournalEntry = MessageJournalEntry | CustomJournalEntry;
 
 /** Runtime type guard for message entries. */
-export function isMessageEntry(e: unknown): e is MessageJournalEntry {
-    return (
-        typeof e === "object" &&
-        e !== null &&
-        (e as Record<string, unknown>).type === "message" &&
-        typeof (e as Record<string, unknown>).message === "object"
-    );
-}
+export declare function isMessageEntry(e: unknown): e is MessageJournalEntry;
 
 /** Runtime type guard for custom entries. */
-export function isCustomEntry(e: unknown): e is CustomJournalEntry {
-    return (
-        typeof e === "object" &&
-        e !== null &&
-        (e as Record<string, unknown>).type === "custom" &&
-        typeof (e as Record<string, unknown>).customType === "string"
-    );
-}
+export declare function isCustomEntry(e: unknown): e is CustomJournalEntry;
 
 /** Details returned by an askUser dialog result. */
 export interface AskUserResultDetails {

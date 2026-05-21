@@ -3,9 +3,5 @@
     "compilerOptions": {
         "types": ["node"]
     },
-    "include": [
-        "types/**/*.d.ts",
-        "session.ts",
-        "prompt-eval.ts"
-    ]
+    "include": ["types/**/*.d.ts", "session.ts", "prompt-eval.ts"]
 }

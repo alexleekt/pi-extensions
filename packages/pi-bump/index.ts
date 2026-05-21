@@ -32,21 +32,32 @@ const CONTINUE_COMMAND_DESCRIPTION =
     "Resume the agentic loop without sending a prompt the LLM can read";
 
 /** Extract plain text from an assistant message for duplicate comparison. */
-function extractAssistantText(msg: any): string | undefined {
+interface TextPart {
+    type: string;
+    text?: string;
+}
+
+function extractAssistantText(msg: {
+    role: string;
+    content?: string | TextPart[];
+}): string | undefined {
     if (msg.role !== "assistant") return undefined;
     const content = msg.content;
     if (typeof content === "string") return content;
     if (Array.isArray(content)) {
         return content
-            .filter((c: any) => c.type === "text")
-            .map((c: any) => c.text)
+            .filter((c) => c.type === "text")
+            .map((c) => c.text ?? "")
             .join("");
     }
     return undefined;
 }
 
 /** Check if two assistant responses are functionally duplicates. */
-function isDuplicateResponse(a: string | undefined, b: string | undefined): boolean {
+function isDuplicateResponse(
+    a: string | undefined,
+    b: string | undefined,
+): boolean {
     if (!a || !b) return false;
     // Normalize: ignore trailing whitespace and case for comparison
     return a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -138,7 +149,10 @@ async function runContinueCommand(
     }
 
     const sessionId = ctx.sessionManager.getSessionId();
-    const [prev, last] = lastAssistantTexts.get(sessionId) ?? [undefined, undefined];
+    const [prev, last] = lastAssistantTexts.get(sessionId) ?? [
+        undefined,
+        undefined,
+    ];
     if (isDuplicateResponse(prev, last)) {
         notifySafely(
             ctx,
@@ -176,7 +190,10 @@ export default function bumpExtension(pi: ExtensionAPI) {
     const debugSessions = new Set<string>();
 
     // Per-session state for duplicate detection
-    const lastAssistantTexts = new Map<string, [string | undefined, string | undefined]>();
+    const lastAssistantTexts = new Map<
+        string,
+        [string | undefined, string | undefined]
+    >();
 
     pi.registerCommand("continue", {
         description: CONTINUE_COMMAND_DESCRIPTION,
@@ -216,13 +233,19 @@ export default function bumpExtension(pi: ExtensionAPI) {
 
     // Capture assistant messages to detect duplicate responses.
     pi.on("message_end", async (event, ctx) => {
-        const msg = event.message as any;
+        const msg = event.message as {
+            role: string;
+            content?: string | Array<{ type: string; text?: string }>;
+        };
         if (msg.role !== "assistant") return;
         const text = extractAssistantText(msg);
         if (!text) return;
 
         const sessionId = ctx.sessionManager.getSessionId();
-        const [prev] = lastAssistantTexts.get(sessionId) ?? [undefined, undefined];
+        const [prev] = lastAssistantTexts.get(sessionId) ?? [
+            undefined,
+            undefined,
+        ];
         lastAssistantTexts.set(sessionId, [prev, text]);
     });
 
@@ -232,18 +255,28 @@ export default function bumpExtension(pi: ExtensionAPI) {
     // meaningful continuation without polluting the chat UI.
     pi.on("context", async (event) => {
         let modified = false;
-        const messages = event.messages.map((msg: any) => {
-            if (msg.role === "custom" && msg.customType === CONTINUE_CUSTOM_TYPE) {
-                modified = true;
-                // Replace with a minimal user message — visible to LLM, invisible to user
-                return {
-                    role: "user",
-                    content: CONTINUE_SIGNAL,
-                    timestamp: Date.now(),
-                };
-            }
-            return msg;
-        });
+        const messages = event.messages.map(
+            (msg: {
+                role: string;
+                customType?: string;
+                content?: string;
+                timestamp?: number;
+            }) => {
+                if (
+                    msg.role === "custom" &&
+                    msg.customType === CONTINUE_CUSTOM_TYPE
+                ) {
+                    modified = true;
+                    // Replace with a minimal user message — visible to LLM, invisible to user
+                    return {
+                        role: "user",
+                        content: CONTINUE_SIGNAL,
+                        timestamp: Date.now(),
+                    };
+                }
+                return msg;
+            },
+        );
         if (modified) {
             return { messages };
         }
@@ -274,10 +307,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
 
                 const isDebug = debugSessions.has(sessionId);
 
-                if (
-                    keyId === lastKeyId &&
-                    now - lastKeyTime < THRESHOLD_MS
-                ) {
+                if (keyId === lastKeyId && now - lastKeyTime < THRESHOLD_MS) {
                     const duration = now - lastKeyTime;
                     lastKeyId = undefined;
                     lastKeyTime = 0;
@@ -287,7 +317,9 @@ export default function bumpExtension(pi: ExtensionAPI) {
                             // DUPLICATE DETECTION: block if the last two
                             // assistant responses were identical (indicates
                             // the previous continue produced a loop).
-                            const [prev, last] = lastAssistantTexts.get(sessionId) ?? [undefined, undefined];
+                            const [prev, last] = lastAssistantTexts.get(
+                                sessionId,
+                            ) ?? [undefined, undefined];
                             if (isDuplicateResponse(prev, last)) {
                                 notifySafely(
                                     ctx,

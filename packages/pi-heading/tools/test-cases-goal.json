@@ -1,62 +1,62 @@
 [
-  {
-    "input": "How do I fix the memory leak in my Rust service?",
-    "expectedGoal": "Fixing the memory leak in the Rust service",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "Can you help me write a Python script to parse JSON?",
-    "expectedGoal": "Writing a Python script to parse JSON",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "hi there",
-    "expectedGoal": "Establishing the session goal",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "I need to refactor this React component and also update the API docs",
-    "expectedGoal": "Refactoring the React component",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "help me set up docker for this project",
-    "expectedGoal": "Setting up docker for this project",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "lets try it. btw we should probably move the debug log to /tmp",
-    "expectedGoal": "Trying the proposed solution",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "no, that's wrong. the variable should be const not let",
-    "expectedGoal": "Correcting the variable declaration",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "actually i want to use kubernetes instead",
-    "expectedGoal": "Using Kubernetes instead",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "can you explain the last part again?",
-    "expectedGoal": "Requesting an explanation",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  },
-  {
-    "input": "How do I set up ci-cd for this Node.js project with GitHub Actions?",
-    "expectedGoal": "Setting up CI-CD",
-    "maxTopicWords": 4,
-    "maxGoalWords": 12
-  }
+    {
+        "input": "How do I fix the memory leak in my Rust service?",
+        "expectedGoal": "Fixing the memory leak in the Rust service",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "Can you help me write a Python script to parse JSON?",
+        "expectedGoal": "Writing a Python script to parse JSON",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "hi there",
+        "expectedGoal": "Establishing the session goal",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "I need to refactor this React component and also update the API docs",
+        "expectedGoal": "Refactoring the React component",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "help me set up docker for this project",
+        "expectedGoal": "Setting up docker for this project",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "lets try it. btw we should probably move the debug log to /tmp",
+        "expectedGoal": "Trying the proposed solution",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "no, that's wrong. the variable should be const not let",
+        "expectedGoal": "Correcting the variable declaration",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "actually i want to use kubernetes instead",
+        "expectedGoal": "Using Kubernetes instead",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "can you explain the last part again?",
+        "expectedGoal": "Requesting an explanation",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    },
+    {
+        "input": "How do I set up ci-cd for this Node.js project with GitHub Actions?",
+        "expectedGoal": "Setting up CI-CD",
+        "maxTopicWords": 4,
+        "maxGoalWords": 12
+    }
 ]

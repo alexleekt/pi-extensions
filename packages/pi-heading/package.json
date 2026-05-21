@@ -1,28 +1,28 @@
 {
-  "name": "@alexleekt/pi-heading",
-  "version": "0.1.1",
-  "description": "One-line session heading widget for the Pi coding agent",
-  "type": "module",
-  "main": "index.ts",
-  "scripts": {
-    "typecheck": "tsc --noEmit",
-    "check": "tsc --noEmit && bun test",
-    "test": "bun test"
-  },
-  "pi": {
-    "extensions": [
-      "./index.ts"
-    ]
-  },
-  "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*"
-  },
-  "keywords": [
-    "pi",
-    "pi-extension",
-    "heading",
-    "session-summary"
-  ],
-  "license": "MIT",
-  "author": "Alex Lee"
+    "name": "@alexleekt/pi-heading",
+    "version": "0.1.1",
+    "description": "One-line session heading widget for the Pi coding agent",
+    "type": "module",
+    "main": "index.ts",
+    "scripts": {
+        "typecheck": "tsc --noEmit",
+        "check": "tsc --noEmit && bun test",
+        "test": "bun test"
+    },
+    "pi": {
+        "extensions": [
+            "./index.ts"
+        ]
+    },
+    "peerDependencies": {
+        "@earendil-works/pi-coding-agent": "*"
+    },
+    "keywords": [
+        "pi",
+        "pi-extension",
+        "heading",
+        "session-summary"
+    ],
+    "license": "MIT",
+    "author": "Alex Lee"
 }
