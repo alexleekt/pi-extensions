@@ -18,6 +18,9 @@ export interface Question {
     allowMultiple?: boolean;
 }
 
+export type ThemeMode = "light" | "dark" | "system";
+export type AnimationLevel = "none" | "minimal" | "all";
+
 export interface AskUserPayload {
     type: "single-select" | "multi-select" | "questionnaire" | "freeform";
     question: string;
@@ -28,6 +31,9 @@ export interface AskUserPayload {
     allowFreeform: boolean;
     allowComment: boolean;
     allowSkip?: boolean;
+    sessionName?: string;
+    theme?: ThemeMode;
+    animationLevel?: AnimationLevel;
 }
 
 export interface QuestionnaireDetail {

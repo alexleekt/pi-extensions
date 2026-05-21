@@ -3,6 +3,8 @@ import type { AskUserPayload } from "../../../shared/ask-user";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { modKey } from "../util/platform";
 
+const MAX_FREEFORM_LENGTH = 2000;
+
 interface FreeformProps {
     payload: AskUserPayload;
     showHeader?: boolean;
@@ -62,15 +64,21 @@ export default function Freeform({
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Type your answer…"
+                    maxLength={MAX_FREEFORM_LENGTH}
                     className="h-full w-full resize-none rounded-md border border-input bg-background p-3 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
                 />
             </div>
 
             <div className="shrink-0 border-t border-border p-4">
                 <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground">
-                        {modKey()}+Enter to submit
-                    </span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground">
+                            {modKey()}+Enter to submit
+                        </span>
+                        <span className={`text-xs ${text.length > MAX_FREEFORM_LENGTH * 0.9 ? "text-destructive" : "text-muted-foreground"}`}>
+                            {text.length}/{MAX_FREEFORM_LENGTH}
+                        </span>
+                    </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => sendCancelled()}

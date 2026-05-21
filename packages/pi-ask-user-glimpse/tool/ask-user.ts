@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { prompt } from "glimpseui";
 import { terminalPrompt } from "../fallback/terminal-prompt.js";
-import type { AskUserPayload, Question } from "../shared/ask-user.js";
+import type { AnimationLevel, AskUserPayload, Question, ThemeMode } from "../shared/ask-user.js";
 import { formatResponse } from "./response-formatter.js";
 
 const _require = createRequire(import.meta.url);
@@ -356,12 +356,20 @@ export interface AskUserParams {
     allowSkip?: boolean;
     displayMode?: string;
     followCursor?: boolean;
+    theme?: ThemeMode;
+    animationLevel?: AnimationLevel;
+}
+
+export interface AskUserMetadata {
+    theme?: string;
+    animationLevel?: string;
 }
 
 export async function askUserHandler(
     params: AskUserParams,
     signal: AbortSignal | undefined,
     ctx: ExtensionContext,
+    onMetadata?: (metadata: AskUserMetadata) => void,
 ) {
     if (signal?.aborted) {
         return {
@@ -419,6 +427,9 @@ export async function askUserHandler(
         allowFreeform,
         allowComment,
         allowSkip: params.allowSkip,
+        sessionName: ctx.sessionManager.getSessionName(),
+        theme: params.theme,
+        animationLevel: params.animationLevel,
     };
 
     let result: Record<string, unknown> | null = null;
@@ -435,10 +446,16 @@ export async function askUserHandler(
                 .replace(/&/g, "\\u0026"),
         );
 
+        const sessionName = ctx.sessionManager.getSessionName();
+        const questionTitle = summarizeTitle(params.question);
+        const title = sessionName
+            ? `Pi · ${sessionName} · ${questionTitle}`
+            : `Pi · ${questionTitle}`;
+
         const options: Record<string, unknown> = {
             width: 1200,
             height: 900,
-            title: summarizeTitle(params.question),
+            title: title.length > 60 ? `${title.slice(0, 57)}…` : title,
         };
 
         if (params.followCursor) {
@@ -452,6 +469,11 @@ export async function askUserHandler(
         if (result === null || result?.__cancelled === true) {
             cancelled = true;
             result = null;
+        } else if (result && onMetadata) {
+            onMetadata({
+                theme: result.__theme as string | undefined,
+                animationLevel: result.__animationLevel as string | undefined,
+            });
         }
     } catch (err) {
         // Glimpse unavailable — fall back to terminal prompt

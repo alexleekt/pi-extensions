@@ -14,6 +14,9 @@ import type {
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type AskUserParams, askUserHandler } from "./tool/ask-user.js";
 
+/* ── Module-level reference to ExtensionAPI for tool execute closure ── */
+let _pi: ExtensionAPI | undefined;
+
 /* ── Generic question-session detection ── */
 
 const QUESTION_SESSION_PATTERNS = [
@@ -68,6 +71,18 @@ function getStyleMode(entries: unknown[]): boolean | null {
     );
     const enabled = entry?.data?.enabled;
     return typeof enabled === "boolean" ? enabled : null;
+}
+
+function getThemeSettings(entries: unknown[]): { theme?: string; animationLevel?: string } {
+    const entry = entries.find(
+        (e): e is CustomJournalEntry =>
+            isCustomEntry(e) && e.customType === "ask-user-theme",
+    );
+    const data = entry?.data as Record<string, unknown> | undefined;
+    return {
+        theme: typeof data?.theme === "string" ? data.theme : undefined,
+        animationLevel: typeof data?.animationLevel === "string" ? data.animationLevel : undefined,
+    };
 }
 
 function extractTextFromAssistantEntry(entry: unknown): string {
@@ -449,11 +464,28 @@ const askUserTool = defineTool({
     }),
 
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-        return askUserHandler(params, signal, ctx);
+        const { theme, animationLevel } = getThemeSettings(ctx.sessionManager.getEntries());
+        const enrichedParams = {
+            ...params,
+            theme,
+            animationLevel,
+        } as AskUserParams;
+        let metadata: import("./tool/ask-user.js").AskUserMetadata = {};
+        const result = await askUserHandler(enrichedParams, signal, ctx, (m) => {
+            metadata = m;
+        });
+        if ((metadata.theme || metadata.animationLevel) && _pi) {
+            _pi.appendEntry("ask-user-theme", {
+                theme: metadata.theme,
+                animationLevel: metadata.animationLevel,
+            });
+        }
+        return result;
     },
 });
 
 export default function (pi: ExtensionAPI) {
+    _pi = pi;
     pi.registerTool(askUserTool);
 
     // ── Auto-detect question sessions and force ask_user usage ──

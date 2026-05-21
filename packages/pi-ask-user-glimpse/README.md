@@ -30,10 +30,14 @@ The agent gets a clean selection back. You get a decision made in seconds, not m
 
 ## Features
 
-- **Single-select** — searchable option list with inline descriptions
-- **Multi-select** — checkbox-style selection with submit/cancel
-- **Freeform** — textarea input for open-ended responses
-- **Questionnaire** — cards in a vertical list for structured questions, each with its own options
+- **Single-select** — searchable option list with inline descriptions and search highlight
+- **Multi-select** — checkbox-style selection with quick-select all/none links
+- **Freeform** — textarea input with live character counter and platform-aware keyboard shortcuts
+- **Questionnaire** — cards in a vertical list for structured questions, with required-field badges and per-question character counters
+- **Theme toggle** — dark / light / system mode switcher in the dialog header
+- **Animation levels** — none / minimal / all, controlling transition intensity across the UI
+- **Keyboard shortcuts legend** — press `?` in the header bar to see all available shortcuts
+- **Branded header bar** — sparkle logo + "Ask User" branding with settings cog
 - **Native WebView** — renders in a real window (macOS WKWebView / Linux GTK4 / Windows WebView2)
 - **Terminal fallback** — gracefully degrades to TUI prompts when glimpseui is unavailable
 
@@ -67,7 +71,7 @@ Ask the user to pick exactly one option:
 }
 ```
 
-The dialog shows a full-width question header and a two-panel layout. When `context` is provided, the left panel renders it as markdown for reference while the right panel shows the searchable option list. Option descriptions appear inline below each title. The "Custom" button under the search box lets the user submit a freeform answer.
+The dialog shows a branded header bar, a full-width question header, and a two-panel layout. When `context` is provided, the left panel renders it as markdown for reference while the right panel shows the searchable option list. Option descriptions appear inline below each title, and matching text is highlighted when searching. The "Custom" button under the search box lets the user submit a freeform answer. Use ⌘+Enter (macOS) or Ctrl+Enter to submit.
 
 ### Multi Select
 
@@ -88,7 +92,7 @@ Ask the user to pick multiple options:
 }
 ```
 
-Each option has a checkbox. A "Clear all" link resets selections. Submit is disabled until at least one item is selected.
+Each option has a checkbox. "Select all" and "Select none" links appear above the list (when not searching). A "Clear all" link resets selections. Submit is disabled until at least one item is selected. Use ⌘+Enter (macOS) or Ctrl+Enter to submit.
 
 ### Freeform
 
@@ -102,7 +106,7 @@ Ask an open-ended question with no predefined options:
 }
 ```
 
-Shows a full-height textarea with platform-aware keyboard hints (⌘+Enter on macOS, Ctrl+Enter elsewhere). Submit is disabled until text is entered.
+Shows a full-height textarea with a live character counter and platform-aware keyboard hints (⌘+Enter on macOS, Ctrl+Enter elsewhere). Submit is disabled until text is entered.
 
 ### Questionnaire
 
@@ -140,7 +144,7 @@ Ask multiple structured questions in one dialog:
 }
 ```
 
-Each question is shown as a card with a progress bar at the top. Questions with `options` render as single-select (radio) or multi-select (checkbox) depending on `allowMultiple`. Questions without `options` render as a textarea. The dialog auto-scrolls to the first unanswered question on open. The comment button shows "Edit comment" when text exists. Submit is disabled until all questions have a non-empty answer, unless `allowSkip: true` is set.
+Each question is shown as a card with a progress bar at the top. Questions with `options` render as single-select (radio) or multi-select (checkbox) depending on `allowMultiple`. Questions without `options` render as a textarea with a character counter. The dialog auto-scrolls to the first unanswered question on open. When `allowSkip: false`, unanswered questions show a red "Required" badge. The comment button shows "Edit comment" when text exists. Submit is disabled until all questions have a non-empty answer, unless `allowSkip: true` is set. Use ⌘+Enter (macOS) or Ctrl+Enter to submit.
 
 ### Parameters
 
@@ -256,11 +260,11 @@ Options: `single-select`, `multi-select`, `freeform`, `questionnaire`. The resul
 
 ## Window Behavior
 
-- **Title bar** — shows a condensed version of the question text (up to 3 content words)
+- **Title bar** — reads "Pi · {sessionName} · {question}" (session name is included when set)
 - **Centered dialog** — normal stacking, not floating
 - **Size** — 1200×900 by default
 - **Cursor follow** — off by default; enable with `followCursor: true`
-- **Dark mode** — automatically follows the system `prefers-color-scheme` setting
+- **Dark mode** — togglable via the settings cog: dark, light, or system (follows OS preference)
 
 ## Architecture
 
@@ -268,10 +272,12 @@ Options: `single-select`, `multi-select`, `freeform`, `questionnaire`. The resul
 index.ts              → Pi extension entrypoint (tool + command registration)
 tool/ask-user.ts      → constructs payload, injects into HTML, calls glimpseui.prompt()
 tool/response-formatter.ts → normalizes WebView response for Pi
-webview/src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform, ContextPanel, ErrorBoundary
+webview/src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform, ContextPanel, ErrorBoundary, HeaderBar, ShortcutsModal
+webview/src/util/         → settings (theme + animation context), glimpse (host bridge), platform (macOS detection)
 fallback/terminal-prompt.ts → readline fallback when WebView unavailable
 webview/              → Vite + React + Tailwind app
-  src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform
+  src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform, HeaderBar, ShortcutsModal
+  src/util/           → settings.tsx, glimpse.ts, platform.ts
   dist/index.html     → single-file bundle (inlined JS + CSS)
 ```
 

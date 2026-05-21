@@ -181,10 +181,17 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
                 <div className="space-y-3">
                     {questions.map((q) => {
                         const answer = answers[q.title];
+                        const isAnswered = answer !== undefined && (Array.isArray(answer) ? answer.length > 0 : String(answer).trim().length > 0);
+                        const isRequired = payload.allowSkip === false;
                         return (
                             <div ref={(el) => { questionRefs.current.set(q.title, el); }} key={q.title}
-                                className="rounded-xl border border-border bg-card p-4">
-                                <div className="mb-1 font-medium">{q.title}</div>
+                                className={`rounded-xl border p-4 bg-card ${isRequired && !isAnswered ? "border-destructive/50" : "border-border"}`}>
+                                <div className="mb-1 flex items-center gap-2">
+                                    <span className="font-medium">{q.title}</span>
+                                    {isRequired && !isAnswered && (
+                                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">Required</span>
+                                    )}
+                                </div>
                                 {q.description && <div className="mb-3 text-sm text-muted-foreground">{q.description}</div>}
 
                                 {q.options && q.options.length > 0 ? (
@@ -244,11 +251,17 @@ export default function Questionnaire({ payload, showHeader = true }: Questionna
                                         })}
                                     </div>
                                 ) : (
-                                    <textarea ref={(el) => { optionRefs.current.set(`${q.title}-freeform`, el); }}
-                                        placeholder="Your answer…" value={(answer as string) ?? ""}
-                                        onChange={(e) => setSingleAnswer(q.title, e.target.value)}
-                                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring resize-none"
-                                        rows={3} />
+                                    <div>
+                                        <textarea ref={(el) => { optionRefs.current.set(`${q.title}-freeform`, el); }}
+                                            placeholder="Your answer…" value={(answer as string) ?? ""}
+                                            onChange={(e) => setSingleAnswer(q.title, e.target.value)}
+                                            maxLength={1000}
+                                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring resize-none"
+                                            rows={3} />
+                                        <div className="mt-1 text-right text-xs text-muted-foreground">
+                                            {String(answer ?? "").length}/1000
+                                        </div>
+                                    </div>
                                 )}
 
                                 {payload.allowComment && (

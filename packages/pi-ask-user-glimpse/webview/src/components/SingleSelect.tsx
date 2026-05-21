@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
+import { modKey } from "../util/platform";
 import AdditionalComments from "./AdditionalComments";
 import { CommentIcon, RadioIcon } from "./icons";
+
+function highlightMatch(text: string, query: string): string {
+    if (!query) return text;
+    const q = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(${q})`, "gi");
+    return text.replace(re, '<mark class="bg-yellow-200 dark:bg-yellow-700 rounded px-0.5">$1</mark>');
+}
 
 interface SingleSelectProps {
     payload: AskUserPayload;
@@ -49,6 +57,10 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
         sendToGlimpse(result);
     };
 
+    const canSubmit = () => {
+        return selected !== null || (query && payload.allowFreeform);
+    };
+
     const handleSubmit = () => {
         if (isSubmitting) return;
         setIsSubmitting(true);
@@ -91,6 +103,17 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
                     else { optionRefs.current[next]?.focus(); optionRefs.current[next]?.scrollIntoView({ block: "nearest" }); }
                     return next;
                 });
+            } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                if (isSubmitting) return;
+                if (canSubmit()) {
+                    setIsSubmitting(true);
+                    if (query && payload.allowFreeform && activeIndex < 0) {
+                        handleFreeform();
+                    } else {
+                        sendResult(selected);
+                    }
+                }
             } else if (e.key === "Enter") {
                 e.preventDefault();
                 if (isSubmitting) return;
@@ -99,14 +122,12 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
                     setSelected(opt.title); setIsSubmitting(true); sendResult(opt.title);
                 } else if (query && payload.allowFreeform) {
                     setIsSubmitting(true); handleFreeform();
-                } else {
-                    setIsSubmitting(true); sendResult(selected);
                 }
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [filtered, activeIndex, showComment, query, payload.allowFreeform, isSubmitting]);
+    }, [filtered, activeIndex, selected, showComment, query, payload.allowFreeform, isSubmitting, sendResult, handleFreeform]);
 
     const hasResults = filtered.length > 0;
 
@@ -129,24 +150,27 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
             <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-2" role="listbox" aria-label="Options">
                     {hasResults ? (
-                        filtered.map((opt, idx) => (
-                            <button ref={(el) => { optionRefs.current[idx] = el; }} key={opt.title}
-                                tabIndex={activeIndex === idx ? 0 : -1} onClick={() => setSelected(opt.title)}
-                                role="option" aria-selected={selected === opt.title}
-                                className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
-                                    selected === opt.title ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-accent"
-                                } ${activeIndex === idx ? "ring-2 ring-ring" : ""}`}>
-                                <RadioIcon checked={selected === opt.title} />
-                                <div className="min-w-0">
-                                    <div className="font-medium">{opt.title}</div>
-                                    {opt.description && (
-                                        <div className="mt-0.5 text-sm text-muted-foreground border-l-2 border-muted-foreground/30 pl-2.5">
-                                            {opt.description}
-                                        </div>
-                                    )}
-                                </div>
-                            </button>
-                        ))
+                        filtered.map((opt, idx) => {
+                            const titleHtml = highlightMatch(opt.title, query);
+                            const descHtml = opt.description ? highlightMatch(opt.description, query) : null;
+                            return (
+                                <button ref={(el) => { optionRefs.current[idx] = el; }} key={opt.title}
+                                    tabIndex={activeIndex === idx ? 0 : -1} onClick={() => setSelected(opt.title)}
+                                    role="option" aria-selected={selected === opt.title}
+                                    className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
+                                        selected === opt.title ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-accent"
+                                    } ${activeIndex === idx ? "ring-2 ring-ring" : ""}`}>
+                                    <RadioIcon checked={selected === opt.title} />
+                                    <div className="min-w-0">
+                                        <div className="font-medium" dangerouslySetInnerHTML={{ __html: titleHtml }} />
+                                        {opt.description && (
+                                            <div className="mt-0.5 text-sm text-muted-foreground border-l-2 border-muted-foreground/30 pl-2.5"
+                                                dangerouslySetInnerHTML={{ __html: descHtml! }} />
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        })
                     ) : (
                         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
                             No matching options.
@@ -182,7 +206,7 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
                 )}
                 <AdditionalComments value={additionalComments} onChange={setAdditionalComments} />
                 <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground">↑↓ to navigate · Enter to select</span>
+                    <span className="text-xs text-muted-foreground">↑↓ to navigate · Enter to select · {modKey()}+Enter to submit</span>
                     <div className="flex items-center gap-2">
                         <button onClick={() => sendCancelled()}
                             className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Cancel</button>

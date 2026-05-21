@@ -2,6 +2,28 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [0.4.0] — 2026-05-20
+
+### Added
+- **Branded header bar** — A thin branded bar at the top of every dialog with a sparkle icon + "Ask User" label on the left, and a settings cog + keyboard-shortcuts help on the right.
+- **Theme toggle (dark / light / system)** — Settings dropdown lets users switch between dark mode, light mode, or following the OS preference. Choice is persisted in the webview's localStorage.
+- **Animation level toggle (none / minimal / all)** — Settings dropdown also controls animation intensity. "None" disables all transitions; "minimal" keeps only essential ones; "all" enables full polish.
+- **Consistent Cmd+Enter submit** — All four dialog types (single-select, multi-select, questionnaire, freeform) now support Cmd+Enter (macOS) / Ctrl+Enter (other) to submit the answer. Footer hints updated accordingly.
+- **Window titles with session name** — Titles now read "Pi · {sessionName} · {question}" when a session name is set, making it easier to identify which conversation a dialog belongs to.
+- **Character counter** — Freeform textareas and questionnaire freeform fields show a live `0/2000` or `0/1000` counter. Turns red when approaching the limit.
+- **Required field badge** — In questionnaire mode, when `allowSkip: false`, unanswered questions show a red "Required" badge and a subtle red border until answered.
+- **Search highlight** — When filtering options via the search box, matching text in option titles and descriptions is highlighted with a yellow background.
+- **Quick-select all/none** — Multi-select dialogs show "Select all" and "Select none" links above the option list (when not actively searching).
+- **Keyboard shortcuts legend** — A `?` button in the header bar opens a modal showing all available keyboard shortcuts.
+
+### Changed
+- **CSS dark mode strategy** — Switched from `prefers-color-scheme` media query to Tailwind's `darkMode: 'class'` strategy, enabling explicit theme toggling independent of OS setting.
+- **Theme metadata in results** — The webview sends back the active theme and animation level with every result, so the extension can persist preferences across sessions.
+
+### Fixed
+- **White screen on /ask-debug** — The Glimpse native webview (WKWebView) blocks `localStorage` access with `SecurityError: The operation is insecure.` because `loadHTMLString(baseURL: nil)` gives the page no origin. Removed all `localStorage` usage from the webview entirely. Theme and animation state now flows through the payload: the extension reads stored settings from Pi journal entries, passes them into the webview via `AskUserPayload`, and the webview sends back the user's choices via the result's `__theme`/`__animationLevel` fields. The extension then persists them back into journal entries.
+- **Top-level ErrorBoundary** — Wrapped the entire React app in an `ErrorBoundary` so future render crashes show a readable error message instead of an empty white screen.
+
 ## [0.3.2] — 2026-05-20
 
 ### Fixed

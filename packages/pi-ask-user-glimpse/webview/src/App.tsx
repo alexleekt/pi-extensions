@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
 import type { AskUserPayload } from "../../shared/ask-user";
 import ContextPanel from "./components/ContextPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Freeform from "./components/Freeform";
+import HeaderBar from "./components/HeaderBar";
 import MultiSelect from "./components/MultiSelect";
 import Questionnaire from "./components/Questionnaire";
+import ShortcutsModal from "./components/ShortcutsModal";
 import SingleSelect from "./components/SingleSelect";
 
 function getPayload(): AskUserPayload {
@@ -36,7 +39,16 @@ function renderComponent(payload: AskUserPayload, showHeader = true) {
     }
 }
 
+const DEFAULT_PANEL_WIDTH = 50; // percent
+const MIN_PANEL_WIDTH = 20;     // percent
+const MAX_PANEL_WIDTH = 80;     // percent
+
 export default function App() {
+    const [showShortcuts, setShowShortcuts] = useState(false);
+    const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
+
     let payload: AskUserPayload;
     try {
         payload = getPayload();
@@ -52,8 +64,31 @@ export default function App() {
 
     const hasContext = !!payload.context;
 
+    const handleMouseDown = () => setIsDragging(true);
+
+    useEffect(() => {
+        if (!isDragging) return;
+        const handleMouseMove = (e: MouseEvent) => {
+            const newWidth = (e.clientX / window.innerWidth) * 100;
+            setPanelWidth(Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, newWidth)));
+        };
+        const handleMouseUp = () => setIsDragging(false);
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("mouseup", handleMouseUp);
+        return () => {
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+        };
+    }, [isDragging]);
+
     if (!hasContext) {
-        return <div className="h-screen">{renderComponent(payload)}</div>;
+        return (
+            <div className="flex h-screen flex-col overflow-hidden">
+                <HeaderBar onShowShortcuts={() => setShowShortcuts(true)} question={payload.question} />
+                {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
+                <div className="flex-1 overflow-hidden">{renderComponent(payload, false)}</div>
+            </div>
+        );
     }
 
     // Strip context from the payload passed to the question component
@@ -62,16 +97,17 @@ export default function App() {
 
     return (
         <div className="flex h-screen flex-col overflow-hidden">
-            {/* Full-width question header */}
-            <div className="shrink-0 max-h-32 overflow-y-auto border-b border-border px-6 py-4">
-                <h1 className="text-xl font-semibold leading-snug">
-                    {payload.question}
-                </h1>
-            </div>
+            <HeaderBar onShowShortcuts={() => setShowShortcuts(true)} question={payload.question} />
+            {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Left panel: Agent context rendered as markdown */}
-                <div className="flex w-2/5 flex-col border-r border-border overflow-hidden">
+                <div
+                    className={`flex flex-col border-r border-border overflow-hidden transition-all duration-200 ${
+                        isCollapsed ? "w-0 opacity-0" : "opacity-100"
+                    }`}
+                    style={isCollapsed ? undefined : { width: `${panelWidth}%` }}
+                >
                     <div className="flex-1 overflow-y-auto p-4">
                         <ErrorBoundary>
                             {/* hasContext guarantees payload.context is defined */}
@@ -80,8 +116,64 @@ export default function App() {
                     </div>
                 </div>
 
+                {/* Resizable splitter */}
+                <div
+                    className={`relative flex w-3 shrink-0 cursor-col-resize items-center justify-center transition-colors hover:bg-primary/20 ${
+                        isDragging ? "bg-primary/30" : "bg-border"
+                    }`}
+                    onMouseDown={(e) => {
+                        if (isCollapsed) {
+                            e.preventDefault();
+                            setIsCollapsed(false);
+                            setPanelWidth(DEFAULT_PANEL_WIDTH);
+                            return;
+                        }
+                        handleMouseDown();
+                    }}
+                    onDoubleClick={() => {
+                        if (isCollapsed) {
+                            setIsCollapsed(false);
+                            setPanelWidth(DEFAULT_PANEL_WIDTH);
+                        } else {
+                            setIsCollapsed(true);
+                        }
+                    }}
+                    title={isCollapsed ? "Click to expand" : "Drag to resize · Double-click to collapse"}
+                >
+                    {/* Collapse / expand button */}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (isCollapsed) {
+                                setIsCollapsed(false);
+                                setPanelWidth(DEFAULT_PANEL_WIDTH);
+                            } else {
+                                setIsCollapsed(true);
+                            }
+                        }}
+                        className="flex h-6 w-6 items-center justify-center rounded-full bg-muted-foreground/10 text-muted-foreground transition-colors hover:bg-primary/20 hover:text-foreground"
+                        title={isCollapsed ? "Expand context panel" : "Collapse context panel"}
+                    >
+                        {isCollapsed ? (
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M6 2l6 6-6 6" />
+                            </svg>
+                        ) : (
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M10 2l-6 6 6 6" />
+                            </svg>
+                        )}
+                    </button>
+                    {/* Grip handle */}
+                    {!isCollapsed && (
+                        <div className={`absolute h-8 w-1 rounded-full transition-colors ${
+                            isDragging ? "bg-primary/60" : "bg-muted-foreground/20"
+                        }`} />
+                    )}
+                </div>
+
                 {/* Right panel: Options / input */}
-                <div className="flex w-3/5 flex-col overflow-hidden">
+                <div className="flex flex-1 flex-col overflow-hidden">
                     <ErrorBoundary>
                         {renderComponent(componentPayload, false)}
                     </ErrorBoundary>

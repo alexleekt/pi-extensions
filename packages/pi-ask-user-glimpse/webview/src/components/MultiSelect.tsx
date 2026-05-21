@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
+import { modKey } from "../util/platform";
 import AdditionalComments from "./AdditionalComments";
 import { CheckIcon, CommentIcon, RadioIcon, isSelectAllOption } from "./icons";
+
+function highlightMatch(text: string, query: string): string {
+    if (!query) return text;
+    const q = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(${q})`, "gi");
+    return text.replace(re, '<mark class="bg-yellow-200 dark:bg-yellow-700 rounded px-0.5">$1</mark>');
+}
 
 interface MultiSelectProps {
     payload: AskUserPayload;
@@ -68,6 +76,8 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
         sendToGlimpse({ kind: "freeform", text: query });
     };
 
+    const canSubmit = () => selected.size > 0 || (query && payload.allowFreeform);
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement;
@@ -103,20 +113,29 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
             } else if (e.key === " " || e.key === "Spacebar") {
                 e.preventDefault();
                 if (activeIndex >= 0 && activeIndex < filtered.length) toggle(filtered[activeIndex].title);
+            } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                if (isSubmitting) return;
+                if (canSubmit()) {
+                    setIsSubmitting(true);
+                    if (query && payload.allowFreeform && activeIndex < 0) {
+                        handleFreeform();
+                    } else {
+                        handleSubmit();
+                    }
+                }
             } else if (e.key === "Enter") {
                 e.preventDefault();
                 if (activeIndex >= 0 && activeIndex < filtered.length) {
                     toggle(filtered[activeIndex].title);
                 } else if (query && payload.allowFreeform) {
-                    handleFreeform();
-                } else {
-                    handleSubmit();
+                    setIsSubmitting(true); handleFreeform();
                 }
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [filtered, activeIndex, selected.size, showComment, query, payload.allowFreeform]);
+    }, [filtered, activeIndex, selected, showComment, query, payload.allowFreeform, handleSubmit, handleFreeform, toggle]);
 
     const hasResults = filtered.length > 0;
 
@@ -143,6 +162,20 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
                             className="text-xs text-muted-foreground underline transition-colors hover:text-foreground">Clear all</button>
                     </div>
                 )}
+                {filtered.length > 1 && !query && (
+                    <div className="mt-2 flex items-center gap-2">
+                        <button onClick={() => {
+                            const allRegular = payload.options
+                                .filter((opt) => !isSelectAllOption(opt.title))
+                                .map((opt) => opt.title);
+                            setSelected(new Set(allRegular));
+                        }}
+                            className="text-xs text-muted-foreground underline transition-colors hover:text-foreground">Select all</button>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <button onClick={() => setSelected(new Set())}
+                            className="text-xs text-muted-foreground underline transition-colors hover:text-foreground">Select none</button>
+                    </div>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
@@ -151,6 +184,8 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
                         filtered.map((opt, idx) => {
                             const isSelected = selected.has(opt.title);
                             const isSelectAll = isSelectAllOption(opt.title);
+                            const titleHtml = highlightMatch(opt.title, query);
+                            const descHtml = opt.description ? highlightMatch(opt.description, query) : null;
                             return (
                                 <button ref={(el) => { optionRefs.current[idx] = el; }} key={opt.title}
                                     tabIndex={activeIndex === idx ? 0 : -1} onClick={() => toggle(opt.title)}
@@ -168,11 +203,10 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
                                         </div>
                                     )}
                                     <div className="min-w-0">
-                                        <div className="font-medium">{opt.title}</div>
+                                        <div className="font-medium" dangerouslySetInnerHTML={{ __html: titleHtml }} />
                                         {opt.description && (
-                                            <div className="mt-0.5 text-sm text-muted-foreground border-l-2 border-muted-foreground/30 pl-2.5">
-                                                {opt.description}
-                                            </div>
+                                            <div className="mt-0.5 text-sm text-muted-foreground border-l-2 border-muted-foreground/30 pl-2.5"
+                                                dangerouslySetInnerHTML={{ __html: descHtml! }} />
                                         )}
                                     </div>
                                 </button>
@@ -213,7 +247,7 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
                 )}
                 <AdditionalComments value={additionalComments} onChange={setAdditionalComments} />
                 <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground">Space to toggle · Enter to submit</span>
+                    <span className="text-xs text-muted-foreground">Space to toggle · Enter to toggle · {modKey()}+Enter to submit</span>
                     <div className="flex items-center gap-2">
                         <button onClick={() => sendCancelled()}
                             className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Cancel</button>
