@@ -143,12 +143,15 @@ async function runPrompt(
   );
 
   const extracted = extractTextFromMessage(result);
-  const cleaned = cleanLLMOutput(extracted);
+  let cleaned = cleanLLMOutput(extracted);
   // Some models wrap JSON in markdown fences even with response_format: json_object.
   // extractTextFromMessage parses JSON on the raw text; if that failed because of
   // fences, try again after cleanLLMOutput has stripped them.
   // If still failing, use regex extraction as last resort before falling back to raw text.
-  const finalText = tryParseJsonResult(cleaned) ?? extractResultFromJson(cleaned) ?? cleaned;
+  let finalText = tryParseJsonResult(cleaned) ?? extractResultFromJson(cleaned) ?? cleaned;
+  // Final safety net: strip any remaining wrapping quotes that survived prefix removal
+  // or regex extraction (e.g. malformed JSON where the captured value still starts with ").
+  finalText = finalText.replace(/^["']+|["']+$/g, "").trim();
   return {
     text: truncateToWords(finalText, promptFile.maxWords),
     fullPrompt,
@@ -227,9 +230,10 @@ export function cleanLLMOutput(text: string): string {
     .trim()
     .replace(/^```[a-z]*\n?|\n?```$/g, "")          // fences
     .replace(/\n+/g, " ")                             // newlines → spaces
-    .replace(/^["']+|["']+$/g, "")                   // wrapping quotes
+    .replace(/^["']+|["']+$/g, "")                   // wrapping quotes (before prefix strip)
     .replace(/^\s*(?:The user wants(?: me)? to|The user is|The user has|The user|User wants(?: me)? to|Here is the (?:topic|goal|summary|result|achievement):?)\s*/gi, "")
     .replace(/^\s*(?:Topic|Goal|Summary|Achievement|Result):?\s*/i, "")
+    .replace(/^["']+|["']+$/g, "")                   // wrapping quotes (after prefix strip — prefixes may have been hiding quotes)
     .trim();
 }
 

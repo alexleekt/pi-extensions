@@ -86,6 +86,18 @@ describe("cleanLLMOutput", () => {
     expect(cleanLLMOutput("Docker setup")).toBe("Docker setup");
     expect(cleanLLMOutput("Fix the memory leak")).toBe("Fix the memory leak");
   });
+
+  test("strips quotes hidden behind prefixes", () => {
+    // Regression: prefix strip ran AFTER quote strip, so quotes inside prefixes survived
+    expect(cleanLLMOutput('The user wants to "Fixed the bug"')).toBe("Fixed the bug");
+    expect(cleanLLMOutput('Achievement: "Fixed the bug"')).toBe("Fixed the bug");
+    expect(cleanLLMOutput('The user wants me to "Deploy to K8s"')).toBe("Deploy to K8s");
+  });
+
+  test("handles malformed JSON missing closing brace", () => {
+    // cleanLLMOutput strips trailing quote, leaving leading quote for regex fallback
+    expect(cleanLLMOutput('{"result": "Fixed the bug"')).toBe('{"result": "Fixed the bug');
+  });
 });
 
 describe("readPromptFile", () => {

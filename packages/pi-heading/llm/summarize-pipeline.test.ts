@@ -245,4 +245,48 @@ describe("summarize pipeline", () => {
     expect(result.topic).toBe("42");
     expect(result.goal).toBe("42");
   });
+
+  test("strips quotes that survive prefix removal in full pipeline", async () => {
+    let callIdx = 0;
+    mockCompleteSimple.mockImplementation(() => {
+      callIdx++;
+      return Promise.resolve({
+        role: "assistant",
+        content: [{ type: "text", text: callIdx === 1 ? 'The user wants to "Docker setup"' : 'The user wants to "Fix compose"' }],
+        api: "openai-completions",
+        provider: "openai",
+        model: "test-model",
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      });
+    });
+
+    const result = await summarize(mockCtx, "How do I fix docker compose?");
+
+    expect(result.topic).toBe("Docker setup");
+    expect(result.goal).toBe("Fix compose");
+  });
+
+  test("handles malformed JSON missing closing brace via regex fallback", async () => {
+    let callIdx = 0;
+    mockCompleteSimple.mockImplementation(() => {
+      callIdx++;
+      return Promise.resolve({
+        role: "assistant",
+        content: [{ type: "text", text: callIdx === 1 ? '{"result": "Docker setup"' : '{"result": "Fix compose"' }],
+        api: "openai-completions",
+        provider: "openai",
+        model: "test-model",
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      });
+    });
+
+    const result = await summarize(mockCtx, "How do I fix docker compose?");
+
+    expect(result.topic).toBe("Docker setup");
+    expect(result.goal).toBe("Fix compose");
+  });
 });
