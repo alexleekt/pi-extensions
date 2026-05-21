@@ -75,8 +75,9 @@ jobs:
                   # Write auth to the npm userconfig file that setup-node created (NPM_CONFIG_USERCONFIG)
                   # npm 11.x ignores workspace-level .npmrc, so we must ensure the userconfig has the token
                   USERCONFIG="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
-                  echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> "$USERCONFIG"
-                  echo "always-auth=true" >> "$USERCONFIG"
+                  # Ensure clean auth line (setup-node may write registry= without trailing newline)
+                  grep -q "//registry.npmjs.org/:_authToken" "$USERCONFIG" || \
+                    printf "\n//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\nalways-auth=true\n" >> "$USERCONFIG"
                   echo "✅ Wrote auth to npm userconfig: $USERCONFIG"
                   cat "$USERCONFIG" | sed 's/_authToken=.*/_authToken=***/g'
 
