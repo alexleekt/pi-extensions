@@ -1,60 +1,10 @@
-import { marked } from "marked";
 import mermaid from "mermaid";
 import { useEffect, useRef } from "react";
+import { marked } from "marked";
+import { sanitizeHtml } from "../util/markdown";
 
 interface ContextPanelProps {
     context: string;
-}
-
-/**
- * Lightweight sanitizer: strips dangerous tags, event handlers, and
- * malicious URLs. Context comes from the agent; defense in depth
- * against a compromised or confused LLM emitting raw HTML.
- */
-function sanitizeHtml(html: string): string {
-    // Block dangerous tags entirely
-    const dangerousTags = [
-        "script", "style", "iframe", "object", "embed", "form",
-        "input", "textarea", "button", "select", "option", "img",
-        "svg", "math", "meta", "base", "link", "noscript",
-        "template", "portal", "frame", "frameset",
-    ];
-    for (const tag of dangerousTags) {
-        html = html.replace(
-            new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, "gi"),
-            "",
-        );
-        html = html.replace(
-            new RegExp(`<${tag}\\b[^>]*\\/>`, "gi"),
-            "",
-        );
-        html = html.replace(
-            new RegExp(`<${tag}\\b[^>]*>`, "gi"),
-            "",
-        );
-    }
-
-    // Strip inline event handlers
-    html = html.replace(/on\w+\s*=\s*["'][^"']*["']/gi, "");
-    html = html.replace(/on\w+\s*=\s*[^\s>]+/gi, "");
-
-    // Strip javascript: and data: URLs from href/src/action
-    html = html.replace(
-        /(href|src|action|formaction)\s*=\s*["']\s*(javascript|data):[^"']*["']/gi,
-        '$1=""',
-    );
-    html = html.replace(
-        /(href|src|action|formaction)\s*=\s*[^\s>]+/gi,
-        (match) => {
-            const lower = match.toLowerCase();
-            if (lower.includes("javascript:") || lower.includes("data:")) {
-                return 'href=""';
-            }
-            return match;
-        },
-    );
-
-    return html;
 }
 
 class MermaidRenderer extends marked.Renderer {
@@ -69,7 +19,7 @@ class MermaidRenderer extends marked.Renderer {
 const mermaidRenderer = new MermaidRenderer();
 
 /** Render markdown with mermaid code blocks converted to <div class="mermaid">. */
-function renderMarkdown(text: string): string {
+function renderContextMarkdown(text: string): string {
     const raw = marked.parse(text, {
         async: false,
         renderer: mermaidRenderer,
@@ -94,7 +44,7 @@ function ensureMermaidInit() {
 
 export default function ContextPanel({ context }: ContextPanelProps) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const html = renderMarkdown(context);
+    const html = renderContextMarkdown(context);
 
     useEffect(() => {
         ensureMermaidInit();

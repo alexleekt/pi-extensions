@@ -119,10 +119,23 @@ async function runAskUserWithTheme(
     signal: AbortSignal | undefined,
     ctx: ExtensionContext,
 ): Promise<ReturnType<typeof askUserHandler>> {
-    const params = enrichWithThemeSettings(rawParams, ctx.sessionManager.getEntries());
+    const entries = ctx.sessionManager.getEntries();
+    const params = enrichWithThemeSettings(rawParams, entries);
     const saveTheme = createThemeSaver();
     let metadata: import("./tool/ask-user.js").AskUserMetadata = {};
-    const result = await askUserHandler(params, signal, ctx, (m) => {
+
+    // Capture the agent's preceding message as additional context
+    const preamble = buildAgentPreamble(params, entries);
+    const enrichedParams: AskUserParams = preamble
+        ? {
+              ...params,
+              context: params.context
+                  ? `${preamble}\n\n---\n\n${params.context}`
+                  : preamble,
+          }
+        : params;
+
+    const result = await askUserHandler(enrichedParams, signal, ctx, (m) => {
         metadata = m;
     });
     saveTheme(metadata);
@@ -151,6 +164,49 @@ function extractTextFromAssistantEntry(entry: unknown): string {
         )
         .map((c) => c.text)
         .join("\n");
+}
+
+/** Find the most recent assistant entry in the session journal. */
+function findLastAssistantEntry(entries: unknown[]): unknown | undefined {
+    return [...entries].reverse().find((e) => {
+        if (!e || typeof e !== "object") return false;
+        const entry = e as unknown as Record<string, unknown>;
+        const msg = entry.message;
+        if (!msg || typeof msg !== "object" || msg === null) return false;
+        return (msg as Record<string, unknown>).role === "assistant";
+    });
+}
+
+/**
+ * Extract the agent's introductory text from the most recent assistant
+ * message, excluding text that is already duplicated in the question or
+ * context fields.
+ */
+function buildAgentPreamble(
+    params: AskUserParams,
+    entries: unknown[],
+): string | undefined {
+    const lastAssistant = findLastAssistantEntry(entries);
+    if (!lastAssistant) return undefined;
+
+    const text = extractTextFromAssistantEntry(lastAssistant).trim();
+    if (!text) return undefined;
+
+    const question = params.question.trim();
+
+    // Skip if the assistant text is just the question itself
+    if (text === question) return undefined;
+
+    // If the text ends with the question, take only the prefix
+    if (text.endsWith(question)) {
+        const prefix = text.slice(0, text.length - question.length).trim();
+        return prefix || undefined;
+    }
+
+    // Skip if the assistant text is already fully contained in the context
+    if (params.context?.trim().includes(text)) return undefined;
+
+    return text;
 }
 
 /* ── /ask: extract questions & implicit requests ── */
@@ -557,13 +613,7 @@ export default function (pi: ExtensionAPI) {
             }
 
             const entries = ctx.sessionManager.getEntries();
-            const lastAssistant = [...entries].reverse().find((e) => {
-                if (!e || typeof e !== "object") return false;
-                const entry = e as unknown as Record<string, unknown>;
-                const msg = entry.message;
-                if (!msg || typeof msg !== "object" || msg === null) return false;
-                return (msg as Record<string, unknown>).role === "assistant";
-            });
+            const lastAssistant = findLastAssistantEntry(entries);
 
             if (!lastAssistant) {
                 ctx.ui.notify(

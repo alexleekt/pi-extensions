@@ -10,6 +10,7 @@ const SPINNER_INTERVAL_MS = 120;
 
 let spinnerTimer: ReturnType<typeof setInterval> | null = null;
 let spinnerIndex = 0;
+let currentSpinnerText = "";
 
 export type WidgetMode = "goal" | "working" | "achievement";
 
@@ -45,14 +46,23 @@ export function renderWidget(
 }
 
 function startSpinner(ctx: ExtensionContext, text: string): void {
-  if (spinnerTimer) clearInterval(spinnerTimer);
-  spinnerIndex = 0;
+  if (spinnerTimer) {
+    clearInterval(spinnerTimer);
+    // Preserve spinnerIndex for smooth restarts between turn_start events
+  } else {
+    spinnerIndex = 0;
+  }
+  currentSpinnerText = text;
   spinnerTimer = setInterval(() => {
-    spinnerIndex = (spinnerIndex + 1) % SPINNER_CHARS.length;
-    const prefix = SPINNER_CHARS[spinnerIndex];
-    const theme = ctx.ui.theme;
-    const line = `${theme.fg("muted", prefix + " ")}${theme.fg("text", text)}`;
-    ctx.ui.setWidget(WIDGET_KEY, [line]);
+    try {
+      spinnerIndex = (spinnerIndex + 1) % SPINNER_CHARS.length;
+      const prefix = SPINNER_CHARS[spinnerIndex];
+      const theme = ctx.ui.theme;
+      const line = `${theme.fg("muted", prefix + " ")}${theme.fg("text", currentSpinnerText)}`;
+      ctx.ui.setWidget(WIDGET_KEY, [line]);
+    } catch {
+      // Defensive: don't let widget errors kill the spinner interval.
+    }
   }, SPINNER_INTERVAL_MS);
 }
 
@@ -61,6 +71,12 @@ export function stopSpinner(): void {
     clearInterval(spinnerTimer);
     spinnerTimer = null;
   }
+  currentSpinnerText = "";
+}
+
+/** Returns true if the Braille spinner interval is currently active. */
+export function isSpinnerRunning(): boolean {
+  return spinnerTimer !== null;
 }
 
 export function clearWidget(ctx: ExtensionContext): void {

@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Alex Lee
 
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { renderWidget, clearWidget, stopSpinner } from "./widget.js";
+import { renderWidget, clearWidget, stopSpinner, isSpinnerRunning } from "./widget.js";
 
 function createMockCtx() {
   const setWidget = (_key: string, _lines: string[] | undefined) => {};
@@ -106,5 +106,57 @@ describe("clearWidget", () => {
     renderWidget(ctx, "Working", "working");
     clearWidget(ctx);
     expect(captured).toEqual(["pi-heading", undefined]);
+  });
+});
+
+describe("isSpinnerRunning", () => {
+  beforeEach(() => {
+    stopSpinner();
+  });
+  afterEach(() => {
+    stopSpinner();
+  });
+
+  test("returns false when spinner is stopped", () => {
+    expect(isSpinnerRunning()).toBe(false);
+  });
+
+  test("returns true when spinner is active", () => {
+    const ctx = createMockCtx();
+    renderWidget(ctx, "Working", "working");
+    expect(isSpinnerRunning()).toBe(true);
+  });
+
+  test("returns false after clearWidget", () => {
+    const ctx = createMockCtx();
+    renderWidget(ctx, "Working", "working");
+    clearWidget(ctx);
+    expect(isSpinnerRunning()).toBe(false);
+  });
+});
+
+describe("spinner resilience", () => {
+  beforeEach(() => {
+    stopSpinner();
+  });
+  afterEach(() => {
+    stopSpinner();
+  });
+
+  test("survives setWidget throwing inside interval", async () => {
+    const ctx = createMockCtx();
+    let callCount = 0;
+    ctx.ui.setWidget = () => {
+      callCount++;
+      if (callCount === 2) throw new Error("widget crash");
+    };
+    renderWidget(ctx, "Working", "working");
+
+    // Wait for at least three interval ticks; the second throws,
+    // but the interval should keep firing.
+    await new Promise((r) => setTimeout(r, 400));
+
+    expect(callCount).toBeGreaterThan(2);
+    expect(isSpinnerRunning()).toBe(true);
   });
 });

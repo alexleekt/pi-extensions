@@ -62,7 +62,8 @@ Just send a message. Within 1-3 seconds, the goal line appears. While the agent 
 help me set up docker for this project
 → ▸ Docker project setup          (goal ready)
 → ⠋ Docker project setup          (agent working)
-→ ✓ Wrote Dockerfile and .dockerignore  (achievement)
+→ ✓ Docker project setup          (turn complete — completion prefix)
+→ ✓ Wrote Dockerfile and .dockerignore  (achievement summarized)
 ```
 
 ### `/heading` — manual override

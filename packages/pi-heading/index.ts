@@ -12,7 +12,7 @@ import {
   persistState,
   type State,
 } from "./state/store.js";
-import { renderWidget, clearWidget, stopSpinner } from "./ui/widget.js";
+import { renderWidget, clearWidget, stopSpinner, isSpinnerRunning } from "./ui/widget.js";
 import { getDebugMode, setDebugMode, setModelOverride, resolveModelId } from "./llm/picker.js";
 import { setDebugEnabled, logDebug, readDebugLog, clearDebugLog, DEBUG_LOG } from "./state/debug.js";
 import type { SummarizeResult } from "./llm/summarize.js";
@@ -148,6 +148,8 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("agent_end", (_event, ctx) => {
     if (!ctx.hasUI) return;
+    agentStartedForCurrentTurn = false; // prevent late summarize from spinning
+    stopSpinner();                      // safety net against any dangling spinner
     ctx.ui.setWorkingVisible(true); // restore Pi's loader for next agent run
   });
 
@@ -192,6 +194,12 @@ export default function (pi: ExtensionAPI) {
         }
 
         const mode = agentStartedForCurrentTurn ? "working" : "goal";
+        // Defensive: don't let a late async render stop an active spinner
+        // (e.g. summarize completes during a subsequent tool-call turn).
+        if (mode !== "working" && isSpinnerRunning()) {
+          logDebug(makeDebugEntryError(prompt, existing, "skipped-goal-render: spinner active", ctx.model?.id));
+          return;
+        }
         renderWidget(ctx, result.goal, mode);
         logDebug(makeDebugEntry(prompt, result, existing, ctx.model?.id, stable));
       } catch (err) {
@@ -262,18 +270,29 @@ export default function (pi: ExtensionAPI) {
 
         if (myGeneration !== turnGeneration) return; // stale turn
 
+        // Re-read fresh state in case the before_agent_start summarization
+        // already updated the goal for the next turn while we were async.
+        const fresh = leafId ? getState(leafId) : undefined;
+
         const state: State = {
-          topic: existing?.topic ?? "",
-          goal: existing?.goal ?? "",
+          topic: fresh?.topic ?? existing?.topic ?? "",
+          goal: fresh?.goal ?? existing?.goal ?? "",
           achievement,
         };
 
         if (leafId) {
           setState(leafId, state);
-          // Persist if achievement changed (goal/topic unchanged from before)
-          if (existing?.achievement !== achievement) {
+          // Persist if anything changed vs the fresh (or captured) state
+          const prior = fresh ?? existing;
+          if (prior?.topic !== state.topic || prior?.goal !== state.goal || prior?.achievement !== state.achievement) {
             persistState(pi, state);
           }
+        }
+        // Defensive: don't overwrite an active spinner with an achievement
+        // from a previous turn that completed during a subsequent tool-call turn.
+        if (isSpinnerRunning()) {
+          logDebug(makeDebugEntryError(assistantText, existing, "skipped-achievement-render: spinner active", ctx.model?.id));
+          return;
         }
         renderWidget(ctx, achievement, "achievement");
         logDebug(makeDebugEntryAchievement(assistantText, achResult, existing, ctx.model?.id));

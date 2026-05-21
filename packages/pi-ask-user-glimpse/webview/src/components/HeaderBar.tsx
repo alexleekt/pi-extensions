@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { AnimationLevel, ThemeMode } from "../../../shared/ask-user";
+import { renderMarkdownInline } from "../util/markdown";
 import { useSettings } from "../util/settings";
 
 function CogIcon() {
@@ -65,9 +66,14 @@ export default function HeaderBar({ onShowShortcuts, question }: HeaderBarProps)
     return (
         <div className="flex shrink-0 items-start justify-between border-b border-border bg-card px-4 py-3 gap-3">
             <div className="flex-1 min-w-0">
-                <h1 className="text-base font-semibold leading-snug text-foreground">
-                    {question ?? "Ask User"}
-                </h1>
+                <h1
+                    className="text-base font-semibold leading-snug text-foreground"
+                    dangerouslySetInnerHTML={{
+                        __html: question
+                            ? renderMarkdownInline(question)
+                            : "Ask User",
+                    }}
+                />
             </div>
             <div className="flex shrink-0 items-center gap-1 pt-0.5">
                 <button

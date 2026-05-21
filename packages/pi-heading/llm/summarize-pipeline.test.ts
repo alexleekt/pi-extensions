@@ -162,4 +162,87 @@ describe("summarize pipeline", () => {
     expect(contexts[1].messages[0].content[0].text).toContain("Shared message");
     expect(contexts[0].systemPrompt).not.toBe(contexts[1].systemPrompt);
   });
+
+  test("extracts clean text from JSON-wrapped model response", async () => {
+    mockCompleteSimple.mockImplementation(() => {
+      return Promise.resolve({
+        role: "assistant",
+        content: [{ type: "text", text: '{"result": "Docker setup"}' }],
+        api: "openai-completions",
+        provider: "openai",
+        model: "test-model",
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      });
+    });
+
+    const result = await summarize(mockCtx, "How do I fix docker compose?");
+
+    expect(result.topic).toBe("Docker setup");
+    expect(result.goal).toBe("Docker setup");
+  });
+
+  test("extracts text from JSON with trailing commentary", async () => {
+    mockCompleteSimple.mockImplementation(() => {
+      return Promise.resolve({
+        role: "assistant",
+        content: [{ type: "text", text: '{"result": "Docker setup"} That should do it' }],
+        api: "openai-completions",
+        provider: "openai",
+        model: "test-model",
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      });
+    });
+
+    const result = await summarize(mockCtx, "How do I fix docker compose?");
+
+    expect(result.topic).toBe("Docker setup");
+    expect(result.goal).toBe("Docker setup");
+  });
+
+  test("ignores thinking content and uses only text parts", async () => {
+    mockCompleteSimple.mockImplementation(() => {
+      return Promise.resolve({
+        role: "assistant",
+        content: [
+          { type: "thinking", thinking: 'Let me analyze this: the user wants Docker help' },
+          { type: "text", text: 'Kubernetes' },
+        ],
+        api: "openai-completions",
+        provider: "openai",
+        model: "test-model",
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      });
+    });
+
+    const result = await summarize(mockCtx, "Deploy to Kubernetes");
+
+    expect(result.topic).toBe("Kubernetes");
+    expect(result.goal).toBe("Kubernetes");
+  });
+
+  test("handles non-string result value by coercing to string", async () => {
+    mockCompleteSimple.mockImplementation(() => {
+      return Promise.resolve({
+        role: "assistant",
+        content: [{ type: "text", text: '{"result": 42}' }],
+        api: "openai-completions",
+        provider: "openai",
+        model: "test-model",
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+        stopReason: "stop",
+        timestamp: Date.now(),
+      });
+    });
+
+    const result = await summarize(mockCtx, "test");
+
+    expect(result.topic).toBe("42");
+    expect(result.goal).toBe("42");
+  });
 });

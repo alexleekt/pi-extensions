@@ -2,6 +2,14 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Agent preamble capture** — When the agent writes an introductory message before calling `ask_user`, that text is now automatically captured and prepended to the context panel. The extension finds the most recent assistant journal entry, extracts its text content, and appends it to the dialog's left panel (separated by a horizontal rule from any explicit `context` provided by the agent). This ensures the user sees the full reasoning that led to the question, not just the question itself.
+
+### Fixed
+- **Markdown in question header** — The `question` field is now rendered through `marked` so inline markdown (bold `**`, italic `*`, code `` ` ``, links) displays correctly instead of showing raw escape characters. The HTML is sanitized with the same defense-in-depth sanitizer used by the context panel. Extracted shared `sanitizeHtml()`, `renderMarkdown()`, and `renderMarkdownInline()` to `webview/src/util/markdown.ts`.
+
 ## [0.4.1] — 2026-05-20
 
 ### Security

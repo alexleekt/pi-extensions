@@ -95,7 +95,7 @@ export interface RunPromptResult {
 }
 
 function buildSystemPrompt(instructions: string, maxWords: number, example: string): string {
-  return `${instructions}\n\nSTRICT FORMAT RULES:\n- You MUST respond with a valid JSON object containing a single key "result".\n- The value of "result" must be ${maxWords} words or fewer.\n- NO quotes, NO markdown, NO explanation, NO word count, NO meta-commentary inside the JSON.\n- Example: {"result": "${example}"}`;
+  return `${instructions}\n\nSTRICT FORMAT RULES:\n- You MUST respond with a valid JSON object containing a single key "result".\n- The value of "result" must be a plain text string, ${maxWords} words or fewer.\n- NO markdown, NO explanation, NO word count, NO meta-commentary in the value.\n- Example: {"result": "${example}"}`;
 }
 
 async function runPrompt(
@@ -144,7 +144,8 @@ async function runPrompt(
   // Some models wrap JSON in markdown fences even with response_format: json_object.
   // extractTextFromMessage parses JSON on the raw text; if that failed because of
   // fences, try again after cleanLLMOutput has stripped them.
-  const finalText = tryParseJsonResult(cleaned) ?? cleaned;
+  // If still failing, use regex extraction as last resort before falling back to raw text.
+  const finalText = tryParseJsonResult(cleaned) ?? extractResultFromJson(cleaned) ?? cleaned;
   return {
     text: truncateToWords(finalText, promptFile.maxWords),
     fullPrompt,
@@ -169,7 +170,7 @@ function extractTextFromMessage(msg: AssistantMessage | undefined): string {
     for (const part of msg.content) {
       if (!part) continue;
       if (part.type === "text" && typeof part.text === "string") parts.push(part.text);
-      else if (part.type === "thinking" && typeof (part as any).thinking === "string") parts.push((part as any).thinking);
+      // thinking/reasoning content is NOT user-facing output — skip it
       else if (typeof part === "string") parts.push(part);
     }
     raw = parts.join("");
@@ -188,15 +189,33 @@ function extractTextFromMessage(msg: AssistantMessage | undefined): string {
   return raw;
 }
 
-/** Try to parse a JSON object and extract its `.result` string. Returns undefined on failure. */
+/** Try to parse a JSON object and extract its `.result` value. Returns undefined on failure. */
 function tryParseJsonResult(text: string): string | undefined {
   try {
     const parsed = JSON.parse(text);
     if (parsed && typeof parsed.result === "string") return parsed.result;
+    if (parsed && parsed.result != null) return String(parsed.result);
   } catch {
     // ignore
   }
   return undefined;
+}
+
+/**
+ * Regex-based fallback for extracting the value of `"result"` when JSON.parse
+ * fails (e.g. trailing text, malformed JSON, extra punctuation).
+ * Handles both quoted and unquoted values.
+ */
+function extractResultFromJson(text: string): string | undefined {
+  // Match {"result": "quoted"} or {"result": unquoted} even with trailing junk
+  const match = text.match(/^\s*\{\s*"result"\s*:\s*(?:"((?:\\.|[^"\\])*)"|([^,}]*))\s*(?:\}|.*$)/);
+  if (!match) return undefined;
+
+  if (match[1] !== undefined) {
+    // Quoted string — unescape escaped quotes and newlines
+    return match[1].replace(/\\"/g, '"').replace(/\\n/g, " ");
+  }
+  return match[2].trim();
 }
 
 /** Strip common LLM wrapping artifacts (quotes, markdown, extra whitespace, meta prefixes). */
@@ -206,8 +225,8 @@ export function cleanLLMOutput(text: string): string {
     .replace(/^```[a-z]*\n?|\n?```$/g, "")          // fences
     .replace(/\n+/g, " ")                             // newlines → spaces
     .replace(/^["']+|["']+$/g, "")                   // wrapping quotes
-    .replace(/^\s*(?:The user wants(?: me)? to|The user is|The user has|The user|User wants(?: me)? to|Here is the (?:topic|goal|summary):?)\s*/gi, "")
-    .replace(/^\s*(?:Topic|Goal|Summary):?\s*/i, "")
+    .replace(/^\s*(?:The user wants(?: me)? to|The user is|The user has|The user|User wants(?: me)? to|Here is the (?:topic|goal|summary|result|achievement):?)\s*/gi, "")
+    .replace(/^\s*(?:Topic|Goal|Summary|Achievement|Result):?\s*/i, "")
     .trim();
 }
 
