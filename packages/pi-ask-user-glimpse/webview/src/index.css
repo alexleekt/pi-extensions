@@ -61,23 +61,26 @@
             "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
 
-    /* Always-visible scrollbars for WebKit (macOS WKWebView / GTK WebKit) */
+    /* Default: hidden scrollbars (macOS overlay style) */
     ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
+        width: 0px;
+        height: 0px;
     }
-    ::-webkit-scrollbar-track {
+
+    /* Hover-visible scrollbar utility */
+    .scrollbar-hover::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    .scrollbar-hover::-webkit-scrollbar-track {
         background: transparent;
     }
-    ::-webkit-scrollbar-thumb {
-        background: hsl(var(--muted-foreground) / 0.3);
+    .scrollbar-hover::-webkit-scrollbar-thumb {
+        background: hsl(var(--muted-foreground) / 0.25);
         border-radius: 9999px;
-        border: 2px solid transparent;
-        background-clip: padding-box;
     }
-    ::-webkit-scrollbar-thumb:hover {
-        background: hsl(var(--muted-foreground) / 0.5);
-        background-clip: padding-box;
+    .scrollbar-hover::-webkit-scrollbar-thumb:hover {
+        background: hsl(var(--muted-foreground) / 0.45);
     }
 }
 

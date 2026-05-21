@@ -103,12 +103,12 @@ export default function App() {
             <div className="flex flex-1 overflow-hidden">
                 {/* Left panel: Agent context rendered as markdown */}
                 <div
-                    className={`flex flex-col border-r border-border overflow-hidden transition-all duration-200 ${
+                    className={`flex flex-col overflow-hidden ${
                         isCollapsed ? "w-0 opacity-0" : "opacity-100"
                     }`}
                     style={isCollapsed ? undefined : { width: `${panelWidth}%` }}
                 >
-                    <div className="flex-1 overflow-y-auto p-4">
+                    <div className="flex-1 overflow-y-auto p-4 scrollbar-hover">
                         <ErrorBoundary>
                             {/* hasContext guarantees payload.context is defined */}
                             <ContextPanel context={payload.context!} />
@@ -116,11 +116,9 @@ export default function App() {
                     </div>
                 </div>
 
-                {/* Resizable splitter */}
+                {/* Resizable splitter — handle sits ON the boundary */}
                 <div
-                    className={`relative flex w-3 shrink-0 cursor-col-resize items-center justify-center transition-colors hover:bg-primary/20 ${
-                        isDragging ? "bg-primary/30" : "bg-border"
-                    }`}
+                    className="group relative flex w-3 shrink-0 cursor-col-resize items-center justify-start"
                     onMouseDown={(e) => {
                         if (isCollapsed) {
                             e.preventDefault();
@@ -140,36 +138,14 @@ export default function App() {
                     }}
                     title={isCollapsed ? "Click to expand" : "Drag to resize · Double-click to collapse"}
                 >
-                    {/* Collapse / expand button */}
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (isCollapsed) {
-                                setIsCollapsed(false);
-                                setPanelWidth(DEFAULT_PANEL_WIDTH);
-                            } else {
-                                setIsCollapsed(true);
-                            }
-                        }}
-                        className="flex h-6 w-6 items-center justify-center rounded-full bg-muted-foreground/10 text-muted-foreground transition-colors hover:bg-primary/20 hover:text-foreground"
-                        title={isCollapsed ? "Expand context panel" : "Collapse context panel"}
-                    >
-                        {isCollapsed ? (
-                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M6 2l6 6-6 6" />
-                            </svg>
-                        ) : (
-                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M10 2l-6 6 6 6" />
-                            </svg>
-                        )}
-                    </button>
-                    {/* Grip handle */}
-                    {!isCollapsed && (
-                        <div className={`absolute h-8 w-1 rounded-full transition-colors ${
-                            isDragging ? "bg-primary/60" : "bg-muted-foreground/20"
-                        }`} />
-                    )}
+                    {/* Grip handle — positioned at the panel boundary (left edge of splitter) */}
+                    <div
+                        className={`h-8 rounded-full transition-colors ${
+                            isDragging
+                                ? "w-1.5 bg-primary/80"
+                                : "w-1 bg-muted-foreground/50 group-hover:bg-muted-foreground/80"
+                        }`}
+                    />
                 </div>
 
                 {/* Right panel: Options / input */}
