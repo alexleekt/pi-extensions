@@ -5,6 +5,7 @@
     },
     "include": [
         "types/**/*.d.ts",
-        "session.ts"
+        "session.ts",
+        "prompt-eval.ts"
     ]
 }

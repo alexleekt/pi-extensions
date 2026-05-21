@@ -61,6 +61,50 @@ prompts/
 | `state/guard.ts` | Topic stability | Word-overlap threshold is 0.7 (70%). Normalization strips punctuation but preserves word boundaries. |
 | `state/debug.ts` | Debug log persistence | Structured JSON-line log to temp file. `logDebug()` is no-op when debug disabled. |
 | `ui/widget.ts` | Widget rendering | Uses `ctx.ui.theme.fg("muted", "▸ ")` + `ctx.ui.theme.fg("text", goal)`. Never add borders. |
+| `tools/prompt-eval.ts` | CLI runner for prompt evaluation | Thin wrapper over `@alexleekt/pi-shared/prompt-eval`. Handles `topic`, `goal`, `topic-goal`, and `optimize` commands. |
+| `tools/suites/topic.suite.ts` | Topic evaluation suite | Factory functions: `createSuite(promptPath?)` and `suiteFactory(testCasesFile)` for static vs. optimization use. |
+| `tools/suites/goal.suite.ts` | Goal evaluation suite | Same pattern as topic suite. Uses `scorers.presentContinuous()` and `scorers.noTrailingPeriod()`. |
+
+## Prompt Evaluation Tools
+
+The `tools/` directory contains a CLI for evaluating and optimizing the `topic.md` and `goal.md` prompts against test cases.
+
+### Architecture
+
+```
+tools/
+  prompt-eval.ts           → CLI entrypoint (topic | goal | topic-goal | optimize)
+  suites/
+    topic.suite.ts         → Test case loading + topic prompt builder + scorers
+    goal.suite.ts          → Test case loading + goal prompt builder + scorers
+  test-cases.json          → Basic 8-case test set
+  test-cases-comprehensive.json → 50+ categorized cases
+```
+
+### Adding a new suite
+
+1. Create `tools/suites/<name>.suite.ts`:
+   - Define `TestCase` interface with `[key: string]: unknown`
+   - Export `createSuite(testCasesFile?, promptPath?)` for static evaluation
+   - Export `suiteFactory(testCasesFile?)` that returns `(promptText) => EvalSuite` for optimization
+2. Wire into `tools/prompt-eval.ts` CLI
+
+### Suite factory pattern
+
+```typescript
+// For optimization, the framework needs to rebuild the suite from raw prompt text
+export function suiteFactory(testCasesFile = "test-cases.json"): (promptText: string) => EvalSuite<MyTestCase> {
+  const testCases = loadTestCases(testCasesFile);
+  return (promptText) => makeSuite(testCases, promptText);
+}
+```
+
+### Key Invariants for Tools
+
+1. **Prompt frontmatter preservation** — `loadPrompt()` strips `---
+---` blocks for the LLM but the optimizer's `createCriticPrompt()` instructs the critic to preserve them.
+2. **Suite factory must accept raw text** — `suiteFactory` takes `(promptText: string)` so `optimizeSuite` can inject revised prompts without filesystem I/O.
+3. **Prompt paths are relative to `tools/`** — the CLI resolves `prompts/topic.md` against the package root, not `tools/`.
 
 
 ## Model Calling from Extensions

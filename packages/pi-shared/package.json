@@ -25,11 +25,18 @@
     },
     "files": [
         "types",
-        "session.ts"
+        "session.ts",
+        "prompt-eval.ts"
     ],
     "exports": {
         "./session": "./session.ts",
-        "./types": "./types/pi.d.ts"
+        "./types": "./types/pi.d.ts",
+        "./prompt-eval": "./prompt-eval.ts"
+    },
+    "pi": {
+        "skills": [
+            "skills/prompt-eval"
+        ]
     },
     "scripts": {
         "typecheck": "tsc --noEmit"

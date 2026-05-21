@@ -12,3 +12,5 @@ packages/*/.a5c/
 .jj/
 # CocoIndex Code (ccc)
 /.cocoindex_code/
+# Generated knowledge graph files
+.understand-anything/

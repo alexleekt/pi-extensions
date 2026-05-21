@@ -131,6 +131,53 @@ The **achievement** prompt receives both `{goal}` and `{message}` so the LLM can
 
 Default prompts are auto-copied on first run if the files don't exist.
 
+## Prompt evaluation (for developers)
+
+If you're iterating on the prompts, use the evaluation CLI to measure quality before shipping.
+
+### Evaluate prompts against test cases
+
+```bash
+cd ~/git/pi-extensions/packages/pi-heading
+
+# Basic 8-case smoke test
+bun tools/prompt-eval.ts topic
+bun tools/prompt-eval.ts goal
+
+# Comprehensive 50+ case test
+bun tools/prompt-eval.ts topic-goal firepass test-cases-comprehensive.json
+```
+
+Reports are written to `tools/prompt-eval-report-*.md`.
+
+### Iterative prompt optimization
+
+Automatically rewrite the prompt until it hits a target pass rate:
+
+```bash
+bun tools/prompt-eval.ts optimize topic prompts/topic.md \
+  "Concise 1-4 word noun phrases, no articles" \
+  90 firepass test-cases-comprehensive.json
+```
+
+Arguments:
+- `optimize` — run the optimization loop
+- `topic|goal` — which suite to evaluate
+- `prompts/*.md` — path to the prompt file to mutate
+- `"desirable outcome"` — natural-language description of good output
+- `90` — target pass rate percentage
+- `firepass` — model for evaluation (optional, default: firepass)
+- `test-cases-*.json` — test case file (optional)
+
+How it works:
+1. Evaluates the current prompt against all test cases
+2. Collects failing cases and sends them to a critic LLM
+3. Critic rewrites the prompt to fix the failure patterns
+4. Prompt file is updated in-place
+5. Re-evaluates — repeats until the target pass rate is reached or max iterations (5)
+
+> ⚠️ **Back up your prompt first.** The optimizer mutates the file in-place.
+
 ## Architecture
 
 ```
