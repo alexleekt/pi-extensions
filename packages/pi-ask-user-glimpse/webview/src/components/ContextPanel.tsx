@@ -2,6 +2,7 @@ import mermaid from "mermaid";
 import { useEffect, useRef } from "react";
 import { marked } from "marked";
 import { sanitizeHtml } from "../util/markdown";
+import { useSettings } from "../util/settings";
 
 interface ContextPanelProps {
     context: string;
@@ -27,16 +28,19 @@ function renderContextMarkdown(text: string): string {
     return sanitizeHtml(raw);
 }
 
-/* ── One-time mermaid init ── */
-let _mermaidInitialized = false;
-function ensureMermaidInit() {
-    if (_mermaidInitialized) return;
+/* ── Mermaid theme sync ── */
+let _lastMermaidTheme: "default" | "dark" | undefined;
+
+function initMermaid(resolvedTheme: "light" | "dark") {
+    const theme = resolvedTheme === "dark" ? "dark" : "default";
+    if (_lastMermaidTheme === theme) return;
     try {
         mermaid.initialize({
             startOnLoad: false,
             securityLevel: "loose",
+            theme,
         });
-        _mermaidInitialized = true;
+        _lastMermaidTheme = theme;
     } catch {
         // ignore init errors — mermaid.run() may still work
     }
@@ -44,10 +48,11 @@ function ensureMermaidInit() {
 
 export default function ContextPanel({ context }: ContextPanelProps) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const { resolvedTheme } = useSettings();
     const html = renderContextMarkdown(context);
 
     useEffect(() => {
-        ensureMermaidInit();
+        initMermaid(resolvedTheme);
         const container = containerRef.current;
         if (!container) return;
 
@@ -66,7 +71,7 @@ export default function ContextPanel({ context }: ContextPanelProps) {
         });
 
         return () => cancelAnimationFrame(id);
-    }, [context]);
+    }, [context, resolvedTheme]);
 
     return (
         <div
