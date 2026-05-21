@@ -94,14 +94,14 @@ jobs:
 
                   if [ "$PKG_EXISTS" == "true" ] && [ "$HAS_TOKEN" == "false" ]; then
                       echo "→ Publishing with npm Trusted Publishing (OIDC provenance)..."
-                      npm publish --provenance --access public
+                      npm --userconfig "${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}" publish --provenance --access public
                   elif [ "$HAS_TOKEN" == "true" ]; then
                       if [ "$PKG_EXISTS" == "true" ]; then
                           echo "→ Publishing with NPM_TOKEN (Trusted Publishing available but token override active)..."
                       else
                           echo "→ Publishing first version with NPM_TOKEN (configure Trusted Publishing after this)..."
                       fi
-                      npm publish --access public
+                      npm --userconfig "${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}" publish --access public
                   else
                       echo "❌ Cannot publish: package does not exist on npm and no NPM_TOKEN is configured."
                       echo ""
