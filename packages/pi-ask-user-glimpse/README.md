@@ -189,43 +189,44 @@ npm run validate:gui # same + opens actual WebView for visual check
 npm run check        # dry-run npm pack
 ```
 
-## Auto-Detection: When `ask_user` Is Used Automatically
+## Always-On: When `ask_user` Is Used Automatically
 
 Some skills instruct the agent to "ask questions one at a time" but never tell it to **use a tool** — so the agent writes plain text, bypassing the rich WebView dialog.
 
-This extension auto-detects question-oriented sessions and injects a system-prompt mandate that tells the LLM to use `ask_user` for every question.
-
-### Auto-detection
-
-Before each LLM turn, the extension checks:
-
-1. **Known question skills** — `grill-with-docs`, `questionnaire`, `interview`, `grill`
-2. **Language patterns** in the system prompt — "ask the questions one at a time", "interview me", "grilling session", "wait for feedback"
-3. **Manual toggle** — `/ask-style` overrides the behavior for the current session
-
-When triggered, it appends: "You MUST use `ask_user` for every question. Do NOT write free-form text."
+This extension always injects a system-prompt mandate that tells the LLM to use `ask_user` for every question. You can toggle this off per-session if needed.
 
 ### Manual toggle: `/ask-style`
 
-Override auto-detection for the current session:
+Override the default for the current session:
 
 ```
 /ask-style
 ```
 
-Cycles through three states:
+Cycles through two states:
 
 | State | Behavior |
 |-------|----------|
-| **AUTO** *(default)* | Auto-detect question sessions by skill name + language patterns |
-| **Always Dialog** | Always use `ask_user` for every question, regardless of detection |
+| **Always Dialog** *(default)* | Always use `ask_user` for every question |
 | **Plain Text** | Disable everything — let the agent write questions as plain text |
+| **YOLO** | Never ask — the agent proceeds with its best recommendation |
 
 The setting is persisted in the session and survives restarts.
 
+### YOLO mode
+
+When YOLO is active, the extension injects a mandate telling the agent **not** to ask for input or confirmation. Instead, the agent goes with its best recommendation and keeps moving. It will only use `ask_user` if the action would cause irreversible harm, data loss, or security compromise.
+
+Use this when you trust the agent's judgment and want maximum speed:
+
+```
+/ask-style
+→ ask_user style: YOLO — go with your recommendation
+```
+
 ### Token cost
 
-The injected mandate is ~100 tokens. It is only appended when detection triggers, so normal conversations pay nothing extra.
+The injected mandate is ~100 tokens. It is appended on every turn when `ask_user` is available in the tool set.
 
 ## Slash Command: `/ask`
 

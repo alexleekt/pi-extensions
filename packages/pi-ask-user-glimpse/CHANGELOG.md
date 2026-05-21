@@ -5,6 +5,13 @@ All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this f
 ## [Unreleased]
 
 ### Added
+- **YOLO mode** — New `/ask-style` state that tells the agent to proceed with its best recommendation without asking. Injects a mandate: "Do NOT ask the user for input or confirmation. Go with your best recommendation and proceed immediately. Only use `ask_user` if the action would cause irreversible harm, data loss, security compromise, or violate explicit hard constraints."
+
+### Changed
+- **Always Dialog is now the default** — The `ask_user` mandate is now injected on every turn (when `ask_user` is in the tool set), rather than only auto-detecting question-oriented skills. The `/ask-style` toggle cycles through **Always Dialog** → **Plain Text** → **YOLO**. Auto-detection mode has been removed.
+- **Three-state `/ask-style` cycle** — `Always Dialog → Plain Text → YOLO → Always Dialog`.
+
+### Added
 - **Agent preamble capture** — When the agent writes an introductory message before calling `ask_user`, that text is now automatically captured and prepended to the context panel. The extension finds the most recent assistant journal entry, extracts its text content, and appends it to the dialog's left panel (separated by a horizontal rule from any explicit `context` provided by the agent). This ensures the user sees the full reasoning that led to the question, not just the question itself.
 
 ### Fixed

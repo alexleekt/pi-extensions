@@ -1,8 +1,7 @@
-# Auto-Detection: Question-Session Detection
+# Always-On & YOLO Mode
 
-> This document describes the built-in detection logic in `pi-ask-user-glimpse`.
-> As of the latest version, this behavior is **merged into the main extension**
-> and activates automatically. You do not need to install a separate middleware file.
+> This document describes how `pi-ask-user-glimpse` controls whether the agent asks questions via `ask_user` or proceeds autonomously.
+> The behavior is **merged into the main extension** — no separate middleware file is needed.
 
 ## The Problem
 
@@ -18,59 +17,54 @@ Pi extensions cannot convert a **completed assistant text message** into a tool 
 
 Therefore, the only reliable way to force tool usage is to influence the LLM **before** generation — via prompt injection.
 
-## Built-in Detection
+## Style Modes
 
-The main extension (`index.ts`) hooks `before_agent_start` and auto-detects question sessions using three signals:
+The main extension (`index.ts`) hooks `before_agent_start` and injects a system-prompt mandate based on the current style mode. The mode is persisted per-session via `pi.appendEntry("ask-user-style", { mode: "always" | "plain" | "yolo" })`.
 
-### 1. Known question-oriented skills
+### Always Dialog *(default)*
 
-Checks `systemPromptOptions.skills` for:
-- `grill-with-docs`
-- `questionnaire`
-- `interview`
-- `grill`
-
-### 2. Language patterns in the system prompt
-
-Regex patterns such as:
-- "ask the questions one at a time"
-- "interview me"
-- "grilling session"
-- "wait for feedback"
-- "questionnaire mode"
-- "one question per call"
-
-### 3. Manual override: `/ask-style`
-
-Overrides auto-detection for the current session. Persisted via `pi.appendEntry("ask-user-style", { enabled: boolean | null })`.
-
-Cycles through three states:
-- **AUTO** *(default)* — auto-detect by skill name + language patterns
-- **Always Dialog** — always use `ask_user` for every question
-- **Plain Text** — disable all dialog injection
-
-When any signal triggers, the extension appends a mandate to the system prompt:
+Injects the standard mandate:
 
 > "When you need to ask the user a question, you MUST use the `ask_user` tool. Do NOT write questions as free-form assistant text."
+
+### Plain Text
+
+No mandate is injected. The agent writes questions as free-form assistant text (bypassing the rich WebView dialog).
+
+### YOLO
+
+Injects the YOLO mandate:
+
+> "You are in YOLO mode. Do NOT ask the user for input or confirmation. Go with your best recommendation and proceed immediately. Only use `ask_user` if the action would cause irreversible harm, data loss, security compromise, or violate explicit hard constraints."
+
+### Manual override: `/ask-style`
+
+Cycles through the three states:
+
+Cycles through three states:
+- **Always Dialog** *(default)* — always inject the `ask_user` mandate
+- **Plain Text** — disable all dialog injection
+- **YOLO** — never ask; the agent proceeds with its best recommendation
+
+The mandate for the active mode is appended to the system prompt on every turn (when `ask_user` is in the tool set).
 
 ## How It Works
 
 1. Hook `before_agent_start` — fires before the LLM sees the prompt.
 2. Verify `ask_user` is in `selectedTools` (safety check).
-3. Check the three signals above.
-4. If any match, append the mandate to the system prompt.
+3. Read the current style mode from the session journal.
+4. Append the appropriate mandate (or nothing, for Plain Text).
 
 ## Pros
 
-- **Skill-agnostic** — works for any skill or prompt template that uses question-session language.
-- **Non-invasive** — only appends tokens when detection triggers.
-- **User-controllable** — `/ask-style` overrides auto-detection.
+- **Skill-agnostic** — works regardless of whether a named skill is loaded.
+- **User-controllable** — `/ask-style` cycles through three modes on demand.
 - **Zero round-trips** — no extra LLM calls needed.
 
 ## Cons
 
-- If content is pasted anonymously (bypassing `systemPromptOptions.skills` and not matching regex patterns), detection fails. Use `/ask-style` as a manual override, or `/ask` to retroactively answer a question the agent already wrote as plain text.
 - The LLM could theoretically ignore the mandate, though in practice system-prompt overrides are highly effective.
+- YOLO mode trades safety for speed — use it only when you trust the agent's judgment.
 
 ## Legacy: Separate Middleware File
 
@@ -86,7 +80,8 @@ This is an *example* of an alternative approach, not a recommended one. It hooks
 
 | Approach | Detects Reliably | Forces Tool Usage | Extra Round-trip | Token Cost | Status |
 |----------|------------------|-------------------|------------------|------------|--------|
-| Built-in `before_agent_start` | ✅ Skills + patterns | ✅ System prompt | ❌ No | Low (~100 chars) | **Active** |
-| `/ask-style` manual toggle | ✅ Always | ✅ System prompt | ❌ No | Low (~100 chars) | **Active** |
+| Always Dialog (`before_agent_start`) | ✅ Always | ✅ System prompt | ❌ No | Low (~100 chars) | **Active** |
+| `/ask-style` Plain Text | ✅ Always | ❌ None | ❌ No | Zero | **Active** |
+| `/ask-style` YOLO | ✅ Always | ✅ System prompt | ❌ No | Low (~100 chars) | **Active** |
 | `input` transform (example) | ⚠️ Regex | ✅ Injected text | ❌ No | Medium | Legacy example |
 | `message_end` post-hoc hack | ❌ Post-hoc | ❌ Hope-based | ✅ Yes | High | Not implemented |

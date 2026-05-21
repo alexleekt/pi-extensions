@@ -1,7 +1,7 @@
 /**
  * DEPRECATED — This logic is now built into the main extension (index.ts).
  *
- * The main extension auto-detects question sessions skill-agnostically
+ * The main extension always injects the ask_user mandate (unless set to Plain Text or YOLO mode)
  * and supports a manual `/ask-style` toggle. You do not need to copy
  * this file anywhere if you installed pi-ask-user-glimpse via `pi install`.
  *

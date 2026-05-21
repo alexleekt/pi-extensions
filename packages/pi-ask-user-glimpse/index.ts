@@ -23,7 +23,6 @@ const isCustomEntry: typeof _isCustomEntry =
           };
 import { StringEnum, Type } from "@earendil-works/pi-ai";
 import type {
-    BuildSystemPromptOptions,
     ExtensionAPI,
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
@@ -35,24 +34,7 @@ import { PROTECTED_ABBREVIATIONS } from "./constants/abbreviations.js";
 /* ── Module-level reference to ExtensionAPI for tool execute closure ── */
 let _pi: ExtensionAPI | undefined;
 
-/* ── Generic question-session detection ── */
-
-const QUESTION_SESSION_PATTERNS = [
-    /ask the questions? one at a time/i,
-    /interview me/i,
-    /grilling session/i,
-    /ask questions? (one at a time|sequentially|individually)/i,
-    /wait for feedback/i,
-    /questionnaire mode/i,
-    /one question per call/i,
-];
-
-const QUESTION_SKILL_NAMES = new Set([
-    "grill-with-docs",
-    "questionnaire",
-    "interview",
-    "grill",
-]);
+/* ── Style mode constants ── */
 
 const ASK_USER_MANDATE = `
 ## Tool Usage Mandate — Auto-injected by pi-ask-user-glimpse
@@ -64,31 +46,46 @@ should be a separate \`ask_user\` tool call.
 Rules:
 - One question per \`ask_user\` call.
 - Provide concise options when the question has discrete choices.
+- List options from most recommended to least recommended.
 - Set \`allowMultiple: true\` when more than one choice is valid.
 - Set \`allowFreeform: true\` when the user might want to answer in their own words.
 - Wait for the tool result before continuing to the next question.
 `;
 
-function isQuestionSession(
-    systemPrompt: string,
-    options: BuildSystemPromptOptions,
-): boolean {
-    const hasQuestionSkill = !!options.skills?.some((s) =>
-        QUESTION_SKILL_NAMES.has(s.name.toLowerCase()),
-    );
-    const hasQuestionLanguage = QUESTION_SESSION_PATTERNS.some((p) =>
-        p.test(systemPrompt),
-    );
-    return hasQuestionSkill || hasQuestionLanguage;
-}
+const YOLO_MANDATE = `
+## Tool Usage Mandate — Auto-injected by pi-ask-user-glimpse (YOLO Mode)
 
-function getStyleMode(entries: unknown[]): boolean | null {
+You are in YOLO mode. Do NOT ask the user for input or confirmation.
+Go with your best recommendation and proceed immediately.
+
+Only use \`ask_user\` if the action would cause irreversible harm,
+data loss, security compromise, or violate explicit hard constraints.
+
+Rules:
+- Do NOT use \`ask_user\` for routine decisions or clarifications.
+- Make the call and keep moving.
+- If you must use \`ask_user\`, list options from most recommended to least recommended.
+`;
+
+type StyleMode = "always" | "plain" | "yolo";
+
+function getStyleMode(entries: unknown[]): StyleMode {
     const entry = entries.find(
         (e): e is CustomJournalEntry =>
             isCustomEntry(e) && e.customType === "ask-user-style",
     );
-    const enabled = entry?.data?.enabled;
-    return typeof enabled === "boolean" ? enabled : null;
+    const data = entry?.data as Record<string, unknown> | undefined;
+
+    // Prefer new `mode` field
+    const mode = data?.mode;
+    if (mode === "always" || mode === "plain" || mode === "yolo") {
+        return mode;
+    }
+
+    // Fall back to legacy `enabled` field for backward compatibility
+    const enabled = data?.enabled;
+    if (enabled === false) return "plain";
+    return "always"; // true, null, or missing → default
 }
 
 function getThemeSettings(entries: unknown[]): { theme?: ThemeMode; animationLevel?: AnimationLevel } {
@@ -453,6 +450,7 @@ const askUserTool = defineTool({
         "Keep the question field short and focused (ideally one sentence). Put background, examples, or elaboration in the context field.",
         "Include Mermaid diagrams in the context field when visualizing architecture, data flows, or decision trees would help the user understand the question.",
         "Pass a concise question and, when applicable, a list of options with short titles and optional longer descriptions.",
+        "List options from most recommended to least recommended.",
         "Set allowMultiple: true when more than one choice is valid.",
         "Set allowFreeform: true (default) when the user might want to answer in their own words.",
     ],
@@ -570,48 +568,45 @@ export default function (pi: ExtensionAPI) {
     _pi = pi;
     pi.registerTool(askUserTool);
 
-    // ── Auto-detect question sessions and force ask_user usage ──
+    // ── Inject mandate based on style mode ──
     pi.on("before_agent_start", async (event, ctx) => {
         const hasAskUser =
             event.systemPromptOptions.selectedTools?.includes("ask_user");
         if (!hasAskUser) return;
 
         const styleMode = getStyleMode(ctx.sessionManager.getEntries());
-        const shouldInject =
-            styleMode === true ||
-            (styleMode === null &&
-                isQuestionSession(
-                    event.systemPrompt,
-                    event.systemPromptOptions,
-                ));
 
-        if (shouldInject) {
+        if (styleMode === "always") {
             return { systemPrompt: event.systemPrompt + ASK_USER_MANDATE };
         }
+        if (styleMode === "yolo") {
+            return { systemPrompt: event.systemPrompt + YOLO_MANDATE };
+        }
+        // "plain" → no injection
     });
 
     // ── Manual style toggle for ask_user behavior ──
     pi.registerCommand("ask-style", {
         description:
-            "Cycle ask_user style: Auto → Always Dialog → Plain Text → Auto",
+            "Cycle ask_user style: Always Dialog → Plain Text → YOLO",
         handler: async (_args, ctx) => {
             const styleMode = getStyleMode(ctx.sessionManager.getEntries());
 
-            let nextMode: boolean | null;
+            let nextMode: StyleMode;
             let label: string;
 
-            if (styleMode === null) {
-                nextMode = true;
-                label = "Always Dialog (auto-detection overridden)";
-            } else if (styleMode === true) {
-                nextMode = false;
+            if (styleMode === "always") {
+                nextMode = "plain";
                 label = "Plain Text (no dialog injection)";
+            } else if (styleMode === "plain") {
+                nextMode = "yolo";
+                label = "YOLO — go with your recommendation";
             } else {
-                nextMode = null;
-                label = "Auto (skill + pattern detection)";
+                nextMode = "always";
+                label = "Always Dialog (default)";
             }
 
-            pi.appendEntry("ask-user-style", { enabled: nextMode });
+            pi.appendEntry("ask-user-style", { mode: nextMode });
             ctx.ui.notify(`ask_user style: ${label}`, "info");
         },
     });
