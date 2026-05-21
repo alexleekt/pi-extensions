@@ -21,7 +21,6 @@ jobs:
                   node-version: "24"
                   registry-url: "https://registry.npmjs.org"
                   cache: "npm"
-                  token: ${{ secrets.NPM_TOKEN }}
 
             - name: Install dependencies
               run: npm ci
@@ -68,19 +67,6 @@ jobs:
                       echo "⚠️ Package does NOT exist on npm — first publish requires manual bootstrap or NPM_TOKEN"
                   fi
 
-            - name: Configure npm auth
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-              run: |
-                  # setup-node sets NPM_CONFIG_USERCONFIG to a temp file; ensure it has the auth token
-                  USERCONFIG="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
-                  # Overwrite with clean config to avoid any corruption from previous runs
-                  printf "registry=https://registry.npmjs.org/\n//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\nalways-auth=true\n" > "$USERCONFIG"
-                  echo "✅ Wrote auth to npm userconfig: $USERCONFIG"
-                  cat "$USERCONFIG" | sed 's/_authToken=.*/_authToken=***/g'
-                  # Also export for child processes
-                  echo "NPM_CONFIG_USERCONFIG=$USERCONFIG" >> "$GITHUB_ENV"
-
             - name: Publish to npm
               working-directory: packages/${{ steps.pkg.outputs.dir }}
               env:
@@ -94,14 +80,14 @@ jobs:
 
                   if [ "$PKG_EXISTS" == "true" ] && [ "$HAS_TOKEN" == "false" ]; then
                       echo "→ Publishing with npm Trusted Publishing (OIDC provenance)..."
-                      npm --userconfig "${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}" publish --provenance --access public
+                      npm publish --provenance --access public
                   elif [ "$HAS_TOKEN" == "true" ]; then
                       if [ "$PKG_EXISTS" == "true" ]; then
                           echo "→ Publishing with NPM_TOKEN (Trusted Publishing available but token override active)..."
                       else
                           echo "→ Publishing first version with NPM_TOKEN (configure Trusted Publishing after this)..."
                       fi
-                      npm --userconfig "${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}" publish --access public
+                      npm publish --access public
                   else
                       echo "❌ Cannot publish: package does not exist on npm and no NPM_TOKEN is configured."
                       echo ""
