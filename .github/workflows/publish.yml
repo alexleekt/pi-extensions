@@ -72,11 +72,13 @@ jobs:
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
               run: |
-                  # Write auth directly to userconfig (~/.npmrc) to avoid workspace .npmrc ignore issues in npm 11.x
-                  echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
-                  echo "always-auth=true" >> ~/.npmrc
-                  echo "✅ Wrote auth to userconfig (~/.npmrc)"
-                  cat ~/.npmrc | sed 's/_authToken=.*/_authToken=***/g'
+                  # Write auth to the npm userconfig file that setup-node created (NPM_CONFIG_USERCONFIG)
+                  # npm 11.x ignores workspace-level .npmrc, so we must ensure the userconfig has the token
+                  USERCONFIG="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+                  echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> "$USERCONFIG"
+                  echo "always-auth=true" >> "$USERCONFIG"
+                  echo "✅ Wrote auth to npm userconfig: $USERCONFIG"
+                  cat "$USERCONFIG" | sed 's/_authToken=.*/_authToken=***/g'
 
             - name: Publish to npm
               working-directory: packages/${{ steps.pkg.outputs.dir }}
