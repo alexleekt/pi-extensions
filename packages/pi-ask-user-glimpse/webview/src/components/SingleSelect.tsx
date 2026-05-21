@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
-import { sendCancelled, sendToGlimpse } from "../util/glimpse";
+import { sendToGlimpse } from "../util/glimpse";
 import { highlightMatch } from "../util/html";
-import { modKey } from "../util/platform";
+import { useDialogKeys } from "../hooks/useDialogKeys";
+import DialogFooter from "./DialogFooter";
 import AdditionalComments from "./AdditionalComments";
 import { CommentIcon, RadioIcon } from "./icons";
 
@@ -63,6 +64,31 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
         sendToGlimpse({ kind: "freeform", text: stateRef.current.query });
     }, []);
 
+    const handleSubmit = useCallback(() => {
+        const s = stateRef.current;
+        if (s.isSubmitting) return;
+        const fallbackSelection =
+            s.activeIndex >= 0 && s.activeIndex < s.filtered.length
+                ? s.filtered[s.activeIndex].title
+                : null;
+        const selection = s.selected ?? fallbackSelection;
+        const canSubmit = selection !== null || (s.query && s.allowFreeform);
+        if (!canSubmit) return;
+        setIsSubmitting(true);
+        if (s.query && s.allowFreeform && s.activeIndex < 0) {
+            handleFreeform();
+        } else {
+            sendResult(selection);
+        }
+    }, [handleFreeform, sendResult]);
+
+    useDialogKeys({
+        onSubmit: handleSubmit,
+        isSubmitting,
+        isCommentOpen: showComment,
+        onCloseComment: () => setShowComment(false),
+    });
+
     useEffect(() => {
         setActiveIndex(-1);
         if (!showSearch) {
@@ -81,16 +107,13 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
             const target = e.target as HTMLElement;
             const isInInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
 
-            if (e.key === "Escape") {
-                if (s.showComment) { e.preventDefault(); setShowComment(false); return; }
-                sendCancelled();
-                return;
-            }
+            if (e.key === "Escape") return; // handled by useDialogKeys
             if (e.key === "Tab") return;
             if (target === searchRef.current && e.key === "ArrowDown") {
                 e.preventDefault(); setActiveIndex(0); optionRefs.current[0]?.focus(); return;
             }
             if (isInInput) return;
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) return; // handled by useDialogKeys
 
             if (e.key === "ArrowDown") {
                 e.preventDefault();
@@ -108,18 +131,6 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
                     else { optionRefs.current[next]?.focus(); optionRefs.current[next]?.scrollIntoView({ block: "nearest" }); }
                     return next;
                 });
-            } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault();
-                if (s.isSubmitting) return;
-                const canSubmit = s.selected !== null || (s.query && s.allowFreeform);
-                if (canSubmit) {
-                    setIsSubmitting(true);
-                    if (s.query && s.allowFreeform && s.activeIndex < 0) {
-                        handleFreeform();
-                    } else {
-                        sendResult(s.selected);
-                    }
-                }
             } else if (e.key === "Enter") {
                 e.preventDefault();
                 if (s.isSubmitting) return;
@@ -193,7 +204,12 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
                 )}
             </div>
 
-            <div className="shrink-0 border-t border-border p-4">
+            <DialogFooter
+                isSubmitting={isSubmitting}
+                onSubmit={handleSubmit}
+                submitDisabled={selected === null && !(query && payload.allowFreeform)}
+                hint="↑↓ to navigate · Enter to select"
+            >
                 {payload.allowComment && (
                     <div className="mb-3">
                         <button onClick={() => setShowComment((s) => !s)}
@@ -211,18 +227,7 @@ export default function SingleSelect({ payload, showHeader = true }: SingleSelec
                     </div>
                 )}
                 <AdditionalComments value={additionalComments} onChange={setAdditionalComments} />
-                <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground">↑↓ to navigate · Enter to select · {modKey()}+Enter to submit</span>
-                    <div className="flex items-center gap-2">
-                        <button onClick={sendCancelled}
-                            className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Cancel</button>
-                        <button onClick={() => { setIsSubmitting(true); sendResult(selected); }} disabled={isSubmitting}
-                            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40">
-                            {isSubmitting ? "Submitting…" : "Submit"}
-                        </button>
-                    </div>
-                </div>
-            </div>
+            </DialogFooter>
         </div>
     );
 }

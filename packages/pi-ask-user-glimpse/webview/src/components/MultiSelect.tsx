@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
-import { sendCancelled, sendToGlimpse } from "../util/glimpse";
+import { sendToGlimpse } from "../util/glimpse";
 import { highlightMatch } from "../util/html";
-import { modKey } from "../util/platform";
+import { useDialogKeys } from "../hooks/useDialogKeys";
+import DialogFooter from "./DialogFooter";
 import AdditionalComments from "./AdditionalComments";
 import { CheckIcon, CommentIcon, RadioIcon, isSelectAllOption } from "./icons";
 
@@ -69,16 +70,30 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
     const handleSubmit = useCallback(() => {
         const s = stateRef.current;
         if (s.isSubmitting) return;
+        const hasSelection = s.selected.size > 0;
+        const hasFreeform = s.query && s.allowFreeform;
+        if (!hasSelection && !hasFreeform) return;
         setIsSubmitting(true);
+        if (!hasSelection && hasFreeform) {
+            handleFreeform();
+            return;
+        }
         const result: Record<string, unknown> = { kind: "selection", selections: Array.from(s.selected) };
         if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
         if (s.additionalComments.trim()) result.additionalComments = s.additionalComments.trim();
         sendToGlimpse(result);
-    }, []);
+    }, [handleFreeform]);
 
     const handleFreeform = useCallback(() => {
         sendToGlimpse({ kind: "freeform", text: stateRef.current.query });
     }, []);
+
+    useDialogKeys({
+        onSubmit: handleSubmit,
+        isSubmitting,
+        isCommentOpen: showComment,
+        onCloseComment: () => setShowComment(false),
+    });
 
     useEffect(() => {
         setActiveIndex(-1);
@@ -97,16 +112,13 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
             const target = e.target as HTMLElement;
             const isInInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
 
-            if (e.key === "Escape") {
-                if (s.showComment) { e.preventDefault(); setShowComment(false); return; }
-                sendCancelled();
-                return;
-            }
+            if (e.key === "Escape") return; // handled by useDialogKeys
             if (e.key === "Tab") return;
             if (target === searchRef.current && e.key === "ArrowDown") {
                 e.preventDefault(); setActiveIndex(0); optionRefs.current[0]?.focus(); return;
             }
             if (isInInput) return;
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) return; // handled by useDialogKeys
 
             if (e.key === "ArrowDown") {
                 e.preventDefault();
@@ -127,18 +139,6 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
             } else if (e.key === " " || e.key === "Spacebar") {
                 e.preventDefault();
                 if (s.activeIndex >= 0 && s.activeIndex < s.filtered.length) toggle(s.filtered[s.activeIndex].title);
-            } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault();
-                if (s.isSubmitting) return;
-                const canSubmit = s.selected.size > 0 || (s.query && s.allowFreeform);
-                if (canSubmit) {
-                    setIsSubmitting(true);
-                    if (s.query && s.allowFreeform && s.activeIndex < 0) {
-                        handleFreeform();
-                    } else {
-                        handleSubmit();
-                    }
-                }
             } else if (e.key === "Enter") {
                 e.preventDefault();
                 if (s.activeIndex >= 0 && s.activeIndex < s.filtered.length) {
@@ -243,7 +243,12 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
                 )}
             </div>
 
-            <div className="shrink-0 border-t border-border p-4">
+            <DialogFooter
+                isSubmitting={isSubmitting}
+                onSubmit={handleSubmit}
+                submitDisabled={selected.size === 0 && !(query && payload.allowFreeform)}
+                hint="Space to toggle · Enter to toggle"
+            >
                 {payload.allowComment && (
                     <div className="mb-3">
                         <button onClick={() => setShowComment((s) => !s)}
@@ -261,18 +266,7 @@ export default function MultiSelect({ payload, showHeader = true }: MultiSelectP
                     </div>
                 )}
                 <AdditionalComments value={additionalComments} onChange={setAdditionalComments} />
-                <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground">Space to toggle · Enter to toggle · {modKey()}+Enter to submit</span>
-                    <div className="flex items-center gap-2">
-                        <button onClick={sendCancelled}
-                            className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Cancel</button>
-                        <button onClick={handleSubmit} disabled={isSubmitting}
-                            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40">
-                            {isSubmitting ? "Submitting…" : "Submit"}
-                        </button>
-                    </div>
-                </div>
-            </div>
+            </DialogFooter>
         </div>
     );
 }
