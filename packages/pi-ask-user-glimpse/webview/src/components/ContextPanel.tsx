@@ -1,6 +1,6 @@
 import { marked } from "marked";
 import mermaid from "mermaid";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { renderMarkdownInline, sanitizeHtml } from "../util/markdown";
 import { useSettings } from "../util/settings";
 import { HelpIcon } from "./icons";
@@ -101,10 +101,13 @@ const IFRAME_CSS = `body {
     margin: 0;
     padding: 1rem;
     line-height: 1.6;
+    overflow-y: auto;
 }`;
 
 const IFRAME_SCRIPT = `window.addEventListener("message", function(e) {
-    if (e.origin !== window.location.origin && e.origin !== "null") return;
+    // Sandbox without allow-same-origin gives this iframe an opaque ("null") origin,
+    // so the parent’s origin will never match window.location.origin. We accept any
+    // origin because this is a locked-down sandboxed iframe with no network access.
     if (e.data?.type === "theme") {
         document.body.classList.toggle("dark", e.data.theme === "dark");
     }
@@ -142,19 +145,20 @@ function HtmlContext({
     resolvedTheme: "light" | "dark";
 }) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const [loaded, setLoaded] = useState(false);
     const srcdoc = useMemo(
         () => buildIframeSrcdoc(html, resolvedTheme),
         [html, resolvedTheme],
     );
 
+    // Send theme message whenever resolvedTheme changes OR when iframe finishes loading.
+    // The iframe has an opaque origin (sandbox without allow-same-origin), so we must
+    // target "*" for postMessage to be delivered at all.
     useEffect(() => {
         const cw = iframeRef.current?.contentWindow;
-        if (!cw) return;
-        cw.postMessage(
-            { type: "theme", theme: resolvedTheme },
-            window.location.origin,
-        );
-    }, [resolvedTheme]);
+        if (!cw || !loaded) return;
+        cw.postMessage({ type: "theme", theme: resolvedTheme }, "*");
+    }, [resolvedTheme, loaded]);
 
     return (
         <iframe
@@ -164,6 +168,7 @@ function HtmlContext({
             srcDoc={srcdoc}
             className="h-full w-full border-0"
             title="HTML context"
+            onLoad={() => setLoaded(true)}
         />
     );
 }

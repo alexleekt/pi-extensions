@@ -508,7 +508,7 @@ sequenceDiagram
                 question: "Test: HTML Context",
                 context: `<div style="text-align:center; padding: 1rem;">
     <h2 style="color: hsl(var(--primary)); margin-bottom: 0.5rem;">Sample Visualization</h2>
-    <div style="display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0;">
+    <div class="bar-chart" style="display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0;">
         <div style="width: 40px; height: 80px; background: hsl(var(--primary)); border-radius: 4px;"></div>
         <div style="width: 40px; height: 120px; background: hsl(var(--secondary)); border-radius: 4px;"></div>
         <div style="width: 40px; height: 60px; background: hsl(var(--muted)); border-radius: 4px;"></div>
@@ -516,7 +516,7 @@ sequenceDiagram
     </div>
     <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem;">This bar chart uses the wrapper's CSS variables for theme consistency.</p>
     <script>
-        document.querySelectorAll('div > div').forEach((bar, i) => {
+        document.querySelectorAll('.bar-chart > div').forEach((bar, i) => {
             const target = bar.style.height;
             bar.style.height = '0px';
             bar.style.transition = 'height 0.6s ease ' + (i * 0.1) + 's';
