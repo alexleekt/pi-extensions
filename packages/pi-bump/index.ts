@@ -285,7 +285,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
     }
 
     // Reset state when the user sends real input.
-    pi.on("input", async (event, ctx) => {
+    pi.on("input", (event, ctx) => {
         if (event.source === "interactive") {
             const sessionId = ctx.sessionManager.getSessionId();
             lastFingerprints.set(sessionId, [undefined, undefined]);
@@ -329,8 +329,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
 
     // Replace invisible continue markers with minimal LLM signal.
     // @ts-expect-error — monorepo type resolution mismatch (local 0.74.1 vs root 0.75.4)
-    pi.on("context", async (event) => {
-        let modified = false;
+    pi.on("context", (event) => {
         const messages = (
             event as {
                 messages: Array<{
@@ -340,12 +339,23 @@ export default function bumpExtension(pi: ExtensionAPI) {
                     timestamp?: number;
                 }>;
             }
-        ).messages.map((msg) => {
+        ).messages;
+
+        // Fast path: scan first, allocate only if needed.
+        const hasInvisible = messages.some(
+            (msg) =>
+                msg.role === "custom" &&
+                msg.customType === CONTINUE_CUSTOM_TYPE,
+        );
+        if (!hasInvisible) {
+            return;
+        }
+
+        const modified = messages.map((msg) => {
             if (
                 msg.role === "custom" &&
                 msg.customType === CONTINUE_CUSTOM_TYPE
             ) {
-                modified = true;
                 // Replace with a minimal user message — visible to LLM, invisible to user
                 return {
                     role: "user",
@@ -355,9 +365,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
             }
             return msg;
         });
-        if (modified) {
-            return { messages };
-        }
+        return { messages: modified };
     });
 
     // Clean up per-session state when a session shuts down.
@@ -365,6 +373,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
         const sessionId = ctx.sessionManager.getSessionId();
         lastFingerprints.delete(sessionId);
         needsEscalation.delete(sessionId);
+        debugSessions.delete(sessionId);
     });
 
     pi.on("session_start", (_event, ctx) => {
