@@ -30,10 +30,10 @@ The agent gets a clean selection back. You get a decision made in seconds, not m
 
 ## Features
 
-- **Single-select** — searchable option list with inline descriptions and search highlight
-- **Multi-select** — checkbox-style selection with quick-select all/none links
-- **Freeform** — textarea input with live character counter and platform-aware keyboard shortcuts
-- **Questionnaire** — cards in a vertical list for structured questions, with required-field badges and per-question character counters
+- **Single-select** — searchable option list with inline descriptions, numbered option badges (① ② ③), inline markdown rendering, and search highlight
+- **Multi-select** — checkbox-style selection with quick-select all/none links, numbered badges, and inline markdown
+- **Freeform** — textarea input with live character counter and platform-aware keyboard shortcuts. Empty submissions are allowed (useful when the agent asks an open question but you have nothing to add)
+- **Questionnaire** — cards in a vertical list for structured questions, with required-field badges, per-question character counters, numbered option badges, and inline markdown in option text
 - **Theme toggle** — dark / light / system mode switcher in the dialog header
 - **Animation levels** — none / minimal / all, controlling transition intensity across the UI
 - **Keyboard shortcuts legend** — press `?` in the header bar to see all available shortcuts
@@ -126,7 +126,7 @@ Ask an open-ended question with no predefined options:
 }
 ```
 
-Shows a full-height textarea with a live character counter and platform-aware keyboard hints (⌘+Enter on macOS, Ctrl+Enter elsewhere). Submit is disabled until text is entered.
+Shows a full-height textarea with a live character counter and platform-aware keyboard hints (⌘+Enter on macOS, Ctrl+Enter elsewhere). Submit is always enabled — you can send an empty answer if you have nothing to add.
 
 ### Questionnaire
 
