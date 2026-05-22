@@ -1,7 +1,7 @@
 {
   "name": "pi-worktrunk-bridge",
-  "version": "0.1.0",
-  "description": "Bridge worktrunk with Pi — activity tracking, /wt-switch-create, and statusline",
+  "version": "0.2.0",
+  "description": "Bridge worktrunk with Pi — worktree overlay with inline create, statusline, and activity tracking",
   "keywords": ["pi-package", "pi-extension", "worktrunk", "git-worktree"],
   "license": "MIT",
   "pi": {

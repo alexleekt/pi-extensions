@@ -7,9 +7,8 @@ Bridge [worktrunk](https://worktrunk.dev) with [Pi](https://pi.dev) — bringing
 | Feature | What it does |
 |---|---|
 | **Activity Tracking** | Automatically sets 🤖/💬 markers in `wt list` when Pi is working or idle |
-| **Footer Widget** | Persistent widget showing current branch + activity marker + ahead/behind |
 | **`/wt-switch-create`** | Create or re-enter a worktrunk worktree and relaunch Pi in it |
-| **`/wt-list`** | Interactive worktree list — navigate and switch with Enter |
+| **`/wt-list`** | Interactive worktree list — switch or create from a styled overlay |
 | **`/wt-statusline-refresh`** | Force-refresh the cached worktrunk statusline |
 | **Footer Statusline** | Shows `wt list statusline` in Pi's footer after each turn (30s TTL cache) |
 | **`spawn_worktree_agent`** | Spawn a Pi subagent in an isolated worktree |
@@ -43,33 +42,38 @@ $ wt list
 
 Markers are cleared when the Pi session ends (or use `wt config state marker clear` if stale).
 
-### Footer Widget
-
-A persistent widget above the editor shows your current worktree context at a glance:
-
-```
-🌲 feature-api  🤖  ↑3  ⇡1
-```
-
-- **🌲** + branch name — current worktree
-- **🤖 / 💬** — agent activity (working / idle)
-- **↑N** — commits ahead of upstream
-- **⇡N** — commits behind upstream
-
-Updates automatically on every turn. Cleared when the session ends.
-
 ### Footer Statusline (with caching)
 
-The extension fetches `wt list statusline --format=claude-code` and displays it in Pi's footer. To avoid the 1–2 second CI latency on every turn, the result is **cached for 30 seconds**.
+The extension fetches `wt list statusline --format=table` and displays it in Pi's footer. To avoid the 1–2 second CI latency on every turn, the result is **cached for 30 seconds**.
 
 Force a refresh anytime:
 ```
 /wt-statusline-refresh
 ```
 
+### `/wt-list`
+
+Opens a box-style overlay anchored near the bottom-left (close to the input box):
+
+```
+╭────────────────────────────────────────╮
+│ Worktrees                              │
+│ ↑↓ select • Enter switch • Esc cancel  │
+│                                        │
+│ ▶ [+] Create new worktree              │
+│   main  💬              ~/repo         │
+│   feature-api  🤖       ~/repo.feature │
+│   review-ui  💬         ~/repo.review  │
+╰────────────────────────────────────────╯
+```
+
+- **↑↓** to navigate, **Enter** to select, **Esc** to cancel
+- Select **`[+]`** to create a new worktree — you'll be prompted for a branch name
+- Existing worktrees switch immediately via your detected multiplexer
+
 ### `/wt-switch-create`
 
-From within Pi:
+For advanced creation with repo/task arguments:
 
 ```
 /wt-switch-create my-feature

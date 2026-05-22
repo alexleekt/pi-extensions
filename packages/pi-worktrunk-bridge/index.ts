@@ -1,12 +1,16 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { DynamicBorder } from "@earendil-works/pi-coding-agent";
-import { Container, type SelectItem, SelectList, Text } from "@earendil-works/pi-tui";
+import type { ExtensionAPI, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
+import { Container, type SelectItem, SelectList, Spacer, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { exec, execFile, spawn } from "node:child_process";
 import * as os from "node:os";
 import * as path from "node:path";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+function visibleLen(s: string): number {
+  // Strip ANSI escape sequences and return visible character count
+  return s.replace(/\x1b\[[0-9;]*m/g, "").length;
+}
 
 function getBranchFromCwd(cwd: string): Promise<string | null> {
   return new Promise((resolve) => {
@@ -74,7 +78,7 @@ function fetchStatusline(cwd: string, forceRefresh = false): Promise<string | nu
     }
 
     exec(
-      "wt list statusline --format=claude-code 2>/dev/null",
+      "wt list statusline --format=table 2>/dev/null",
       { cwd, encoding: "utf-8", timeout: 3000 },
       (err, stdout) => {
         if (err || !stdout.trim()) return resolve(null);
@@ -186,6 +190,14 @@ function getWorktreeMarker(cwd: string, branch: string): Promise<string | null> 
 async function buildWorktreeSelectItems(cwd: string): Promise<SelectItem[]> {
   const entries = await listWorktrees(cwd);
   const items: SelectItem[] = [];
+
+  // Create option always first
+  items.push({
+    value: "__create__",
+    label: "[+] Create new worktree",
+    description: "wt switch --create",
+  });
+
   for (const entry of entries) {
     if (entry.isBare || !entry.branch) continue;
     const marker = await getWorktreeMarker(cwd, entry.branch);
@@ -200,39 +212,53 @@ async function buildWorktreeSelectItems(cwd: string): Promise<SelectItem[]> {
   return items;
 }
 
-function getGitAheadBehind(cwd: string): Promise<{ ahead: number; behind: number } | null> {
-  return new Promise((resolve) => {
-    execFile(
-      "git",
-      ["rev-parse", "--abbrev-ref", "@{upstream}"],
-      { cwd, encoding: "utf-8" },
-      (err, upstream) => {
-        if (err) return resolve(null);
-        execFile(
-          "git",
-          ["rev-list", "--left-right", "--count", `HEAD...${upstream.trim()}`],
-          { cwd, encoding: "utf-8" },
-          (err2, stdout) => {
-            if (err2) return resolve(null);
-            const match = stdout.trim().match(/(\d+)\s+(\d+)/);
-            if (!match) return resolve(null);
-            resolve({ ahead: parseInt(match[1], 10), behind: parseInt(match[2], 10) });
-          }
-        );
-      }
-    );
-  });
-}
+async function relaunchInWorktree(
+  pi: ExtensionAPI,
+  ctx: { hasUI: boolean; ui: ExtensionUIContext; cwd: string },
+  branch: string,
+  repo?: string,
+  task?: string,
+): Promise<void> {
+  const mux = detectMultiplexer();
 
-async function buildWidgetLines(cwd: string, branch: string, marker: string): Promise<string[]> {
-  const ab = await getGitAheadBehind(cwd);
-  let parts = [`🌲 ${branch}`];
-  if (marker) parts.push(marker);
-  if (ab) {
-    if (ab.ahead > 0) parts.push(`↑${ab.ahead}`);
-    if (ab.behind > 0) parts.push(`⇡${ab.behind}`);
+  let worktreePath = await findWorktreePath(ctx.cwd, branch);
+  if (!worktreePath) {
+    const repoName = repo || path.basename(ctx.cwd);
+    worktreePath = path.resolve(ctx.cwd, `../${repoName}.${branch}`);
   }
-  return [parts.join("  ")];
+
+  if (!mux) {
+    if (ctx.hasUI) {
+      ctx.ui.notify(
+        `Worktree: ${worktreePath}. No multiplexer — run: cd ${worktreePath} && pi`,
+        "info",
+      );
+    }
+    return;
+  }
+
+  const cmd = task
+    ? `cd ${worktreePath} && pi "${task}"`
+    : `cd ${worktreePath} && pi`;
+
+  try {
+    if (mux === "tmux") {
+      await pi.exec("tmux", [
+        "send-keys",
+        "-t",
+        `tmux:${process.env.TMUX_PANE || ""}`,
+        cmd,
+        "Enter",
+      ]);
+    } else if (mux === "zellij") {
+      await pi.exec("zellij", ["run", "--", cmd]);
+    } else if (mux === "herdr") {
+      await pi.exec("herdr", ["pane", "run", process.env.HERDR_PANE_ID || "", cmd]);
+    }
+    if (ctx.hasUI) ctx.ui.notify(`Switched to ${branch} via ${mux}.`, "info");
+  } catch (e: any) {
+    if (ctx.hasUI) ctx.ui.notify(`Switch failed: ${e.message || e}`, "error");
+  }
 }
 
 // ── Extension ──────────────────────────────────────────────────────────────
@@ -260,12 +286,6 @@ export default function (pi: ExtensionAPI) {
     // Update statusline on startup (cached)
     const status = await fetchStatusline(cwd);
     if (status) ctx.ui.setStatus("worktrunk", status);
-
-    // Update widget with branch + marker
-    if (branch) {
-      const lines = await buildWidgetLines(cwd, branch, "💬");
-      ctx.ui.setWidget("worktrunk", lines);
-    }
   });
 
   pi.on("turn_start", async (_event, ctx) => {
@@ -275,10 +295,6 @@ export default function (pi: ExtensionAPI) {
     if (branch) {
       currentBranch = branch;
       await setMarker(cwd, branch, "🤖");
-      if (ctx.hasUI) {
-        const lines = await buildWidgetLines(cwd, branch, "🤖");
-        ctx.ui.setWidget("worktrunk", lines);
-      }
     }
   });
 
@@ -296,12 +312,6 @@ export default function (pi: ExtensionAPI) {
     // Refresh statusline after each turn (cached to avoid 1–2s CI latency)
     const status = await fetchStatusline(cwd);
     if (status) ctx.ui.setStatus("worktrunk", status);
-
-    // Refresh widget
-    if (branch) {
-      const lines = await buildWidgetLines(cwd, branch, "💬");
-      ctx.ui.setWidget("worktrunk", lines);
-    }
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
@@ -310,9 +320,6 @@ export default function (pi: ExtensionAPI) {
     if (branch) {
       await clearMarker(cwd, branch);
       markerSet = false;
-    }
-    if (ctx.hasUI) {
-      ctx.ui.setWidget("worktrunk", []);
     }
   });
 
@@ -340,79 +347,31 @@ export default function (pi: ExtensionAPI) {
       const branch = parts[0];
       const repo = parts[1];
 
-      const cwd = ctx.cwd;
-      const mux = detectMultiplexer();
-
       if (ctx.hasUI) ctx.ui.notify(`Creating worktree: ${branch}…`, "info");
 
-      // Build wt command
       const wtArgs = ["switch", "--create", branch];
       if (repo) wtArgs.push("--repo", repo);
 
       try {
-        await pi.exec("wt", wtArgs, { cwd });
+        await pi.exec("wt", wtArgs, { cwd: ctx.cwd });
       } catch (e: any) {
         if (ctx.hasUI) ctx.ui.notify(`wt failed: ${e.message || e}`, "error");
         return;
       }
 
-      // Determine worktree path by querying git (handles custom worktree-path templates)
-      let worktreePath = await findWorktreePath(cwd, branch);
-      if (!worktreePath) {
-        // Fallback to sibling layout guess
-        const repoName = repo || path.basename(cwd);
-        worktreePath = path.resolve(cwd, `../${repoName}.${branch}`);
-      }
-
-      if (!mux) {
-        if (ctx.hasUI) {
-          ctx.ui.notify(
-            `Worktree created at ${worktreePath}. No multiplexer detected — run: cd ${worktreePath} && pi`,
-            "info"
-          );
-        }
-        return;
-      }
-
-      // Relaunch Pi in the worktree via the detected multiplexer
-      const cmd = task
-        ? `cd ${worktreePath} && pi "${task}"`
-        : `cd ${worktreePath} && pi`;
-
-      try {
-        if (mux === "tmux") {
-          await pi.exec("tmux", [
-            "send-keys",
-            "-t",
-            `tmux:${process.env.TMUX_PANE || ""}`,
-            cmd,
-            "Enter",
-          ]);
-        } else if (mux === "zellij") {
-          await pi.exec("zellij", ["run", "--", cmd]);
-        } else if (mux === "herdr") {
-          await pi.exec("herdr", [
-            "pane",
-            "run",
-            process.env.HERDR_PANE_ID || "",
-            cmd,
-          ]);
-        }
-        if (ctx.hasUI) ctx.ui.notify(`Sent relaunch command via ${mux}.`, "info");
-      } catch (e: any) {
-        if (ctx.hasUI) ctx.ui.notify(`Multiplexer relaunch failed: ${e.message || e}`, "error");
-      }
+      await relaunchInWorktree(pi, ctx, branch, repo, task);
     },
   });
 
   // ── /wt-list Command ──────────────────────────────────────────────────
 
   pi.registerCommand("wt-list", {
-    description: "Interactive worktree list — navigate and switch with Enter",
+    description: "Interactive worktree list — select to switch, or create new",
     handler: async (_args, ctx) => {
+      const cwd = ctx.cwd;
+
+      // Non-interactive fallback
       if (!ctx.hasUI) {
-        // Non-interactive fallback
-        const cwd = ctx.cwd;
         try {
           const result = await new Promise<string>((resolve, reject) => {
             execFile("wt", ["list"], { cwd, encoding: "utf-8" }, (err, stdout) => {
@@ -427,77 +386,88 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      const cwd = ctx.cwd;
       const items = await buildWorktreeSelectItems(cwd);
-      if (items.length === 0) {
-        ctx.ui.notify("No worktrees found.", "warning");
-        return;
-      }
 
       const result = await ctx.ui.custom<string | null>(
         (tui, theme, _kb, done) => {
           const container = new Container();
+          const accent = (s: string) => theme.fg("accent", s);
+          const muted = (s: string) => theme.fg("muted", s);
+          const dim = (s: string) => theme.fg("dim", s);
 
-          // Top border
-          container.addChild(new DynamicBorder((s: string) => theme.fg("accent", s)));
+          // Title + hints
+          container.addChild(new Text(accent(theme.bold("Worktrees")), 1, 0));
+          container.addChild(new Text(dim("↑↓ select • Enter switch • Esc cancel"), 1, 0));
+          container.addChild(new Spacer(1));
 
-          // Title
-          container.addChild(new Text(theme.fg("accent", theme.bold("Worktrees — ↑↓ select • Enter switch • Esc cancel")), 1, 0));
-
-          // SelectList with theme
-          const selectList = new SelectList(items, Math.min(items.length, 12), {
-            selectedPrefix: (t) => theme.fg("accent", t),
-            selectedText: (t) => theme.fg("accent", t),
-            description: (t) => theme.fg("muted", t),
-            scrollInfo: (t) => theme.fg("dim", t),
+          // SelectList
+          const listHeight = Math.min(items.length, 10);
+          const selectList = new SelectList(items, listHeight, {
+            selectedPrefix: accent,
+            selectedText: accent,
+            description: muted,
+            scrollInfo: dim,
             noMatch: (t) => theme.fg("warning", t),
           });
           selectList.onSelect = (item) => done(item.value);
           selectList.onCancel = () => done(null);
           container.addChild(selectList);
 
-          // Bottom border
-          container.addChild(new DynamicBorder((s: string) => theme.fg("accent", s)));
-
           return {
-            render: (w) => container.render(w),
+            render: (w) => {
+              const innerW = Math.max(w - 4, 20); // │ + space + content + space + │
+              const lines = container.render(innerW);
+
+              const top = "╭" + "─".repeat(innerW + 2) + "╮";
+              const bottom = "╰" + "─".repeat(innerW + 2) + "╯";
+
+              const body = lines.map((line) => {
+                const vis = visibleLen(line);
+                const pad = " ".repeat(Math.max(0, innerW - vis));
+                return "│ " + line + pad + " │";
+              });
+
+              return [top, ...body, bottom];
+            },
             invalidate: () => container.invalidate(),
             handleInput: (data) => { selectList.handleInput(data); tui.requestRender(); },
           };
         },
-        { overlay: true, overlayOptions: { anchor: "top-center", maxHeight: "60%", width: "80%", minWidth: 60 } }
+        {
+          overlay: true,
+          overlayOptions: {
+            anchor: "bottom-left",
+            width: "45%",
+            minWidth: 45,
+            maxHeight: "40%",
+            margin: { bottom: 3, left: 2 },
+          },
+        }
       );
 
       if (!result) return; // cancelled
 
-      // Switch to selected worktree (same relaunch logic as /wt-switch-create)
-      const branch = result;
-      const mux = detectMultiplexer();
+      // ── Create new worktree ──
+      if (result === "__create__") {
+        const branch = await ctx.ui.input("Branch name for new worktree");
+        if (!branch || !branch.trim()) return;
 
-      let worktreePath = await findWorktreePath(cwd, branch);
-      if (!worktreePath) {
-        const repoName = path.basename(cwd);
-        worktreePath = path.resolve(cwd, `../${repoName}.${branch}`);
-      }
+        const trimmed = branch.trim();
+        if (ctx.hasUI) ctx.ui.notify(`Creating worktree: ${trimmed}…`, "info");
 
-      if (!mux) {
-        ctx.ui.notify(`Worktree: ${worktreePath}. Run: cd ${worktreePath} && pi`, "info");
+        try {
+          await pi.exec("wt", ["switch", "--create", trimmed], { cwd });
+        } catch (e: any) {
+          if (ctx.hasUI) ctx.ui.notify(`wt failed: ${e.message || e}`, "error");
+          return;
+        }
+
+        await relaunchInWorktree(pi, ctx, trimmed);
         return;
       }
 
-      const cmd = `cd ${worktreePath} && pi`;
-      try {
-        if (mux === "tmux") {
-          await pi.exec("tmux", ["send-keys", "-t", `tmux:${process.env.TMUX_PANE || ""}`, cmd, "Enter"]);
-        } else if (mux === "zellij") {
-          await pi.exec("zellij", ["run", "--", cmd]);
-        } else if (mux === "herdr") {
-          await pi.exec("herdr", ["pane", "run", process.env.HERDR_PANE_ID || "", cmd]);
-        }
-        ctx.ui.notify(`Switched to ${branch} via ${mux}.`, "info");
-      } catch (e: any) {
-        ctx.ui.notify(`Switch failed: ${e.message || e}`, "error");
-      }
+      // ── Switch to existing worktree ──
+      await relaunchInWorktree(pi, ctx, result);
     },
   });
 
