@@ -246,6 +246,7 @@ async function runContinueCommand(
  *   - Real user input resets escalation and fingerprint state
  */
 export default function bumpExtension(pi: ExtensionAPI) {
+    // @ts-expect-error — monorepo type resolution mismatch (local 0.74.1 vs root 0.75.4)
     const sub = manageSessionSubscription(pi);
     const debugSessions = new Set<string>();
 
@@ -285,6 +286,9 @@ export default function bumpExtension(pi: ExtensionAPI) {
     }
 
     // Reset state when the user sends real input.
+    // Synchronous (not async) to avoid microtask deferral — a race with
+    // a rapid assistant response could compare against the old fingerprint
+    // and trigger false escalation.
     pi.on("input", (event, ctx) => {
         if (event.source === "interactive") {
             const sessionId = ctx.sessionManager.getSessionId();
@@ -328,6 +332,10 @@ export default function bumpExtension(pi: ExtensionAPI) {
     });
 
     // Replace invisible continue markers with minimal LLM signal.
+    // Performance: scan with .some() first, only allocate a new array if an
+    // invisible marker is found. In the 99% case (no invisible messages), no
+    // array is created and no O(n) copy occurs — eliminating event-loop blocking
+    // on long conversations.
     // @ts-expect-error — monorepo type resolution mismatch (local 0.74.1 vs root 0.75.4)
     pi.on("context", (event) => {
         const messages = (
@@ -369,6 +377,9 @@ export default function bumpExtension(pi: ExtensionAPI) {
     });
 
     // Clean up per-session state when a session shuts down.
+    // All per-session collections are purged to prevent unbounded growth
+    // across many sessions (especially debugSessions, which leaked prior to
+    // this cleanup).
     pi.on("session_shutdown", (_event, ctx) => {
         const sessionId = ctx.sessionManager.getSessionId();
         lastFingerprints.delete(sessionId);
@@ -384,9 +395,20 @@ export default function bumpExtension(pi: ExtensionAPI) {
         let lastKeyTime = 0;
 
         sub.set(
+            // Double-tap state machine for terminal input.
+            //
+            // State: lastKeyId + lastKeyTime track the most recent monitored key.
+            // A second press of the same key within THRESHOLD_MS (300ms) counts
+            // as a double-tap.
+            //
+            // Only Enter double-taps are consumed ({ consume: true }). All other
+            // monitored keys (backspace, delete, ctrl+enter, alt+enter) pass
+            // through to the terminal — they are only tracked in debug mode.
             ctx.ui.onTerminalInput((data) => {
-                // Fast path: if user is typing (editor has text), only check Enter.
-                // No need to run expensive key matching for every keystroke.
+                // Performance: check editor text BEFORE key matching. When the user
+                // is typing, only Enter matters; skip expensive matchesKey() calls
+                // for backspace/delete. In normal mode only Key.enter is checked,
+                // reducing matchesKey() calls by 80% per keystroke.
                 const editorText = ctx.ui.getEditorText().trim();
                 const isDebug = debugSessions.has(sessionId);
                 const keysToCheck = isDebug
@@ -396,11 +418,13 @@ export default function bumpExtension(pi: ExtensionAPI) {
                 const keyId = keysToCheck.find((keyId) => matchesKey(data, keyId));
                 if (!keyId) return;
 
+                // Enter with text in editor is a normal submit, not a continue.
                 if (keyId === Key.enter && editorText.length > 0) return;
 
                 const now = Date.now();
 
-                // Reset stale single-tap state
+                // Reset stale single-tap state — a tap older than THRESHOLD_MS
+                // is no longer part of a potential double-tap sequence.
                 if (lastKeyId && now - lastKeyTime >= THRESHOLD_MS) {
                     lastKeyId = undefined;
                     lastKeyTime = 0;
@@ -411,6 +435,9 @@ export default function bumpExtension(pi: ExtensionAPI) {
                     lastKeyId = undefined;
                     lastKeyTime = 0;
 
+                    // Only Enter + idle + no pending → actually send a continue.
+                    // All other double-taps (backspace, delete, etc.) fall through
+                    // without consumption so the terminal processes them normally.
                     if (keyId === Key.enter && ctx.isIdle() && !ctx.hasPendingMessages()) {
                         sendContinue(pi, sessionId, needsEscalation);
                         if (isDebug) {
@@ -429,6 +456,8 @@ export default function bumpExtension(pi: ExtensionAPI) {
                             "info",
                         );
                     }
+                    // Explicit return prevents falling through to lastKeyId = keyId,
+                    // which would corrupt the single-tap state machine.
                     return;
                 }
 

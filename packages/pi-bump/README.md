@@ -57,6 +57,16 @@ Then toggle per-session debugging with `/bump-debug-keypresses`:
 
 Debug mode resets when the session ends. Only available when `BUMP_DEBUG=1` is set.
 
+> **Note:** Debug mode monitors 5 keys (enter, backspace, delete, ctrl+enter, alt+enter). In normal mode, only Enter is monitored for performance. The other keys are only checked when debug mode is active for that session.
+
+## Performance
+
+pi-bump is designed to stay out of the way:
+
+- **Minimal keystroke overhead** — In normal mode, only `Enter` is matched against incoming keystrokes. No `matchesKey()` calls for backspace, delete, or modifier keys unless debug mode is active.
+- **Zero-allocation context guard** — The `context` handler scans for invisible markers with `.some()` before allocating. In typical conversations (no invisible messages), no array is created.
+- **Synchronous state reset** — The `input` handler resets escalation state immediately (no microtask deferral), preventing false loop detection.
+
 ## Hybrid Escalation Strategy (v0.3.1+)
 
 `pi-bump` uses a two-tier strategy to keep the agent moving without polluting the chat:

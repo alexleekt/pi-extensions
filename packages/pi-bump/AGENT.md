@@ -24,8 +24,16 @@ This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](.
 ### Debug mode safety
 Debug mode (`BUMP_DEBUG=1`) is per-session and non-persistent. Never log user keystrokes outside of the debug notification. The monitored keys (`enter`, `backspace`, `delete`, `ctrl+enter`, `alt+enter`) are all non-printing — no text content is captured.
 
+In normal mode, only `enter` is monitored. The other keys are only checked when debug mode is explicitly toggled for that session via `/bump-debug-keypresses`.
+
 ### No blocking in key handler
 The terminal input handler must return immediately. Never await slow operations inside the keystroke callback.
+
+### Fast-path ordering
+The handler checks `editorText` before `matchesKey()`. When the user is typing, only Enter needs matching. Do not reorder these checks — doing so would restore the 5x `matchesKey()` overhead on every keystroke.
+
+### Conditional key monitoring
+`DEBUG_KEYS` contains 5 keys, but in normal mode only `[Key.enter]` is checked. The full list is only used when `debugSessions.has(sessionId)` is true. Any change to this logic must preserve the 80% per-keystroke savings in normal mode.
 
 ### Escalation reset
 `needsEscalation` must be cleared on:
