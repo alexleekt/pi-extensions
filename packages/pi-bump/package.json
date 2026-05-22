@@ -1,6 +1,6 @@
 {
     "name": "@alexleekt/pi-bump",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "description": "Invisible continuation for the Pi agent. Double-tap Enter on empty chat to resume the agentic loop without sending the LLM a single token.",
     "type": "module",
     "license": "MIT",

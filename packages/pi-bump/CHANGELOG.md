@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-05-21
+
 ### Fixed
 
 - **Backspace slowness**: The terminal input handler no longer consumes double-tapped backspace/delete keys. Previously, any double-tap of monitored keys within 300ms returned `{ consume: true }`, silently swallowing every second backspace stroke. Now only `Enter` double-taps are consumed (and only when the agent is idle). Backspace and delete pass through normally.
