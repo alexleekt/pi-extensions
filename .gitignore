@@ -16,3 +16,4 @@ packages/*/.a5c/
 .understand-anything/
 # Git worktrees
 .worktrees/
+**/.pi/messenger/
