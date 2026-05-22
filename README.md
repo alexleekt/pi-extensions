@@ -9,7 +9,8 @@ Bridge [worktrunk](https://worktrunk.dev) with [Pi](https://pi.dev) — bringing
 | **Activity Tracking** | Automatically sets 🤖/💬 markers in `wt list` when Pi is working or idle |
 | **`/wt-switch-create`** | Create or re-enter a worktrunk worktree and relaunch Pi in it |
 | **`/wt-list`** | Quick `wt list` output inside Pi |
-| **Footer Statusline** | Shows `wt list statusline` in Pi's footer after each turn |
+| **`/wt-statusline-refresh`** | Force-refresh the cached worktrunk statusline |
+| **Footer Statusline** | Shows `wt list statusline` in Pi's footer after each turn (30s TTL cache) |
 | **`spawn_worktree_agent`** | Spawn a Pi subagent in an isolated worktree |
 
 ## Install
@@ -41,6 +42,15 @@ $ wt list
 
 Markers are cleared when the Pi session ends (or use `wt config state marker clear` if stale).
 
+### Footer Statusline (with caching)
+
+The extension fetches `wt list statusline --format=claude-code` and displays it in Pi's footer. To avoid the 1–2 second CI latency on every turn, the result is **cached for 30 seconds**.
+
+Force a refresh anytime:
+```
+/wt-statusline-refresh
+```
+
 ### `/wt-switch-create`
 
 From within Pi:
@@ -50,7 +60,15 @@ From within Pi:
 /wt-switch-create my-feature -- "Fix the auth bug"
 ```
 
+Work in a different repo (supports custom `worktree-path` templates):
+
+```
+/wt-switch-create my-feature other-repo
+```
+
 When a terminal multiplexer is detected (tmux, Zellij, or herdr), Pi sends a relaunch command so the new session starts in the worktree. Without a multiplexer, the extension prints the path for manual `cd`.
+
+**Path resolution:** The extension queries `git worktree list --porcelain` to find the actual worktree path, so it works regardless of your `worktree-path` template (sibling layout, `.worktrees/`, or any custom config).
 
 ### `spawn_worktree_agent` Tool
 
