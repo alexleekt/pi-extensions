@@ -146,38 +146,19 @@ function HtmlContext({
 }) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [loaded, setLoaded] = useState(false);
-    const [srcdocError, setSrcdocError] = useState<string | null>(null);
 
-    const srcdoc = useMemo(() => {
-        try {
-            return buildIframeSrcdoc(html, resolvedTheme);
-        } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            console.error("[HtmlContext] buildIframeSrcdoc failed:", msg);
-            setSrcdocError(msg);
-            return "";
-        }
-    }, [html, resolvedTheme]);
+    const srcdoc = useMemo(
+        () => buildIframeSrcdoc(html, resolvedTheme),
+        [html, resolvedTheme],
+    );
 
-    // Send theme message whenever resolvedTheme changes OR when iframe finishes loading.
-    // The iframe has an opaque origin (sandbox without allow-same-origin), so we must
-    // target "*" for postMessage to be delivered at all.
+    // The iframe has an opaque origin (sandbox without allow-same-origin), so we
+    // must target "*" for postMessage to be delivered at all.
     useEffect(() => {
         const cw = iframeRef.current?.contentWindow;
         if (!cw || !loaded) return;
         cw.postMessage({ type: "theme", theme: resolvedTheme }, "*");
     }, [resolvedTheme, loaded]);
-
-    if (srcdocError) {
-        return (
-            <div className="flex h-full items-center justify-center p-4 text-destructive">
-                <div>
-                    <p className="font-semibold">iframe srcdoc error:</p>
-                    <p className="text-sm">{srcdocError}</p>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <iframe
