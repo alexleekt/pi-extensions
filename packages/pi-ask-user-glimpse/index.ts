@@ -392,7 +392,7 @@ function buildDebugParams(mode: string): AskUserParams | null {
         case "single-select":
             return {
                 question: "Test: Single Select",
-                context: "Pick one option (with optional freeform and comment)",
+                context: "Pick one option (with optional freeform and comment). This tests radio-style selection, recommended badges, search filtering, and keyboard navigation.",
                 options: [
                     { title: "Option A", description: "Description for A", recommended: true },
                     { title: "Option B", description: "Description for B" },
@@ -405,7 +405,7 @@ function buildDebugParams(mode: string): AskUserParams | null {
             return {
                 question: "Test: Multi Select",
                 context:
-                    "Pick multiple options (with optional freeform and comment)",
+                    "Pick multiple options (with optional freeform and comment). This tests checkbox-style selection, select-all/none links, and submit-gating.",
                 options: [
                     { title: "Feature X", description: "Enable feature X", recommended: true },
                     { title: "Feature Y", description: "Enable feature Y" },
@@ -418,13 +418,13 @@ function buildDebugParams(mode: string): AskUserParams | null {
         case "freeform":
             return {
                 question: "Test: Freeform",
-                context: "Type any answer you like",
+                context: "Type any answer you like. This tests the textarea, character counter, and platform-aware keyboard shortcuts.",
                 allowFreeform: true,
             };
         case "questionnaire":
             return {
                 question: "Test: Questionnaire",
-                context: "Answer multiple structured questions",
+                context: "Answer multiple structured questions. This tests the card layout, progress bar, required-field badges, and per-question character counters.",
                 questions: [
                     {
                         title: "Database",
@@ -454,167 +454,74 @@ function buildDebugParams(mode: string): AskUserParams | null {
                 ],
                 allowComment: true,
             };
-        case "long-question":
+        case "kitchen-sink":
             return {
-                question:
-                    "This is a very long question that exceeds one hundred and twenty characters so it should trigger the auto-split behavior. The first sentence becomes the dialog title, and the rest flows to the context panel.",
-                options: [
-                    {
-                        title: "Split worked",
-                        description: "Title is short, context has the rest",
-                    },
-                    {
-                        title: "Not split",
-                        description: "Everything is still in the title",
-                    },
-                ],
-                allowComment: true,
-            };
-        case "mermaid":
-            return {
-                question: "Test: Mermaid Diagrams",
-                context: `This prompt includes Mermaid diagrams to test rendering in the left context panel.
-
-\`\`\`mermaid
-graph TD
-    A[User asks question] --> B{Has context?}
-    B -->|Yes| C[Show left panel]
-    B -->|No| D[Single panel]
-    C --> E[Render markdown + diagrams]
-    D --> E
-\`\`\`
-
-The diagram above should render as an SVG. Below is a sequence diagram:
-
-\`\`\`mermaid
-sequenceDiagram
-    participant Agent
-    participant User
-    Agent->>User: Ask question
-    User->>Agent: Submit answer
-\`\`\`
-`,
-                options: [
-                    {
-                        title: "Looks good",
-                        description: "Diagrams render correctly",
-                    },
-                    { title: "Broken", description: "Something is wrong" },
-                ],
-                allowComment: true,
-            };
-        case "html-context":
-            return {
-                question: "Test: HTML Context",
-                context: `<div style="text-align:center; padding: 1rem;">
-    <h2 style="color: hsl(var(--primary)); margin-bottom: 0.5rem;">Sample Visualization</h2>
-    <div class="bar-chart" style="display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0; align-items: flex-end;">
-        <div style="width: 40px; height: 80px; background: hsl(var(--primary)); border-radius: 4px;"></div>
-        <div style="width: 40px; height: 120px; background: hsl(var(--destructive)); border-radius: 4px;"></div>
-        <div style="width: 40px; height: 60px; background: hsl(var(--muted-foreground)); border-radius: 4px;"></div>
-        <div style="width: 40px; height: 100px; background: hsl(200 80% 50%); border-radius: 4px;"></div>
-    </div>
-    <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem;">This bar chart uses the wrapper's CSS variables for theme consistency.</p>
-    <script>
-        document.querySelectorAll('.bar-chart > div').forEach((bar, i) => {
-            const target = bar.style.height;
-            bar.style.height = '0px';
-            bar.style.transition = 'height 0.6s ease ' + (i * 0.1) + 's';
-            setTimeout(() => bar.style.height = target, 50);
-        });
-    </script>
-</div>`,
+                question: "Kitchen Sink: Every Feature",
                 contextFormat: "html",
-                options: [
-                    {
-                        title: "Looks good",
-                        description: "HTML renders with theme colors",
-                    },
-                    { title: "Broken", description: "Something is wrong" },
-                ],
-                allowComment: true,
-            };
-        case "recommended-badges":
-            return {
-                question: "Test: Recommendation Badges",
-                context: "Each option with `recommended: true` should show a **Recommended** badge next to its title. This tests both single-select rendering and the badge styling.",
-                options: [
-                    { title: "Use **React**", description: "Popular, ecosystem-rich. `recommended` is set.", recommended: true },
-                    { title: "Use *Vue*", description: "Approachable, progressive. No badge." },
-                    { title: "Use `Svelte`", description: "Compiler-based, minimal. No badge." },
-                ],
-                allowComment: true,
-            };
-        case "tic-tac-toe":
-            return {
-                question: "Test: Tic-Tac-Toe Game",
-                context: `<div style="text-align:center; font-family: ui-sans-serif, system-ui, sans-serif;">
-    <h2 style="color: hsl(var(--primary)); margin-bottom: 0.5rem;">Tic-Tac-Toe</h2>
-    <p id="status" style="color: hsl(var(--muted-foreground)); margin-bottom: 1rem; min-height: 1.5rem;">X's turn</p>
-    <div id="board" style="display: grid; grid-template-columns: repeat(3, 80px); gap: 4px; justify-content: center; margin-bottom: 1rem;">
-        ${Array.from({ length: 9 }, (_, i) => `<div data-idx="${i}" style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:bold; cursor:pointer; background: hsl(var(--muted) / 0.3); border-radius: 8px; color: hsl(var(--foreground));"></div>`).join('')}
+                context: `<div style="font-family: ui-sans-serif, system-ui, sans-serif; overflow-wrap: break-word;">
+  <h2 style="color: hsl(var(--primary)); margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 600;">🧪 Debug Kitchen Sink</h2>
+  <p style="color: hsl(var(--muted-foreground)); margin-bottom: 1rem; line-height: 1.5;">
+    This dialog demonstrates every major feature of <code style="background: hsl(var(--muted)); padding: 0.125rem 0.25rem; border-radius: 4px; font-size: 0.875em;">pi-ask-user-glimpse</code> in one place.
+  </p>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+    <div style="padding: 0.75rem; background: hsl(var(--muted)); border-radius: 8px; border: 1px solid hsl(var(--border));">
+      <div style="font-weight: 600; color: hsl(var(--foreground)); margin-bottom: 0.25rem; font-size: 0.9375rem;">Single Select</div>
+      <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">Radio-style with recommended badges</div>
     </div>
-    <button id="reset" style="padding: 8px 16px; border: 1px solid hsl(var(--border)); border-radius: 6px; background: hsl(var(--card)); color: hsl(var(--foreground)); cursor: pointer; font-size: 0.875rem;">Reset Game</button>
-    <script>
-        (function() {
-            const cells = document.querySelectorAll('#board > div');
-            const status = document.getElementById('status');
-            const resetBtn = document.getElementById('reset');
-            let board = Array(9).fill('');
-            let current = 'X';
-            let gameOver = false;
-            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-
-            function checkWin() {
-                for (const [a,b,c] of wins) {
-                    if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
-                }
-                if (board.every(Boolean)) return 'Draw';
-                return null;
-            }
-
-            function render() {
-                cells.forEach((cell, i) => {
-                    cell.textContent = board[i];
-                    cell.style.color = board[i] === 'X' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
-                });
-                const winner = checkWin();
-                if (winner) {
-                    gameOver = true;
-                    status.textContent = winner === 'Draw' ? "It's a draw!" : winner + ' wins!';
-                    status.style.color = 'hsl(var(--primary))';
-                } else {
-                    status.textContent = current + "'s turn";
-                    status.style.color = 'hsl(var(--muted-foreground))';
-                }
-            }
-
-            cells.forEach(cell => {
-                cell.addEventListener('click', () => {
-                    const i = +cell.dataset.idx;
-                    if (board[i] || gameOver) return;
-                    board[i] = current;
-                    current = current === 'X' ? 'O' : 'X';
-                    render();
-                });
-            });
-
-            resetBtn.addEventListener('click', () => {
-                board = Array(9).fill('');
-                current = 'X';
-                gameOver = false;
-                render();
-            });
-        })();
-    </script>
+    <div style="padding: 0.75rem; background: hsl(var(--muted)); border-radius: 8px; border: 1px solid hsl(var(--border));">
+      <div style="font-weight: 600; color: hsl(var(--foreground)); margin-bottom: 0.25rem; font-size: 0.9375rem;">Multi Select</div>
+      <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">Checkbox-style with select-all</div>
+    </div>
+    <div style="padding: 0.75rem; background: hsl(var(--muted)); border-radius: 8px; border: 1px solid hsl(var(--border));">
+      <div style="font-weight: 600; color: hsl(var(--foreground)); margin-bottom: 0.25rem; font-size: 0.9375rem;">Freeform</div>
+      <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">Open-text textarea input</div>
+    </div>
+    <div style="padding: 0.75rem; background: hsl(var(--muted)); border-radius: 8px; border: 1px solid hsl(var(--border));">
+      <div style="font-weight: 600; color: hsl(var(--foreground)); margin-bottom: 0.25rem; font-size: 0.9375rem;">Questionnaire</div>
+      <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">Multi-question card layout</div>
+    </div>
+  </div>
+  <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem; line-height: 1.5;">
+    Try keyboard navigation (↑↓ to move, Enter to select, / to search), theme toggle (⚙️), and the comment field.
+  </p>
 </div>`,
-                contextFormat: "html",
-                options: [
-                    { title: "Game works", description: "Interactive tic-tac-toe renders and plays" },
-                    { title: "Broken", description: "Something is wrong" },
+                questions: [
+                    {
+                        title: "Architecture",
+                        description: "Which architecture style should we use?",
+                        options: [
+                            { title: "Monolith", description: "Simple, single deployable", recommended: true },
+                            { title: "Microservices", description: "Scalable, complex" },
+                            { title: "Serverless", description: "Event-driven, pay-per-use" }
+                        ]
+                    },
+                    {
+                        title: "Features",
+                        description: "Select all features to implement:",
+                        options: [
+                            { title: "Authentication", description: "OAuth + JWT" },
+                            { title: "Caching", description: "Redis layer" },
+                            { title: "Rate Limiting", description: "Token bucket" },
+                            { title: "Observability", description: "Metrics + logs" }
+                        ],
+                        allowMultiple: true
+                    },
+                    {
+                        title: "Deployment Target",
+                        description: "Where should we deploy?",
+                        options: [
+                            { title: "Vercel", description: "Edge, serverless-first" },
+                            { title: "AWS", description: "Full control, scalable" },
+                            { title: "Self-hosted", description: "Own the infrastructure" }
+                        ]
+                    },
+                    {
+                        title: "Notes",
+                        description: "Any additional requirements or constraints?"
+                    }
                 ],
-                allowFreeform: true,
                 allowComment: true,
+                allowSkip: true
             };
         default:
             return null;
@@ -963,11 +870,7 @@ export default function (pi: ExtensionAPI) {
                 "multi-select",
                 "freeform",
                 "questionnaire",
-                "long-question",
-                "mermaid",
-                "html-context",
-                "tic-tac-toe",
-                "recommended-badges",
+                "kitchen-sink",
             ]);
             if (!mode) return;
 

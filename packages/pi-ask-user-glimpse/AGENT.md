@@ -37,6 +37,16 @@ The submit handler must block when `selected.size === 0`. The search `query` is 
 ### No defensive code for dead paths
 The server never sends a `questionnaire` without `questions`. Don't add defensive code for unreachable states.
 
+## Glimpse WebView Limitations
+
+When working with HTML context (`contextFormat: "html"`) or any iframe inside the webview:
+
+1. **Never use `loading="lazy"` on `srcDoc` iframes** — Glimpse's native host uses WKWebView (macOS) and WebView2 (Windows). These engines apply lazy-loading heuristics even to `srcDoc` iframes with no network request. In some versions the content never renders, leaving the panel blank.
+
+2. **Use `flex-1 min-h-0` instead of `h-full` for iframe sizing** — Percentage heights (`height: 100%`) fail in nested flex layouts inside Glimpse's webview container, falling back to the browser default (150px). Use `flex-1` with `min-h-0` on the iframe and make its parent `flex flex-col overflow-hidden`.
+
+3. **No `allow-same-origin` in sandbox** — The HTML context iframe uses `sandbox="allow-scripts"` only. Adding `allow-same-origin` would give the iframe access to `localStorage` and the parent DOM, which is blocked by Glimpse's null-origin `loadHTMLString` loading. Theme changes are propagated via `postMessage` to `*` (not `window.location.origin`).
+
 ## Extension-Specific Rules
 
 - **Indentation:** 2 spaces (TypeScript)

@@ -114,6 +114,8 @@ The `context` HTML renders inside a **sandboxed iframe** (`sandbox="allow-script
 
 **Security:** The iframe is isolated from the wrapper app. It cannot access `localStorage`, cookies, or the parent DOM. Only inline scripts are permitted (for animations/interactivity). The agent should not include `<script src="...">` tags that load external resources — inline JS and CSS only.
 
+**Glimpse behavior:** The HTML context panel runs inside Glimpse's native WebView host (WKWebView on macOS, WebView2 on Windows). The iframe receives an opaque ("null") origin because Glimpse loads the page via `loadHTMLString` without a base URL. This means `window.location.origin` is `null`, and `localStorage` access throws a `SecurityError`. Theme changes are propagated via `postMessage` instead of DOM sharing.
+
 ### Freeform
 
 Ask an open-ended question with no predefined options:
@@ -278,7 +280,9 @@ Open a debug prompt that lets you manually test each dialog type:
 /ask-debug
 ```
 
-Options: `single-select`, `multi-select`, `freeform`, `questionnaire`. The result is shown as a Pi notification.
+Options: `single-select`, `multi-select`, `freeform`, `questionnaire`, `kitchen-sink`. The result is shown as a Pi notification.
+
+The **kitchen-sink** option opens a comprehensive questionnaire with an HTML context panel, recommended badges, multi-select, freeform, comments, and skip — every major feature in one dialog.
 
 ## Window Behavior
 

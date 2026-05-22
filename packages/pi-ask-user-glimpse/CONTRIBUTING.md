@@ -23,9 +23,9 @@ npm run check        # dry-run npm pack
 npm run validate           # checks dist exists, placeholder present, binary found
 npm run validate:gui       # same + opens actual WebView for visual check
 npm run test:with-context  # opens WebView with context panel + resizable splitter
-npx tsx scripts/smoke-test.ts     # opens WebView for 2s
-npx tsx scripts/visual-qa.ts      # cycles through all 5 scenarios
 ```
+
+For manual visual testing, use `/ask-debug` inside a Pi session. It offers five scenarios: `single-select`, `multi-select`, `freeform`, `questionnaire`, and `kitchen-sink` (comprehensive questionnaire with HTML context panel).
 
 ## Code Style
 

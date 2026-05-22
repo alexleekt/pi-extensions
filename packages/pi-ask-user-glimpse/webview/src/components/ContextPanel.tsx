@@ -163,12 +163,18 @@ function HtmlContext({
     return (
         <iframe
             ref={iframeRef}
-            loading="lazy"
             sandbox="allow-scripts"
             srcDoc={srcdoc}
-            className="h-full w-full border-0"
+            className="flex-1 w-full border-0 min-h-0"
             title="HTML context"
             onLoad={() => setLoaded(true)}
+            /*
+             * NOTE: Do NOT add loading="lazy".
+             * Glimpse (glimpseui) uses WKWebView on macOS, which applies
+             * lazy-loading heuristics even to srcDoc iframes. In some
+             * versions the iframe content never renders if lazy is set,
+             * leaving the HTML context panel blank.
+             */
         />
     );
 }
@@ -243,7 +249,7 @@ export default function ContextPanel({
             )}
 
             {/* Scrollable context: markdown or HTML iframe */}
-            <div className="flex-1 overflow-y-auto scrollbar-hover">
+            <div className={`flex-1 ${contextFormat === "html" ? "overflow-hidden flex flex-col" : "overflow-y-auto scrollbar-hover"}`}>
                 {contextFormat === "html" ? (
                     <HtmlContext html={context} resolvedTheme={resolvedTheme} />
                 ) : (
