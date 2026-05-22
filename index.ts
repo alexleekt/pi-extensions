@@ -94,8 +94,10 @@ export default function (pi: ExtensionAPI) {
     }
 
     // Update statusline on startup
-    const status = await fetchStatusline(cwd);
-    if (status) ctx.ui.setStatus("worktrunk", status);
+    if (ctx.hasUI) {
+      const status = await fetchStatusline(cwd);
+      if (status) ctx.ui.setStatus("worktrunk", status);
+    }
   });
 
   pi.on("turn_start", async (_event, ctx) => {
@@ -118,8 +120,10 @@ export default function (pi: ExtensionAPI) {
     }
 
     // Refresh statusline after each turn
-    const status = await fetchStatusline(cwd);
-    if (status) ctx.ui.setStatus("worktrunk", status);
+    if (ctx.hasUI) {
+      const status = await fetchStatusline(cwd);
+      if (status) ctx.ui.setStatus("worktrunk", status);
+    }
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
@@ -139,7 +143,7 @@ export default function (pi: ExtensionAPI) {
     handler: async (args, ctx) => {
       const raw = (args || "").trim();
       if (!raw) {
-        ctx.ui.notify("Usage: /wt-switch-create <branch> [<repo>] [-- <task>]", "error");
+        if (ctx.hasUI) ctx.ui.notify("Usage: /wt-switch-create <branch> [<repo>] [-- <task>]", "error");
         return;
       }
 
@@ -158,7 +162,7 @@ export default function (pi: ExtensionAPI) {
       const cwd = ctx.cwd;
       const mux = detectMultiplexer();
 
-      ctx.ui.notify(`Creating worktree: ${branch}…`, "info");
+      if (ctx.hasUI) ctx.ui.notify(`Creating worktree: ${branch}…`, "info");
 
       // Build wt command
       const wtArgs = ["switch", "--create", branch];
@@ -167,7 +171,7 @@ export default function (pi: ExtensionAPI) {
       try {
         await pi.exec("wt", wtArgs, { cwd });
       } catch (e: any) {
-        ctx.ui.notify(`wt failed: ${e.message || e}`, "error");
+        if (ctx.hasUI) ctx.ui.notify(`wt failed: ${e.message || e}`, "error");
         return;
       }
 
@@ -176,10 +180,12 @@ export default function (pi: ExtensionAPI) {
       const worktreePath = path.resolve(cwd, `../${repoName}.${branch}`);
 
       if (!mux) {
-        ctx.ui.notify(
-          `Worktree created at ${worktreePath}. No multiplexer detected — run: cd ${worktreePath} && pi`,
-          "info"
-        );
+        if (ctx.hasUI) {
+          ctx.ui.notify(
+            `Worktree created at ${worktreePath}. No multiplexer detected — run: cd ${worktreePath} && pi`,
+            "info"
+          );
+        }
         return;
       }
 
@@ -207,9 +213,9 @@ export default function (pi: ExtensionAPI) {
             cmd,
           ]);
         }
-        ctx.ui.notify(`Sent relaunch command via ${mux}.`, "info");
+        if (ctx.hasUI) ctx.ui.notify(`Sent relaunch command via ${mux}.`, "info");
       } catch (e: any) {
-        ctx.ui.notify(`Multiplexer relaunch failed: ${e.message || e}`, "error");
+        if (ctx.hasUI) ctx.ui.notify(`Multiplexer relaunch failed: ${e.message || e}`, "error");
       }
     },
   });
@@ -227,9 +233,9 @@ export default function (pi: ExtensionAPI) {
             resolve(stdout);
           });
         });
-        ctx.ui.notify(result.slice(0, 500), "info");
+        if (ctx.hasUI) ctx.ui.notify(result.slice(0, 500), "info");
       } catch (e: any) {
-        ctx.ui.notify(`wt list failed: ${e.message || e}`, "error");
+        if (ctx.hasUI) ctx.ui.notify(`wt list failed: ${e.message || e}`, "error");
       }
     },
   });
