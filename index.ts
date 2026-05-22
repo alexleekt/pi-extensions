@@ -200,6 +200,41 @@ async function buildWorktreeSelectItems(cwd: string): Promise<SelectItem[]> {
   return items;
 }
 
+function getGitAheadBehind(cwd: string): Promise<{ ahead: number; behind: number } | null> {
+  return new Promise((resolve) => {
+    execFile(
+      "git",
+      ["rev-parse", "--abbrev-ref", "@{upstream}"],
+      { cwd, encoding: "utf-8" },
+      (err, upstream) => {
+        if (err) return resolve(null);
+        execFile(
+          "git",
+          ["rev-list", "--left-right", "--count", `HEAD...${upstream.trim()}`],
+          { cwd, encoding: "utf-8" },
+          (err2, stdout) => {
+            if (err2) return resolve(null);
+            const match = stdout.trim().match(/(\d+)\s+(\d+)/);
+            if (!match) return resolve(null);
+            resolve({ ahead: parseInt(match[1], 10), behind: parseInt(match[2], 10) });
+          }
+        );
+      }
+    );
+  });
+}
+
+async function buildWidgetLines(cwd: string, branch: string, marker: string): Promise<string[]> {
+  const ab = await getGitAheadBehind(cwd);
+  let parts = [`🌲 ${branch}`];
+  if (marker) parts.push(marker);
+  if (ab) {
+    if (ab.ahead > 0) parts.push(`↑${ab.ahead}`);
+    if (ab.behind > 0) parts.push(`⇡${ab.behind}`);
+  }
+  return [parts.join("  ")];
+}
+
 // ── Extension ──────────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
@@ -220,10 +255,16 @@ export default function (pi: ExtensionAPI) {
       markerSet = true;
     }
 
+    if (!ctx.hasUI) return;
+
     // Update statusline on startup (cached)
-    if (ctx.hasUI) {
-      const status = await fetchStatusline(cwd);
-      if (status) ctx.ui.setStatus("worktrunk", status);
+    const status = await fetchStatusline(cwd);
+    if (status) ctx.ui.setStatus("worktrunk", status);
+
+    // Update widget with branch + marker
+    if (branch) {
+      const lines = await buildWidgetLines(cwd, branch, "💬");
+      ctx.ui.setWidget("worktrunk", lines);
     }
   });
 
@@ -234,6 +275,10 @@ export default function (pi: ExtensionAPI) {
     if (branch) {
       currentBranch = branch;
       await setMarker(cwd, branch, "🤖");
+      if (ctx.hasUI) {
+        const lines = await buildWidgetLines(cwd, branch, "🤖");
+        ctx.ui.setWidget("worktrunk", lines);
+      }
     }
   });
 
@@ -246,10 +291,16 @@ export default function (pi: ExtensionAPI) {
       await setMarker(cwd, branch, "💬");
     }
 
+    if (!ctx.hasUI) return;
+
     // Refresh statusline after each turn (cached to avoid 1–2s CI latency)
-    if (ctx.hasUI) {
-      const status = await fetchStatusline(cwd);
-      if (status) ctx.ui.setStatus("worktrunk", status);
+    const status = await fetchStatusline(cwd);
+    if (status) ctx.ui.setStatus("worktrunk", status);
+
+    // Refresh widget
+    if (branch) {
+      const lines = await buildWidgetLines(cwd, branch, "💬");
+      ctx.ui.setWidget("worktrunk", lines);
     }
   });
 
@@ -259,6 +310,9 @@ export default function (pi: ExtensionAPI) {
     if (branch) {
       await clearMarker(cwd, branch);
       markerSet = false;
+    }
+    if (ctx.hasUI) {
+      ctx.ui.setWidget("worktrunk", []);
     }
   });
 
