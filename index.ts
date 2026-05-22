@@ -1,6 +1,9 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { DynamicBorder } from "@earendil-works/pi-coding-agent";
+import { Container, type SelectItem, SelectList, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { exec, execFile, spawn } from "node:child_process";
+import * as os from "node:os";
 import * as path from "node:path";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -123,6 +126,78 @@ function detectMultiplexer(): "tmux" | "zellij" | "herdr" | null {
   if (process.env.ZELLIJ) return "zellij";
   if (process.env.HERDR_ENV === "1") return "herdr";
   return null;
+}
+
+interface WorktreeEntry {
+  path: string;
+  branch: string;
+  head: string;
+  isBare: boolean;
+}
+
+function listWorktrees(cwd: string): Promise<WorktreeEntry[]> {
+  return new Promise((resolve) => {
+    execFile(
+      "git",
+      ["worktree", "list", "--porcelain"],
+      { cwd, encoding: "utf-8" },
+      (err, stdout) => {
+        if (err) return resolve([]);
+        const entries: WorktreeEntry[] = [];
+        const lines = stdout.split("\n");
+        let current: Partial<WorktreeEntry> = {};
+        for (const line of lines) {
+          if (line.startsWith("worktree ")) {
+            if (current.path) entries.push(current as WorktreeEntry);
+            current = { path: line.slice(9) };
+          } else if (line.startsWith("HEAD ")) {
+            current.head = line.slice(5);
+          } else if (line.startsWith("branch ")) {
+            current.branch = line.slice(7).replace("refs/heads/", "");
+          } else if (line === "bare") {
+            current.isBare = true;
+          }
+        }
+        if (current.path) entries.push(current as WorktreeEntry);
+        resolve(entries);
+      }
+    );
+  });
+}
+
+function getWorktreeMarker(cwd: string, branch: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    exec(
+      `git config worktrunk.state.${branch}.marker 2>/dev/null || true`,
+      { cwd, encoding: "utf-8" },
+      (err, stdout) => {
+        if (err || !stdout.trim()) return resolve(null);
+        try {
+          const parsed = JSON.parse(stdout.trim());
+          resolve(parsed.marker || null);
+        } catch {
+          resolve(null);
+        }
+      }
+    );
+  });
+}
+
+async function buildWorktreeSelectItems(cwd: string): Promise<SelectItem[]> {
+  const entries = await listWorktrees(cwd);
+  const items: SelectItem[] = [];
+  for (const entry of entries) {
+    if (entry.isBare || !entry.branch) continue;
+    const marker = await getWorktreeMarker(cwd, entry.branch);
+    const shortPath = entry.path.replace(os.homedir(), "~");
+    const label = marker ? `${entry.branch}  ${marker}` : entry.branch;
+    items.push({
+      value: entry.branch,
+      label,
+      description: shortPath,
+    });
+  }
+  return items;
 }
 
 // ── Extension ──────────────────────────────────────────────────────────────
@@ -279,19 +354,95 @@ export default function (pi: ExtensionAPI) {
   // ── /wt-list Command ──────────────────────────────────────────────────
 
   pi.registerCommand("wt-list", {
-    description: "Run wt list and display output",
+    description: "Interactive worktree list — navigate and switch with Enter",
     handler: async (_args, ctx) => {
-      const cwd = ctx.cwd;
-      try {
-        const result = await new Promise<string>((resolve, reject) => {
-          execFile("wt", ["list"], { cwd, encoding: "utf-8" }, (err, stdout) => {
-            if (err) return reject(err);
-            resolve(stdout);
+      if (!ctx.hasUI) {
+        // Non-interactive fallback
+        const cwd = ctx.cwd;
+        try {
+          const result = await new Promise<string>((resolve, reject) => {
+            execFile("wt", ["list"], { cwd, encoding: "utf-8" }, (err, stdout) => {
+              if (err) return reject(err);
+              resolve(stdout);
+            });
           });
-        });
-        if (ctx.hasUI) ctx.ui.notify(result.slice(0, 500), "info");
+          ctx.ui.notify(result.slice(0, 500), "info");
+        } catch (e: any) {
+          ctx.ui.notify(`wt list failed: ${e.message || e}`, "error");
+        }
+        return;
+      }
+
+      const cwd = ctx.cwd;
+      const items = await buildWorktreeSelectItems(cwd);
+      if (items.length === 0) {
+        ctx.ui.notify("No worktrees found.", "warning");
+        return;
+      }
+
+      const result = await ctx.ui.custom<string | null>(
+        (tui, theme, _kb, done) => {
+          const container = new Container();
+
+          // Top border
+          container.addChild(new DynamicBorder((s: string) => theme.fg("accent", s)));
+
+          // Title
+          container.addChild(new Text(theme.fg("accent", theme.bold("Worktrees — ↑↓ select • Enter switch • Esc cancel")), 1, 0));
+
+          // SelectList with theme
+          const selectList = new SelectList(items, Math.min(items.length, 12), {
+            selectedPrefix: (t) => theme.fg("accent", t),
+            selectedText: (t) => theme.fg("accent", t),
+            description: (t) => theme.fg("muted", t),
+            scrollInfo: (t) => theme.fg("dim", t),
+            noMatch: (t) => theme.fg("warning", t),
+          });
+          selectList.onSelect = (item) => done(item.value);
+          selectList.onCancel = () => done(null);
+          container.addChild(selectList);
+
+          // Bottom border
+          container.addChild(new DynamicBorder((s: string) => theme.fg("accent", s)));
+
+          return {
+            render: (w) => container.render(w),
+            invalidate: () => container.invalidate(),
+            handleInput: (data) => { selectList.handleInput(data); tui.requestRender(); },
+          };
+        },
+        { overlay: true, overlayOptions: { anchor: "top-center", maxHeight: "60%", width: "80%", minWidth: 60 } }
+      );
+
+      if (!result) return; // cancelled
+
+      // Switch to selected worktree (same relaunch logic as /wt-switch-create)
+      const branch = result;
+      const mux = detectMultiplexer();
+
+      let worktreePath = await findWorktreePath(cwd, branch);
+      if (!worktreePath) {
+        const repoName = path.basename(cwd);
+        worktreePath = path.resolve(cwd, `../${repoName}.${branch}`);
+      }
+
+      if (!mux) {
+        ctx.ui.notify(`Worktree: ${worktreePath}. Run: cd ${worktreePath} && pi`, "info");
+        return;
+      }
+
+      const cmd = `cd ${worktreePath} && pi`;
+      try {
+        if (mux === "tmux") {
+          await pi.exec("tmux", ["send-keys", "-t", `tmux:${process.env.TMUX_PANE || ""}`, cmd, "Enter"]);
+        } else if (mux === "zellij") {
+          await pi.exec("zellij", ["run", "--", cmd]);
+        } else if (mux === "herdr") {
+          await pi.exec("herdr", ["pane", "run", process.env.HERDR_PANE_ID || "", cmd]);
+        }
+        ctx.ui.notify(`Switched to ${branch} via ${mux}.`, "info");
       } catch (e: any) {
-        if (ctx.hasUI) ctx.ui.notify(`wt list failed: ${e.message || e}`, "error");
+        ctx.ui.notify(`Switch failed: ${e.message || e}`, "error");
       }
     },
   });
