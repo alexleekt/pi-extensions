@@ -839,10 +839,21 @@ export default function (pi: ExtensionAPI) {
         const answer = textContent?.type === "text" ? textContent.text : "";
         if (!answer) return;
 
-        pi.sendUserMessage(
-            `${answerPrefix(questions.length)}\n\n${answer}`,
-            { deliverAs: "followUp" },
-        );
+        try {
+            await pi.sendUserMessage(
+                `${answerPrefix(questions.length)}\n\n${answer}`,
+                { deliverAs: "steer" },
+            );
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(
+                `[pi-ask-user-glimpse] sendUserMessage failed: ${msg}`,
+            );
+            ctx.ui?.notify(
+                `Failed to send answer: ${msg}`,
+                "error",
+            );
+        }
     });
 
     // ── Manual style toggle for ask_user behavior ──
@@ -919,10 +930,21 @@ export default function (pi: ExtensionAPI) {
             const answer = textContent?.type === "text" ? textContent.text : "";
             if (!answer) return;
 
-            pi.sendUserMessage(
-                `${answerPrefix(questions.length)}\n\n${answer}`,
-                { deliverAs: "steer" },
-            );
+            try {
+                await pi.sendUserMessage(
+                    `${answerPrefix(questions.length)}\n\n${answer}`,
+                    { deliverAs: "steer" },
+                );
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                console.error(
+                    `[pi-ask-user-glimpse] sendUserMessage failed: ${msg}`,
+                );
+                ctx.ui.notify(
+                    `Failed to send answer: ${msg}`,
+                    "error",
+                );
+            }
         },
     });
 
