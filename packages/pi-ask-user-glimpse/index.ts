@@ -779,6 +779,9 @@ export default function (pi: ExtensionAPI) {
             event.systemPromptOptions.selectedTools?.includes("ask_user");
         if (!hasAskUser) return;
 
+        // Don't force ask_user in headless environments — the tool can't render dialogs
+        if (!ctx.hasUI) return;
+
         const styleMode = getStyleMode(ctx.sessionManager.getEntries());
 
         if (styleMode === "always") {

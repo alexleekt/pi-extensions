@@ -204,11 +204,26 @@ export async function askUserHandler(
             });
         }
     } catch (err) {
-        // Glimpse unavailable — fall back to terminal prompt
-        const fallbackResult = await terminalPrompt(
-            payload,
-            ctx.hasUI ? ctx.ui : undefined,
-        );
+        // Glimpse unavailable — fast-exit if no terminal UI either
+        if (!ctx.hasUI) {
+            return {
+                content: [
+                    {
+                        type: "text" as const,
+                        text: "No UI available for ask_user dialog. Please ask the user directly in free-form text.",
+                    },
+                ],
+                details: {
+                    question: params.question,
+                    options: normalizedOptions.map((o) => o.title),
+                    response: null,
+                    cancelled: true,
+                    error: "No UI available",
+                },
+            };
+        }
+        // Terminal UI available — fall back to TUI prompt
+        const fallbackResult = await terminalPrompt(payload, ctx.ui);
         if (fallbackResult === null) {
             cancelled = true;
         } else {
