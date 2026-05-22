@@ -53,14 +53,66 @@ function clearMarker(cwd: string, branch: string): Promise<void> {
   });
 }
 
-function fetchStatusline(cwd: string): Promise<string | null> {
+interface StatuslineCache {
+  value: string;
+  fetchedAt: number;
+  ttlMs: number;
+}
+
+const statuslineCache: Map<string, StatuslineCache> = new Map();
+const DEFAULT_STATUSLINE_TTL_MS = 30_000; // 30 seconds
+
+function fetchStatusline(cwd: string, forceRefresh = false): Promise<string | null> {
   return new Promise((resolve) => {
+    const now = Date.now();
+    const cached = statuslineCache.get(cwd);
+    if (!forceRefresh && cached && now - cached.fetchedAt < cached.ttlMs) {
+      return resolve(cached.value);
+    }
+
     exec(
       "wt list statusline --format=claude-code 2>/dev/null",
       { cwd, encoding: "utf-8", timeout: 3000 },
       (err, stdout) => {
         if (err || !stdout.trim()) return resolve(null);
-        resolve(stdout.trim());
+        const value = stdout.trim();
+        statuslineCache.set(cwd, { value, fetchedAt: now, ttlMs: DEFAULT_STATUSLINE_TTL_MS });
+        resolve(value);
+      }
+    );
+  });
+}
+
+function invalidateStatuslineCache(cwd?: string) {
+  if (cwd) {
+    statuslineCache.delete(cwd);
+  } else {
+    statuslineCache.clear();
+  }
+}
+
+function findWorktreePath(cwd: string, branch: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    execFile(
+      "git",
+      ["worktree", "list", "--porcelain"],
+      { cwd, encoding: "utf-8" },
+      (err, stdout) => {
+        if (err) return resolve(null);
+        const lines = stdout.split("\n");
+        let currentPath: string | null = null;
+        for (const line of lines) {
+          if (line.startsWith("worktree ")) {
+            currentPath = line.slice(9);
+          } else if (line.startsWith("branch ") && currentPath) {
+            const branchRef = line.slice(7); // refs/heads/<branch>
+            const branchName = branchRef.replace("refs/heads/", "");
+            if (branchName === branch) {
+              return resolve(currentPath);
+            }
+          }
+        }
+        resolve(null);
       }
     );
   });
@@ -93,7 +145,7 @@ export default function (pi: ExtensionAPI) {
       markerSet = true;
     }
 
-    // Update statusline on startup
+    // Update statusline on startup (cached)
     if (ctx.hasUI) {
       const status = await fetchStatusline(cwd);
       if (status) ctx.ui.setStatus("worktrunk", status);
@@ -119,7 +171,7 @@ export default function (pi: ExtensionAPI) {
       await setMarker(cwd, branch, "💬");
     }
 
-    // Refresh statusline after each turn
+    // Refresh statusline after each turn (cached to avoid 1–2s CI latency)
     if (ctx.hasUI) {
       const status = await fetchStatusline(cwd);
       if (status) ctx.ui.setStatus("worktrunk", status);
@@ -175,9 +227,13 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      // Determine worktree path (worktrunk uses sibling layout: <repo>.<branch>/)
-      const repoName = repo || path.basename(cwd);
-      const worktreePath = path.resolve(cwd, `../${repoName}.${branch}`);
+      // Determine worktree path by querying git (handles custom worktree-path templates)
+      let worktreePath = await findWorktreePath(cwd, branch);
+      if (!worktreePath) {
+        // Fallback to sibling layout guess
+        const repoName = repo || path.basename(cwd);
+        worktreePath = path.resolve(cwd, `../${repoName}.${branch}`);
+      }
 
       if (!mux) {
         if (ctx.hasUI) {
@@ -240,6 +296,27 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
+  // ── /wt-statusline-refresh Command ────────────────────────────────────
+
+  pi.registerCommand("wt-statusline-refresh", {
+    description: "Force-refresh the worktrunk statusline (bypasses cache)",
+    handler: async (_args, ctx) => {
+      const cwd = ctx.cwd;
+      invalidateStatuslineCache(cwd);
+      try {
+        const status = await fetchStatusline(cwd, true);
+        if (status && ctx.hasUI) {
+          ctx.ui.setStatus("worktrunk", status);
+          ctx.ui.notify("Statusline refreshed.", "info");
+        } else if (ctx.hasUI) {
+          ctx.ui.notify("No statusline available.", "warning");
+        }
+      } catch (e: any) {
+        if (ctx.hasUI) ctx.ui.notify(`Refresh failed: ${e.message || e}`, "error");
+      }
+    },
+  });
+
   // ── spawn_worktree_agent Tool ─────────────────────────────────────────
 
   pi.registerTool({
@@ -274,9 +351,12 @@ export default function (pi: ExtensionAPI) {
         } as any;
       }
 
-      // 2. Determine worktree path
-      const repoName = repo || path.basename(cwd);
-      const worktreePath = path.resolve(cwd, `../${repoName}.${branch}`);
+      // 2. Determine worktree path by querying git (handles custom templates)
+      let worktreePath = await findWorktreePath(cwd, branch);
+      if (!worktreePath) {
+        const repoName = repo || path.basename(cwd);
+        worktreePath = path.resolve(cwd, `../${repoName}.${branch}`);
+      }
 
       // 3. Spawn subagent via the official pi subagent pattern
       const subagentArgs = [
