@@ -3,24 +3,9 @@
  */
 
 import {
-    isCustomEntry as _isCustomEntry,
+    isCustomEntry,
     type CustomJournalEntry,
 } from "@alexleekt/pi-shared/types";
-
-/* ── Defensive: isCustomEntry may resolve to undefined in some jiti cache states ── */
-const isCustomEntry: typeof _isCustomEntry =
-    typeof _isCustomEntry === "function"
-        ? _isCustomEntry
-        : (e: unknown): e is CustomJournalEntry => {
-              if (!e || typeof e !== "object") return false;
-              const entry = e as Record<string, unknown>;
-              return (
-                  entry.type === "custom" &&
-                  typeof entry.customType === "string" &&
-                  typeof entry.data === "object" &&
-                  entry.data !== null
-              );
-          };
 
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { StringEnum, Type } from "@earendil-works/pi-ai";
@@ -31,7 +16,11 @@ import type {
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { PROTECTED_ABBREVIATIONS } from "./constants/abbreviations.js";
 import type { AnimationLevel, ThemeMode } from "./shared/ask-user.js";
-import { type AskUserParams, askUserHandler } from "./tool/ask-user.js";
+import {
+    type AskUserMetadata,
+    type AskUserParams,
+    askUserHandler,
+} from "./tool/ask-user.js";
 
 /* ── Module-level reference to ExtensionAPI for tool execute closure ── */
 let _pi: ExtensionAPI | undefined;
@@ -71,34 +60,31 @@ Rules:
 
 type StyleMode = "always" | "plain" | "yolo";
 
-function getStyleMode(entries: unknown[]): StyleMode {
+function findCustomData(
+    entries: unknown[],
+    customType: string,
+): Record<string, unknown> | undefined {
     const entry = entries.find(
         (e): e is CustomJournalEntry =>
-            isCustomEntry(e) && e.customType === "ask-user-style",
+            isCustomEntry(e) && e.customType === customType,
     );
-    const data = entry?.data as Record<string, unknown> | undefined;
+    return entry?.data as Record<string, unknown> | undefined;
+}
 
-    // Prefer new `mode` field
+function getStyleMode(entries: unknown[]): StyleMode {
+    const data = findCustomData(entries, "ask-user-style");
     const mode = data?.mode;
     if (mode === "always" || mode === "plain" || mode === "yolo") {
         return mode;
     }
-
-    // Fall back to legacy `enabled` field for backward compatibility
-    const enabled = data?.enabled;
-    if (enabled === false) return "plain";
-    return "always"; // true, null, or missing → default
+    return data?.enabled === false ? "plain" : "always";
 }
 
 function getThemeSettings(entries: unknown[]): {
     theme?: ThemeMode;
     animationLevel?: AnimationLevel;
 } {
-    const entry = entries.find(
-        (e): e is CustomJournalEntry =>
-            isCustomEntry(e) && e.customType === "ask-user-theme",
-    );
-    const data = entry?.data as Record<string, unknown> | undefined;
+    const data = findCustomData(entries, "ask-user-theme");
     const theme = typeof data?.theme === "string" ? data.theme : undefined;
     const animationLevel =
         typeof data?.animationLevel === "string"
@@ -120,25 +106,6 @@ function getThemeSettings(entries: unknown[]): {
 
 /* ── Auto-catch helpers ── */
 
-function isTextContent(c: unknown): c is { type: "text"; text: string } {
-    return (
-        typeof c === "object" &&
-        c !== null &&
-        (c as Record<string, unknown>).type === "text" &&
-        typeof (c as Record<string, unknown>).text === "string"
-    );
-}
-
-function extractTextFromAgentMessage(message: AgentMessage): string {
-    if (message.role !== "assistant") return "";
-    const content = message.content;
-    if (!Array.isArray(content)) return "";
-    return content
-        .filter(isTextContent)
-        .map((c) => c.text)
-        .join("\n");
-}
-
 function findLastAssistantMessage(
     messages: AgentMessage[],
 ): AgentMessage | undefined {
@@ -155,6 +122,29 @@ function wasAutoCaught(entries: unknown[], messageText: string): boolean {
     );
 }
 
+/** Extract text blocks from a content array (AgentMessage or journal entry). */
+function extractTextFromContent(content: unknown): string {
+    if (typeof content === "string") return content;
+    if (!Array.isArray(content)) return "";
+    return content
+        .filter(
+            (c): c is { type: string; text: string } =>
+                typeof c === "object" &&
+                c !== null &&
+                typeof (c as Record<string, unknown>).type === "string" &&
+                typeof (c as Record<string, unknown>).text === "string",
+        )
+        .map((c) => c.text)
+        .join("\n");
+}
+
+function extractTextFromAgentMessage(message: AgentMessage): string {
+    if (message.role !== "assistant") return "";
+    const content = message.content;
+    if (!Array.isArray(content)) return "";
+    return extractTextFromContent(content);
+}
+
 /* ── Shared helpers for consistent ask_user UX across all entry points ── */
 
 /** Enrich raw ask_user params with persisted theme/animation settings. */
@@ -167,9 +157,7 @@ function enrichWithThemeSettings(
 }
 
 /** Persist theme/animation changes back to the session journal. */
-function saveThemeMetadata(
-    metadata: import("./tool/ask-user.js").AskUserMetadata,
-) {
+function saveThemeMetadata(metadata: AskUserMetadata) {
     if ((metadata.theme || metadata.animationLevel) && _pi) {
         _pi.appendEntry("ask-user-theme", {
             theme: metadata.theme,
@@ -186,7 +174,7 @@ async function runAskUserWithTheme(
 ): Promise<ReturnType<typeof askUserHandler>> {
     const entries = ctx.sessionManager.getEntries();
     const params = enrichWithThemeSettings(rawParams, entries);
-    let metadata: import("./tool/ask-user.js").AskUserMetadata = {};
+    let metadata: AskUserMetadata = {};
 
     // Capture the agent's preceding message as additional context
     const preamble = buildAgentPreamble(params, entries);
@@ -209,32 +197,16 @@ async function runAskUserWithTheme(
 /** Extract plain text from a Pi journal assistant entry. */
 function extractTextFromAssistantEntry(entry: unknown): string {
     if (!entry || typeof entry !== "object") return "";
-    const e = entry as Record<string, unknown>;
-    const message = e.message;
-    if (!message || typeof message !== "object") return "";
-    const msg = message as Record<string, unknown>;
-
-    const content = msg.content;
-    if (typeof content === "string") return content;
-    if (!Array.isArray(content)) return "";
-
-    return content
-        .filter(
-            (c): c is { type: string; text: string } =>
-                typeof c === "object" &&
-                c !== null &&
-                typeof (c as Record<string, unknown>).type === "string" &&
-                typeof (c as Record<string, unknown>).text === "string",
-        )
-        .map((c) => c.text)
-        .join("\n");
+    const msg = (entry as Record<string, unknown>).message;
+    if (!msg || typeof msg !== "object") return "";
+    return extractTextFromContent((msg as Record<string, unknown>).content);
 }
 
 /** Find the most recent assistant entry in the session journal. */
 function findLastAssistantEntry(entries: unknown[]): unknown | undefined {
     return [...entries].reverse().find((e) => {
         if (!e || typeof e !== "object") return false;
-        const entry = e as unknown as Record<string, unknown>;
+        const entry = e as Record<string, unknown>;
         const msg = entry.message;
         if (!msg || typeof msg !== "object" || msg === null) return false;
         return (msg as Record<string, unknown>).role === "assistant";
@@ -461,27 +433,63 @@ function buildDebugParams(mode: string): AskUserParams | null {
                 context: `<div style="font-family: ui-sans-serif, system-ui, sans-serif; overflow-wrap: break-word;">
   <h2 style="color: hsl(var(--primary)); margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 600;">🧪 Debug Kitchen Sink</h2>
   <p style="color: hsl(var(--muted-foreground)); margin-bottom: 1rem; line-height: 1.5;">
-    This dialog demonstrates every major feature of <code style="background: hsl(var(--muted)); padding: 0.125rem 0.25rem; border-radius: 4px; font-size: 0.875em;">pi-ask-user-glimpse</code> in one place.
+    This dialog demonstrates every major feature — including the built-in <code style="background: hsl(var(--muted)); padding: 0.125rem 0.25rem; border-radius: 4px; font-size: 0.875em;">pi</code> charting helpers.
   </p>
-  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
-    <div style="padding: 0.75rem; background: hsl(var(--muted)); border-radius: 8px; border: 1px solid hsl(var(--border));">
-      <div style="font-weight: 600; color: hsl(var(--foreground)); margin-bottom: 0.25rem; font-size: 0.9375rem;">Single Select</div>
-      <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">Radio-style with recommended badges</div>
-    </div>
-    <div style="padding: 0.75rem; background: hsl(var(--muted)); border-radius: 8px; border: 1px solid hsl(var(--border));">
-      <div style="font-weight: 600; color: hsl(var(--foreground)); margin-bottom: 0.25rem; font-size: 0.9375rem;">Multi Select</div>
-      <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">Checkbox-style with select-all</div>
-    </div>
-    <div style="padding: 0.75rem; background: hsl(var(--muted)); border-radius: 8px; border: 1px solid hsl(var(--border));">
-      <div style="font-weight: 600; color: hsl(var(--foreground)); margin-bottom: 0.25rem; font-size: 0.9375rem;">Freeform</div>
-      <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">Open-text textarea input</div>
-    </div>
-    <div style="padding: 0.75rem; background: hsl(var(--muted)); border-radius: 8px; border: 1px solid hsl(var(--border));">
-      <div style="font-weight: 600; color: hsl(var(--foreground)); margin-bottom: 0.25rem; font-size: 0.9375rem;">Questionnaire</div>
-      <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">Multi-question card layout</div>
-    </div>
-  </div>
-  <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem; line-height: 1.5;">
+
+  <div id="chart-bar" style="margin-bottom: 1rem;"></div>
+  <div id="chart-pie" style="margin-bottom: 1rem;"></div>
+  <div id="comparison-table" style="margin-bottom: 1rem;"></div>
+  <div id="pros-cons" style="margin-bottom: 1rem;"></div>
+  <div id="timeline" style="margin-bottom: 1rem;"></div>
+  <div id="metrics" style="margin-bottom: 1rem;"></div>
+
+  <script>
+    pi.barChart('#chart-bar', [
+      {label: 'Monolith', value: 95},
+      {label: 'Microservices', value: 70},
+      {label: 'Serverless', value: 55}
+    ], {title: 'Deployment Velocity Score', highlightIndex: 0, showValues: true});
+
+    pi.pieChart('#chart-pie', [
+      {label: 'Auth', value: 30},
+      {label: 'Cache', value: 25},
+      {label: 'Rate Limit', value: 20},
+      {label: 'Observability', value: 25}
+    ], {title: 'Feature Effort Distribution', donut: true, showLegend: true});
+
+    pi.table('#comparison-table',
+      ['Feature', 'Monolith', 'Microservices', 'Serverless'],
+      [
+        ['Complexity', 'Low', 'High', 'Medium'],
+        ['Scalability', 'Vertical', 'Horizontal', 'Auto'],
+        ['Cost', 'Fixed', 'Variable', 'Pay-per-use'],
+        ['Team Size', 'Small', 'Large', 'Any']
+      ],
+      {title: 'Architecture Comparison', highlightColumn: 1, striped: true, compact: true}
+    );
+
+    pi.prosCons('#pros-cons',
+      ['Simple deployment', 'Single codebase', 'Easy debugging', 'Low infra cost'],
+      ['Hard to scale', 'Tight coupling', 'Single point of failure', 'Slower CI/CD'],
+      {title: 'Monolith Trade-offs'}
+    );
+
+    pi.timeline('#timeline', [
+      {date: 'Week 1', title: 'Scoping', status: 'complete'},
+      {date: 'Week 2', title: 'Design', status: 'complete'},
+      {date: 'Week 3', title: 'Build MVP', status: 'current'},
+      {date: 'Week 4', title: 'Launch', status: 'pending'}
+    ], {title: 'Project Timeline'});
+
+    pi.metrics('#metrics', [
+      {label: 'Latency (p99)', value: '42ms', change: '-12%', trend: 'down'},
+      {label: 'Throughput', value: '12.4k rps', change: '+8%', trend: 'up'},
+      {label: 'Error Rate', value: '0.02%', change: '-0.01%', trend: 'down'},
+      {label: 'Uptime', value: '99.97%', change: '+0.02%', trend: 'up'}
+    ], {title: 'System Metrics', columns: 2});
+  </script>
+
+  <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem; line-height: 1.5; margin-top: 1rem;">
     Try keyboard navigation (↑↓ to move, Enter to select, / to search), theme toggle (⚙️), and the comment field.
   </p>
 </div>`,
@@ -528,18 +536,35 @@ function buildDebugParams(mode: string): AskUserParams | null {
     }
 }
 
+const TOOL_DESCRIPTION = [
+    "Ask the user a question with optional multiple-choice answers.",
+    "Use this to gather information interactively. Ask exactly one focused question per call.",
+    "Before calling, gather context with tools (read/web/ref) and pass a short summary via the context field.",
+    "The context panel supports Mermaid diagrams (flowcharts, sequence diagrams, etc.).",
+    "For richer visualizations, use contextFormat: 'html' with the built-in pi charting helpers:",
+    "  pi.table(['Feature','A','B'], [['Auth','OAuth','SAML']], {highlightColumn:1}) — comparison tables;",
+    "  pi.barChart('#chart', [{label:'A',value:30},{label:'B',value:80}], {highlightIndex:1}) — bar charts;",
+    "  pi.prosCons('#pc', ['Fast','Simple'], ['Expensive','Locked'], {}) — trade-offs;",
+    "  pi.metrics('#m', [{label:'Uptime',value:'99.9%',change:'+0.1%',trend:'up'}]) — KPI cards;",
+    "  pi.pieChart('#pie', [{label:'X',value:30},{label:'Y',value:70}], {donut:true}) — distributions;",
+    "  pi.timeline('#t', [{date:'Q1',title:'Plan',status:'complete'},{date:'Q2',title:'Build',status:'current'}]) — roadmaps.",
+    "All helpers auto-theme to light/dark mode.",
+].join(" ");
+
 const askUserTool = defineTool({
     name: "ask_user",
     label: "Ask User",
-    description:
-        "Ask the user a question with optional multiple-choice answers. Use this to gather information interactively. Ask exactly one focused question per call. Before calling, gather context with tools (read/web/ref) and pass a short summary via the context field. The context panel supports Mermaid diagrams (flowcharts, sequence diagrams, etc.) — include them when visualizing architecture, flows, or relationships would aid understanding.",
+    description: TOOL_DESCRIPTION,
     promptSnippet:
         "Ask the user one focused question with optional multiple-choice answers to gather information interactively",
     promptGuidelines: [
         "Always use ask_user instead of guessing when user input would improve the answer.",
         "Keep the question field short and focused (ideally one sentence). Put background, examples, or elaboration in the context field.",
         "Include Mermaid diagrams in the context field when visualizing architecture, data flows, or decision trees would help the user understand the question.",
-        "Use contextFormat: 'html' for throwaway visualizations (charts, tables, layouts) that text cannot communicate. The iframe inherits the wrapper's CSS variables for theme consistency.",
+        "Use contextFormat: 'html' for rich visualizations (comparison tables, bar charts, pros/cons lists, metric cards, timelines, and layouts) that help the user understand trade-offs and make faster decisions. The iframe inherits the wrapper's CSS variables for automatic theme consistency.",
+        "When comparing 3+ options, render a comparison table with pi.table(headers, rows, {highlightColumn: recommendedIndex}).",
+        "When showing quantitative data or performance metrics, use pi.barChart() or pi.metrics() to visualize the numbers.",
+        "When weighing trade-offs, use pi.prosCons() to show a side-by-side comparison.",
         "Pass a concise question and, when applicable, a list of options with short titles and optional longer descriptions.",
         "List options from most recommended to least recommended.",
         "Set allowMultiple: true when more than one choice is valid.",
@@ -553,13 +578,13 @@ const askUserTool = defineTool({
         context: Type.Optional(
             Type.String({
                 description:
-                    "Background, examples, or elaboration that helps the user understand the question. Shown in a side panel, so keep the question itself concise. Supports Mermaid diagrams (flowcharts, sequence diagrams, etc.) — wrap them in ```mermaid code blocks. Use contextFormat: 'html' for rich visualizations.",
+                    "Background, examples, or elaboration that helps the user understand the question. Shown in a side panel, so keep the question itself concise. Supports Mermaid diagrams (flowcharts, sequence diagrams, etc.) — wrap them in ```mermaid code blocks. Use contextFormat: 'html' for rich visualizations with the built-in pi helpers (pi.table, pi.barChart, pi.prosCons, pi.metrics, pi.pieChart, pi.timeline).",
             }),
         ),
         contextFormat: Type.Optional(
             StringEnum(["markdown", "html"], {
                 description:
-                    "Format of the context field. 'markdown' (default) renders as formatted text. 'html' renders in a sandboxed iframe — useful for throwaway charts, tables, or interactive visualizations. The iframe inherits the wrapper's CSS variables for theme consistency.",
+                    "Format of the context field. 'markdown' (default) renders as formatted text. 'html' renders in a sandboxed iframe with automatic light/dark theme consistency. Use HTML context for comparison tables, bar charts, pros/cons lists, metric cards, timelines, and interactive layouts that help the user understand trade-offs and decide faster.",
             }),
         ),
         options: Type.Optional(
@@ -680,6 +705,25 @@ export default function (pi: ExtensionAPI) {
     _pi = pi;
     pi.registerTool(askUserTool);
 
+    /** Send a user answer back into the journal with consistent error handling. */
+    async function deliverAnswer(
+        prefix: string,
+        answer: string,
+        ctx: ExtensionContext,
+    ) {
+        try {
+            await pi.sendUserMessage(`${prefix}\n\n${answer}`, {
+                deliverAs: "steer",
+            });
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(
+                `[pi-ask-user-glimpse] sendUserMessage failed: ${msg}`,
+            );
+            ctx.ui?.notify(`Failed to send answer: ${msg}`, "error");
+        }
+    }
+
     // ── Inject mandate based on style mode ──
     pi.on("before_agent_start", async (event, ctx) => {
         const hasAskUser =
@@ -746,21 +790,7 @@ export default function (pi: ExtensionAPI) {
         const answer = textContent?.type === "text" ? textContent.text : "";
         if (!answer) return;
 
-        try {
-            await pi.sendUserMessage(
-                `${answerPrefix(questions.length)}\n\n${answer}`,
-                { deliverAs: "steer" },
-            );
-        } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            console.error(
-                `[pi-ask-user-glimpse] sendUserMessage failed: ${msg}`,
-            );
-            ctx.ui?.notify(
-                `Failed to send answer: ${msg}`,
-                "error",
-            );
-        }
+        await deliverAnswer(answerPrefix(questions.length), answer, ctx);
     });
 
     // ── Manual style toggle for ask_user behavior ──
@@ -837,21 +867,7 @@ export default function (pi: ExtensionAPI) {
             const answer = textContent?.type === "text" ? textContent.text : "";
             if (!answer) return;
 
-            try {
-                await pi.sendUserMessage(
-                    `${answerPrefix(questions.length)}\n\n${answer}`,
-                    { deliverAs: "steer" },
-                );
-            } catch (err) {
-                const msg = err instanceof Error ? err.message : String(err);
-                console.error(
-                    `[pi-ask-user-glimpse] sendUserMessage failed: ${msg}`,
-                );
-                ctx.ui.notify(
-                    `Failed to send answer: ${msg}`,
-                    "error",
-                );
-            }
+            await deliverAnswer(answerPrefix(questions.length), answer, ctx);
         },
     });
 

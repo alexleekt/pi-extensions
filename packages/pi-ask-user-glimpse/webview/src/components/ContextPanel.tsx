@@ -1,8 +1,9 @@
 import { marked } from "marked";
 import mermaid from "mermaid";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { renderMarkdownInline, sanitizeHtml } from "../util/markdown";
-import { useSettings } from "../util/settings";
+import { PI_CHARTS_LIBRARY } from "../util/pi-charts.js";
+import { renderMarkdownInline, sanitizeHtml } from "../util/markdown.js";
+import { useSettings } from "../util/settings.js";
 import { HelpIcon } from "./icons";
 import SettingsButton from "./SettingsButton";
 
@@ -13,13 +14,15 @@ interface ContextPanelProps {
     onShowShortcuts?: () => void;
 }
 
-const mermaidRenderer = new (class extends marked.Renderer {
+class MermaidRenderer extends marked.Renderer {
     code({ text, lang }: { text: string; lang?: string }) {
         return lang === "mermaid"
             ? `<div class="mermaid">${text}</div>`
             : super.code({ text, lang, escaped: false });
     }
-})();
+}
+
+const mermaidRenderer = new MermaidRenderer();
 
 function renderContextMarkdown(text: string): string {
     return sanitizeHtml(
@@ -30,68 +33,49 @@ function renderContextMarkdown(text: string): string {
     );
 }
 
-let _lastMermaidTheme: "default" | "dark" | undefined;
-
 function initMermaid(theme: "light" | "dark") {
-    const mermaidTheme = theme === "dark" ? "dark" : "default";
-    if (_lastMermaidTheme === mermaidTheme) return;
     try {
         mermaid.initialize({
             startOnLoad: false,
             securityLevel: "loose",
-            theme: mermaidTheme,
+            theme: theme === "dark" ? "dark" : "default",
         });
-        _lastMermaidTheme = mermaidTheme;
     } catch {
         // mermaid.run() may still work despite init failure
     }
 }
 
-const IFRAME_CSS_VARS = `
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
-`;
+/** Theme variables for the HTML context iframe, keyed by variable name. */
+const IFRAME_CSS_VAR_MAP: Record<string, { light: string; dark: string }> = {
+    background: { light: "0 0% 100%", dark: "240 10% 3.9%" },
+    foreground: { light: "240 10% 3.9%", dark: "0 0% 98%" },
+    card: { light: "0 0% 100%", dark: "240 10% 3.9%" },
+    "card-foreground": { light: "240 10% 3.9%", dark: "0 0% 98%" },
+    popover: { light: "0 0% 100%", dark: "240 10% 3.9%" },
+    "popover-foreground": { light: "240 10% 3.9%", dark: "0 0% 98%" },
+    primary: { light: "240 5.9% 10%", dark: "0 0% 98%" },
+    "primary-foreground": { light: "0 0% 98%", dark: "240 5.9% 10%" },
+    secondary: { light: "240 4.8% 95.9%", dark: "240 3.7% 15.9%" },
+    "secondary-foreground": { light: "240 5.9% 10%", dark: "0 0% 98%" },
+    muted: { light: "240 4.8% 95.9%", dark: "240 3.7% 15.9%" },
+    "muted-foreground": { light: "240 3.8% 46.1%", dark: "240 5% 64.9%" },
+    accent: { light: "240 4.8% 95.9%", dark: "240 3.7% 15.9%" },
+    "accent-foreground": { light: "240 5.9% 10%", dark: "0 0% 98%" },
+    destructive: { light: "0 84.2% 60.2%", dark: "0 62.8% 30.6%" },
+    "destructive-foreground": { light: "0 0% 98%", dark: "0 0% 98%" },
+    border: { light: "240 5.9% 90%", dark: "240 3.7% 15.9%" },
+    input: { light: "240 5.9% 90%", dark: "240 3.7% 15.9%" },
+    ring: { light: "240 5.9% 10%", dark: "240 4.9% 83.9%" },
+    radius: { light: "0.5rem", dark: "0.5rem" },
+};
 
-const IFRAME_CSS_VARS_DARK = `
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --radius: 0.5rem;
-`;
+function buildCssVarBlock(theme: "light" | "dark"): string {
+    const selector = theme === "light" ? ":root" : ".dark";
+    const entries = Object.entries(IFRAME_CSS_VAR_MAP)
+        .map(([name, values]) => `    --${name}: ${values[theme]};`)
+        .join("\n");
+    return `${selector} {\n${entries}\n}`;
+}
 
 const IFRAME_CSS = `body {
     background-color: hsl(var(--background));
@@ -119,14 +103,13 @@ function buildIframeSrcdoc(rawHtml: string, theme: "light" | "dark"): string {
 <head>
 <meta charset="utf-8">
 <style>
-:root {
-${IFRAME_CSS_VARS}
-}
-.dark {
-${IFRAME_CSS_VARS_DARK}
-}
+${buildCssVarBlock("light")}
+${buildCssVarBlock("dark")}
 ${IFRAME_CSS}
 </style>
+<script>
+${PI_CHARTS_LIBRARY}
+</script>
 </head>
 <body class="${theme}">
 ${rawHtml}
