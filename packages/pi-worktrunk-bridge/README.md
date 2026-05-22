@@ -1,6 +1,9 @@
-# pi-worktrunk-bridge
+# @alexleekt/pi-worktrunk-signal
 
-Bridge [worktrunk](https://worktrunk.dev) with [Pi](https://pi.dev) — bringing Claude Code-style worktree integration to the terminal-native coding harness.
+[![npm](https://img.shields.io/npm/v/@alexleekt/pi-worktrunk-signal)](https://www.npmjs.com/package/@alexleekt/pi-worktrunk-signal)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+Signal where you are in the [worktrunk](https://worktrunk.dev) forest — a [Pi](https://pi.dev) extension that brings worktree context to your terminal-native coding harness.
 
 ## Features
 
@@ -16,13 +19,13 @@ Bridge [worktrunk](https://worktrunk.dev) with [Pi](https://pi.dev) — bringing
 ## Install
 
 ```bash
-pi install git:github.com/yourusername/pi-worktrunk-bridge
+pi install npm:@alexleekt/pi-worktrunk-signal
 ```
 
 Or symlink for local development:
 
 ```bash
-ln -s $(pwd) ~/.pi/agent/extensions/pi-worktrunk-bridge
+ln -s $(pwd) ~/.pi/agent/extensions/pi-worktrunk-signal
 ```
 
 Then `/reload` inside Pi.

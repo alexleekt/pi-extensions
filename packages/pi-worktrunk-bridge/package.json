@@ -1,7 +1,7 @@
 {
-  "name": "pi-worktrunk-bridge",
+  "name": "@alexleekt/pi-worktrunk-signal",
   "version": "0.2.0",
-  "description": "Bridge worktrunk with Pi — worktree overlay with inline create, statusline, and activity tracking",
+  "description": "Signal where you are in the worktrunk forest — overlay, statusline, and activity tracking",
   "keywords": ["pi-package", "pi-extension", "worktrunk", "git-worktree"],
   "license": "MIT",
   "pi": {
