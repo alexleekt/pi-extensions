@@ -39,7 +39,7 @@ The agent gets a clean selection back. You get a decision made in seconds, not m
 - **Keyboard shortcuts legend** — press `?` in the header bar to see all available shortcuts
 - **Prominent question header** — full non-truncated question text in the header bar, with settings cog and keyboard-shortcuts help
 - **Native WebView** — renders in a real window (macOS WKWebView / Linux GTK4 / Windows WebView2)
-- **Terminal fallback** — gracefully degrades to TUI prompts when glimpseui is unavailable
+- **Graceful degradation** — returns clear error when no UI is available, prompting the agent to ask in free-form text
 
 ## Install
 
@@ -298,7 +298,7 @@ index.ts              → Pi extension entrypoint (tool + command registration)
 constants/            → STOPWORDS, PROTECTED_ABBREVIATIONS
 tool/ask-user.ts      → constructs payload, injects into HTML, calls glimpseui.prompt()
 tool/response-formatter.ts → normalizes WebView response for Pi
-fallback/terminal-prompt.ts → readline fallback when WebView unavailable
+(no terminal fallback — fast-escape with error when UI unavailable)
 webview/              → Vite + React + Tailwind app
   src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform, ContextPanel, ErrorBoundary, HeaderBar, ShortcutsModal, AdditionalComments
   src/util/           → settings.tsx (theme/animation context), glimpse.ts (host bridge), platform.ts (modKey), html.ts (escapeHtml + highlightMatch)
@@ -311,9 +311,9 @@ webview/              → Vite + React + Tailwind app
 
 Run `npm run build` to generate `dist/index.html`. The extension cannot work without the webview bundle.
 
-### WebView does not open (terminal fallback instead)
+### WebView does not open
 
-The extension falls back to TUI prompts when the glimpseui native host is unavailable. This is normal on headless systems or if the native binary is missing. Check `npm run validate` to see if the binary is detected.
+If the glimpseui native host is unavailable, the extension returns an error to the agent, which will ask the question in free-form text instead. This is normal on headless systems or if the native binary is missing. Check `npm run validate` to see if the binary is detected.
 
 ### Dialog shows "Missing or invalid ask_user payload"
 

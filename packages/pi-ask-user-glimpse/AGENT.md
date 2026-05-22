@@ -16,7 +16,7 @@ This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](.
 
 1. **Self-contained bundle** — `dist/index.html` must have zero external network requests. All JS, CSS, and assets inlined.
 2. **Payload injection contract** — The `/*ASK_USER_PAYLOAD*/` placeholder replacement MUST escape `<`, `>`, and `&` as `\u003c`, `\u003e`, `\u0026` to prevent HTML injection.
-3. **Terminal fallback** — If `glimpseui.prompt()` throws, fall back to `fallback/terminal-prompt.ts` via `ctx.ui` TUI methods. Never crash Pi.
+3. **Fast-escape on UI failure** — If `glimpseui.prompt()` throws and no UI is available, return an explicit error telling the agent to ask in free-form text. Never crash Pi.
 4. **No setTimeout in extension factory** — The factory function must never use `setTimeout`, `setImmediate`, or deferred callbacks. Unhandled errors in deferred callbacks crash Pi.
 5. **`noEmit` tsconfig** — Pi loads `.ts` files directly. Do NOT add `outDir` or `declaration` settings.
 

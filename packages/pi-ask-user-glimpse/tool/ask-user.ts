@@ -4,7 +4,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { prompt } from "glimpseui";
-import { terminalPrompt } from "../fallback/terminal-prompt.js";
 import type {
     AnimationLevel,
     AskUserPayload,
@@ -17,6 +16,9 @@ const _require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 import { STOPWORDS } from "../constants/stopwords.js";
+
+/** Warn once per process when Glimpse is unavailable. */
+let _warnedGlimpseUnavailable = false;
 
 /** Extract a short title from a question by removing stopwords.
  *  Falls back to first 5 words if nothing meaningful remains.
@@ -204,32 +206,30 @@ export async function askUserHandler(
             });
         }
     } catch (err) {
-        // Glimpse unavailable — fast-exit if no terminal UI either
-        if (!ctx.hasUI) {
-            return {
-                content: [
-                    {
-                        type: "text" as const,
-                        text: "No UI available for ask_user dialog. Please ask the user directly in free-form text.",
-                    },
-                ],
-                details: {
-                    question: params.question,
-                    options: normalizedOptions.map((o) => o.title),
-                    response: null,
-                    cancelled: true,
-                    error: "No UI available",
+        // Glimpse unavailable — fast-exit and warn once
+        if (!_warnedGlimpseUnavailable) {
+            _warnedGlimpseUnavailable = true;
+            console.warn(
+                "[pi-ask-user-glimpse] Glimpse unavailable — " +
+                    "ask_user will return errors. " +
+                    "Install glimpseui or run in a UI-enabled environment.",
+            );
+        }
+        return {
+            content: [
+                {
+                    type: "text" as const,
+                    text: "No UI available for ask_user dialog. Please ask the user directly in free-form text.",
                 },
-            };
-        }
-        // Terminal UI available — fall back to TUI prompt
-        const fallbackResult = await terminalPrompt(payload, ctx.ui);
-        if (fallbackResult === null) {
-            cancelled = true;
-        } else {
-            result = fallbackResult;
-        }
-        error = err instanceof Error ? err.message : String(err);
+            ],
+            details: {
+                question: params.question,
+                options: normalizedOptions.map((o) => o.title),
+                response: null,
+                cancelled: true,
+                error: "No UI available",
+            },
+        };
     }
 
     return formatResponse(
