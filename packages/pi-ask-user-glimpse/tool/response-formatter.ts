@@ -80,14 +80,14 @@ function buildResponse(
 
 function responseToText(response: AskResponse): string {
     if (response.kind === "freeform") {
-        return response.text ?? "";
+        return response.text?.trim() || "No response";
     }
     const lines: string[] = [];
     const selections = response.selections ?? [];
     if (selections.length > 0) lines.push(selections.join(", "));
     if (response.comment) lines.push(`Comment: ${response.comment}`);
     if (response.additionalComments) lines.push(`Additional Comments: ${response.additionalComments}`);
-    return lines.join("\n\n");
+    return lines.join("\n\n") || "No response";
 }
 
 export function formatResponse(
