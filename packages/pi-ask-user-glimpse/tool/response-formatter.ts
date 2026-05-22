@@ -60,6 +60,7 @@ function buildResponse(
                       };
                   })
                 : [],
+            additionalComments: pickString(result.additionalComments),
         };
     }
 

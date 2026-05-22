@@ -19,10 +19,8 @@ export default function Freeform({
 
     const handleSubmit = useCallback(() => {
         if (isSubmitting) return;
-        const trimmed = text.trim();
-        if (!trimmed) return;
         setIsSubmitting(true);
-        sendToGlimpse({ kind: "freeform", text: trimmed });
+        sendToGlimpse({ kind: "freeform", text: text.trim() });
     }, [isSubmitting, text]);
 
     useDialogKeys({ onSubmit: handleSubmit, isSubmitting });

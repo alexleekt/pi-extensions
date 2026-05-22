@@ -107,6 +107,7 @@ export default function App() {
                         {/* context is defined when hasContext is true */}
                         <ContextPanel
                             context={payload.context!}
+                            contextFormat={payload.contextFormat}
                             question={payload.question}
                             onShowShortcuts={() => setShowShortcuts(true)}
                         />
