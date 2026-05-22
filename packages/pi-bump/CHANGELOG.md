@@ -13,11 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Event-loop blocking from `context` handler**: The `pi.on("context")` handler used `.map()` to allocate a new array on every context event, causing O(n) churn per LLM turn. It now scans with `.some()` first and only allocates when an invisible continue marker is present — eliminating array allocation in the 99% case.
 - **Race condition in `input` handler**: The `pi.on("input")` handler was declared `async` with no `await`, deferring escalation reset to a microtask. This created a race where a rapid assistant response could compare against the previous turn's fingerprint, triggering false escalation. Both `input` and `context` handlers are now synchronous.
 - **debugSessions leak**: `debugSessions` entries were never cleaned up on session shutdown, causing unbounded Set growth. Now properly deleted in the `session_shutdown` handler.
+- **Tool-call fingerprint missed nested loops**: `JSON.stringify(parsed, Object.keys(parsed).sort())` only sorted top-level object keys. Nested argument objects in different key orders produced different fingerprints, causing false-negative loop detection. Now uses a recursive `sortKeys()` helper for deep normalization.
+- **`/continue` ignored pending messages**: The `/continue` command only checked `isIdle()` and could fire while messages were pending, unlike the double-tap handler which guards with both `isIdle()` and `hasPendingMessages()`. The command now also blocks when messages are pending.
+- **Silent send failures**: `sendContinue()` caught send errors with `console.error`, which is invisible in the TUI. Now routes failures through `notifySafely()` so the user sees an error notification.
+- **Unknown subcommands treated as `/continue`**: Typing `/continue foobar` fell through to the main continue path. Now shows a warning with a pointer to `/continue help`.
+- **Empty assistant responses escaped loop detection**: Two consecutive empty assistant messages (no text, no tool calls) were not detected as loops because `isLoop()` required truthy `a.text && b.text`. Now compares `(a.text ?? "")` so empty responses are correctly identified as loops.
 
 ### Changed
 
-- **Conditional key monitoring**: In normal mode, only `Enter` is monitored for double-tap detection (down from 5 keys: enter, backspace, delete, ctrl+enter, alt+enter). This reduces `matchesKey()` calls by 80% per keystroke. Debug mode (`BUMP_DEBUG=1`) still monitors all keys.
-- **Fast-path for typed input**: The editor text check happens before key matching. When the user is actively typing, only Enter needs to be matched — avoiding unnecessary `matchesKey()` work.
+- **Test coverage expanded**: 10 new integration tests covering the `/continue` command path, `context` handler, session shutdown cleanup, empty response loop detection, unknown subcommand guard, and pending-messages block.
 
 ## [0.3.1] - 2026-05-21
 

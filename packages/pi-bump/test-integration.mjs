@@ -5,7 +5,7 @@
 // Simulates the ExtensionAPI and ExtensionContext to verify double-Enter logic.
 // Run: node test-integration.mjs
 
-import bumpExtension from "./index.ts";
+import bumpExtension, { NUDGE_MESSAGES } from "./index.ts";
 
 let sentMessages = [];
 let sentUserMessages = [];
@@ -15,6 +15,10 @@ let hasPending = false;
 let terminalHandler = null;
 let inputHandler = null;
 let messageEndHandler = null;
+let notifications = [];
+let commandHandlers = {};
+let contextHandler = null;
+let sessionShutdownHandler = null;
 
 const mockUI = {
     onTerminalInput: (handler) => {
@@ -24,6 +28,9 @@ const mockUI = {
         };
     },
     getEditorText: () => editorText,
+    notify: (message, type) => {
+        notifications.push({ message, type });
+    },
 };
 
 const sessionId = "test-session";
@@ -44,14 +51,20 @@ const mockAPI = {
             inputHandler = handler;
         } else if (event === "message_end") {
             messageEndHandler = handler;
+        } else if (event === "context") {
+            contextHandler = handler;
+        } else if (event === "session_shutdown") {
+            sessionShutdownHandler = handler;
         }
     },
-    registerCommand: () => {},
+    registerCommand: (name, config) => {
+        commandHandlers[name] = config.handler;
+    },
     sendMessage: (message, options) => {
-        sentMessages.push({ message, options, at: Date.now() });
+        sentMessages.push({ message, options });
     },
     sendUserMessage: (content, options) => {
-        sentUserMessages.push({ content, options, at: Date.now() });
+        sentUserMessages.push({ content, options });
     },
 };
 
@@ -61,15 +74,20 @@ bumpExtension(mockAPI);
 function reset() {
     sentMessages = [];
     sentUserMessages = [];
+    notifications = [];
     editorText = "";
     idle = true;
     hasPending = false;
+    // Reset extension per-session state to prevent cross-test contamination
+    if (inputHandler) {
+        inputHandler({ source: "interactive", text: "reset" }, mockCtx);
+    }
 }
 
 function simulateAssistantResponse(content, toolCalls) {
     if (messageEndHandler) {
         messageEndHandler(
-            { message: { role: "assistant", content, tool_calls: toolCalls } },
+            { message: { role: "assistant", content, tool_calls: toolCalls ?? undefined } },
             mockCtx,
         );
     }
@@ -81,27 +99,12 @@ function simulateUserInput(text) {
     }
 }
 
-const NUDGE_MESSAGES = [
-    "Continue",
-    "Keep going",
-    "What's next?",
-    "Onward!",
-    "And then?",
-    "Build on that",
-    "More please",
-    "Next step?",
-    "Keep the momentum",
-    "Let's see it",
-    "Expand on this",
-    "Go deeper",
-    "Proceed",
-    "Keep building",
-    "Show me where this leads",
-    "Run it",
-];
+function assertInvisible(name, check) {
+    check(name, sentMessages.length === 1 && sentMessages[0].message.customType === "__invisible_continue");
+}
 
-function isNudge(content) {
-    return NUDGE_MESSAGES.includes(content);
+function assertNudge(name, check) {
+    check(name, sentUserMessages.length === 1 && NUDGE_MESSAGES.includes(sentUserMessages[0].content));
 }
 
 async function runTests() {
@@ -202,7 +205,7 @@ async function runTests() {
         // First continue: invisible
         terminalHandler("\r");
         terminalHandler("\r");
-        check("First double-tap sends invisible", sentMessages.length === 1);
+        assertInvisible("First double-tap sends invisible", check);
 
         // Simulate two identical assistant responses (loop)
         simulateAssistantResponse("I'll continue working on that.");
@@ -212,10 +215,7 @@ async function runTests() {
         sentMessages = [];
         terminalHandler("\r");
         terminalHandler("\r");
-        check(
-            "Escalated double-tap sends visible nudge",
-            sentUserMessages.length === 1 && isNudge(sentUserMessages[0].content),
-        );
+        assertNudge("Escalated double-tap sends visible nudge", check);
         check("No invisible message when escalated", sentMessages.length === 0);
     }
 
@@ -236,11 +236,7 @@ async function runTests() {
         sentUserMessages = [];
         terminalHandler("\r");
         terminalHandler("\r");
-        check(
-            "After non-loop response, goes back to invisible",
-            sentMessages.length === 1 &&
-                sentMessages[0].message.customType === "__invisible_continue",
-        );
+        assertInvisible("After non-loop response, goes back to invisible", check);
         check("No visible nudge after reset", sentUserMessages.length === 0);
     }
 
@@ -261,11 +257,7 @@ async function runTests() {
         sentUserMessages = [];
         terminalHandler("\r");
         terminalHandler("\r");
-        check(
-            "After real input, goes back to invisible",
-            sentMessages.length === 1 &&
-                sentMessages[0].message.customType === "__invisible_continue",
-        );
+        assertInvisible("After real input, goes back to invisible", check);
         check("No visible nudge after real input", sentUserMessages.length === 0);
     }
 
@@ -286,10 +278,7 @@ async function runTests() {
         sentUserMessages = [];
         terminalHandler("\r");
         terminalHandler("\r");
-        check(
-            "Tool-call loop escalates to visible nudge",
-            sentUserMessages.length === 1 && isNudge(sentUserMessages[0].content),
-        );
+        assertNudge("Tool-call loop escalates to visible nudge", check);
         check("No invisible message when tool-loop escalated", sentMessages.length === 0);
     }
 
@@ -310,11 +299,7 @@ async function runTests() {
         sentUserMessages = [];
         terminalHandler("\r");
         terminalHandler("\r");
-        check(
-            "Different tool calls stay on invisible tier",
-            sentMessages.length === 1 &&
-                sentMessages[0].message.customType === "__invisible_continue",
-        );
+        assertInvisible("Different tool calls stay on invisible tier", check);
         check("No visible nudge when tools differ", sentUserMessages.length === 0);
     }
 
@@ -354,6 +339,176 @@ async function runTests() {
         const r2 = terminalHandler("\r"); // enter should be a single tap
         check("Enter after backspace NOT consumed", !r2?.consume);
         check("No message for mixed keys", sentMessages.length === 0);
+    }
+
+    // Test 15: Context handler replaces invisible continue markers
+    {
+        reset();
+        console.log("\nTest 15: Context handler strips invisible markers");
+        const messages = [
+            { role: "user", content: "Hello", timestamp: 1 },
+            {
+                role: "custom",
+                customType: "__invisible_continue",
+                content: "",
+                timestamp: 2,
+            },
+            { role: "assistant", content: "Hi", timestamp: 3 },
+        ];
+        const result = contextHandler({ messages });
+        check(
+            "Context handler returns modified messages",
+            result && Array.isArray(result.messages),
+        );
+        check(
+            "Invisible marker replaced with user Continue",
+            result.messages.some(
+                (m) => m.role === "user" && m.content === "Continue",
+            ),
+        );
+        check(
+            "Original custom message removed",
+            !result.messages.some(
+                (m) =>
+                    m.role === "custom" &&
+                    m.customType === "__invisible_continue",
+            ),
+        );
+    }
+
+    // Test 16: Context handler is no-op when no invisible markers
+    {
+        reset();
+        console.log("\nTest 16: Context handler no-op without markers");
+        const messages = [
+            { role: "user", content: "Hello", timestamp: 1 },
+            { role: "assistant", content: "Hi", timestamp: 2 },
+        ];
+        const result = contextHandler({ messages });
+        check("No modification when no invisible markers", result === undefined);
+    }
+
+    // Test 17: /continue command sends invisible continue
+    {
+        reset();
+        console.log("\nTest 17: /continue command fires invisible tier");
+        await commandHandlers["continue"]("", mockCtx);
+        assertInvisible("/continue sends invisible message", check);
+        check("No visible nudge from /continue", sentUserMessages.length === 0);
+    }
+
+    // Test 18: /continue blocked when messages pending
+    {
+        reset();
+        console.log("\nTest 18: /continue blocked when pending messages");
+        hasPending = true;
+        await commandHandlers["continue"]("", mockCtx);
+        check("/continue blocked when pending", sentMessages.length === 0);
+        check(
+            "Notification sent for blocked continue",
+            notifications.some((n) => n.message.includes("Cannot continue")),
+        );
+        hasPending = false;
+    }
+
+    // Test 19: Unknown /continue subcommand shows warning
+    {
+        reset();
+        console.log("\nTest 19: Unknown /continue subcommand shows warning");
+        await commandHandlers["continue"]("foobar", mockCtx);
+        check(
+            "No message sent for unknown subcommand",
+            sentMessages.length === 0,
+        );
+        check(
+            "Warning notification for unknown subcommand",
+            notifications.some(
+                (n) =>
+                    n.type === "warning" &&
+                    n.message.includes("Unknown subcommand"),
+            ),
+        );
+    }
+
+    // Test 20: /continue status shows diagnostics
+    {
+        reset();
+        console.log("\nTest 20: /continue status shows diagnostics");
+        await commandHandlers["continue"]("status", mockCtx);
+        check(
+            "Status notification sent",
+            notifications.some((n) => n.message.includes("pi-bump status:")),
+        );
+    }
+
+    // Test 21: /continue help shows help text
+    {
+        reset();
+        console.log("\nTest 21: /continue help shows help text");
+        await commandHandlers["continue"]("help", mockCtx);
+        check(
+            "Help notification sent",
+            notifications.some((n) => n.message.includes("/continue status")),
+        );
+    }
+
+    // Test 22: Session shutdown cleans up per-session state
+    {
+        reset();
+        console.log("\nTest 22: Session shutdown cleans up state");
+        // Trigger escalation
+        terminalHandler("\r");
+        terminalHandler("\r");
+        simulateAssistantResponse("I'll continue working on that.");
+        simulateAssistantResponse("I'll continue working on that.");
+        // Simulate shutdown
+        if (sessionShutdownHandler) {
+            sessionShutdownHandler({}, mockCtx);
+        }
+        // After shutdown, next double-tap goes invisible
+        sentMessages = [];
+        sentUserMessages = [];
+        terminalHandler("\r");
+        terminalHandler("\r");
+        assertInvisible("After shutdown, back to invisible tier", check);
+        check("No visible nudge after shutdown cleanup", sentUserMessages.length === 0);
+    }
+
+    // Test 23: Empty assistant responses trigger loop detection
+    {
+        reset();
+        console.log("\nTest 23: Empty assistant responses trigger loop detection");
+        terminalHandler("\r");
+        terminalHandler("\r");
+        simulateAssistantResponse(null);
+        simulateAssistantResponse(null);
+
+        sentMessages = [];
+        sentUserMessages = [];
+        terminalHandler("\r");
+        terminalHandler("\r");
+        assertNudge("Empty responses escalate to visible nudge", check);
+        check("No invisible message for empty-loop escalation", sentMessages.length === 0);
+    }
+
+    // Test 24: /continue command escalates after loop
+    {
+        reset();
+        console.log("\nTest 24: /continue command escalates after loop");
+        // First /continue: invisible
+        await commandHandlers["continue"]("", mockCtx);
+        check("First /continue sends invisible", sentMessages.length === 1);
+
+        // Simulate two identical assistant responses (loop)
+        simulateAssistantResponse("I'll continue working on that.");
+        simulateAssistantResponse("I'll continue working on that.");
+
+        // Next /continue: should escalate to visible
+        sentMessages = [];
+        sentUserMessages = [];
+        await commandHandlers["continue"]("", mockCtx);
+        assertNudge("Escalated /continue sends visible nudge", check);
+        check("No invisible message when escalated", sentMessages.length === 0);
     }
 
     console.log(`\n${pass} passed, ${fail} failed`);

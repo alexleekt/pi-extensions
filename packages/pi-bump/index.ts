@@ -5,6 +5,7 @@ import { manageSessionSubscription } from "@alexleekt/pi-shared/session";
 import type {
     ExtensionAPI,
     ExtensionCommandContext,
+    ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { Key, matchesKey } from "@earendil-works/pi-tui";
 
@@ -15,7 +16,7 @@ const THRESHOLD_MS = 300;
 const CONTINUE_SIGNAL = "Continue";
 
 /** Randomized prompts to break loops with fresh phrasing. */
-const NUDGE_MESSAGES = [
+export const NUDGE_MESSAGES = [
     "Continue",
     "Keep going",
     "What's next?",
@@ -38,6 +39,17 @@ function pickNudge(): string {
     return NUDGE_MESSAGES[Math.floor(Math.random() * NUDGE_MESSAGES.length)];
 }
 
+/** Recursively sort object keys for stable serialization. */
+function sortKeys(obj: unknown): unknown {
+    if (obj === null || typeof obj !== "object") return obj;
+    if (Array.isArray(obj)) return obj.map(sortKeys);
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(obj).sort()) {
+        sorted[key] = sortKeys((obj as Record<string, unknown>)[key]);
+    }
+    return sorted;
+}
+
 const DEBUG_KEYS = [
     Key.enter,
     Key.backspace,
@@ -45,8 +57,6 @@ const DEBUG_KEYS = [
     Key.ctrl("enter"),
     Key.alt("enter"),
 ];
-
-
 
 /** Custom type used for the invisible trigger message. */
 const CONTINUE_CUSTOM_TYPE = "__invisible_continue";
@@ -83,25 +93,25 @@ function extractToolCallsFingerprint(msg: {
     const calls = msg.tool_calls ?? msg.toolCalls;
     if (!calls || !Array.isArray(calls) || calls.length === 0) return undefined;
     return JSON.stringify(
-        calls.map((tc: unknown) => {
-            const tcRec = tc as Record<string, unknown>;
-            const fn = (tcRec.function ?? tcRec.fn) as
+        calls.map((call: unknown) => {
+            const c = call as Record<string, unknown>;
+            const func = (c.function ?? c.fn) as
                 | Record<string, unknown>
                 | undefined;
-            const rawArgs = fn?.arguments ?? tcRec.arguments;
+            const rawArgs = func?.arguments ?? c.arguments;
             // Normalize argument key order to avoid false negatives
             // from object key reordering across turns.
             let args: unknown = rawArgs;
             if (typeof rawArgs === "string") {
                 try {
                     const parsed = JSON.parse(rawArgs);
-                    args = JSON.stringify(parsed, Object.keys(parsed).sort());
+                    args = JSON.stringify(sortKeys(parsed));
                 } catch {
                     args = rawArgs;
                 }
             }
             return {
-                name: fn?.name ?? tcRec.name,
+                name: func?.name ?? c.name,
                 arguments: args,
             };
         }),
@@ -129,13 +139,13 @@ function isLoop(
 ): boolean {
     if (!a || !b) return false;
     if (a.toolCalls && b.toolCalls && a.toolCalls === b.toolCalls) return true;
-    if (!a.toolCalls && !b.toolCalls && a.text && b.text) {
-        return a.text.trim().toLowerCase() === b.text.trim().toLowerCase();
+    if (!a.toolCalls && !b.toolCalls) {
+        const aText = (a.text ?? "").trim().toLowerCase();
+        const bText = (b.text ?? "").trim().toLowerCase();
+        return aText === bText;
     }
     return false;
 }
-
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 function notifySafely(
     ctx: ExtensionContext,
@@ -149,23 +159,31 @@ function notifySafely(
     }
 }
 
+function trySend(
+    pi: ExtensionAPI,
+    ctx: ExtensionContext,
+    send: () => void,
+    errorLabel: string,
+): void {
+    try {
+        send();
+    } catch {
+        notifySafely(ctx, `[pi-bump] Failed to ${errorLabel}`, "error");
+    }
+}
+
 /** Send a continue — invisible by default, visible if escalation is needed. */
 function sendContinue(
     pi: ExtensionAPI,
     sessionId: string,
     needsEscalation: Set<string>,
+    ctx: ExtensionContext,
 ): void {
     if (needsEscalation.has(sessionId)) {
-        // Escalated: send visible user message with randomized nudge
-        try {
-            pi.sendUserMessage(pickNudge());
-        } catch (e) {
-            console.error("[pi-bump] Failed to send visible continue:", e);
-        }
+        trySend(pi, ctx, () => pi.sendUserMessage(pickNudge()), "send visible continue");
         return;
     }
-    // Normal: invisible continue
-    try {
+    trySend(pi, ctx, () => {
         pi.sendMessage(
             {
                 customType: CONTINUE_CUSTOM_TYPE,
@@ -175,9 +193,7 @@ function sendContinue(
             },
             { triggerTurn: true },
         );
-    } catch (e) {
-        console.error("[pi-bump] Failed to send invisible continue:", e);
-    }
+    }, "send invisible continue");
 }
 
 async function runContinueCommand(
@@ -188,48 +204,59 @@ async function runContinueCommand(
 ): Promise<void> {
     const subcommand = args.trim().toLowerCase();
 
-    // ---- subcommand: status -------------------------------------------------
-    if (subcommand === "status") {
-        const idle = ctx.isIdle();
-        const hasPending = ctx.hasPendingMessages();
-        const escalated = needsEscalation.has(ctx.sessionManager.getSessionId());
-        notifySafely(
-            ctx,
-            [
-                "pi-bump status:",
-                `  Agent idle: ${idle ? "yes" : "no"}`,
-                `  Pending messages: ${hasPending ? "yes" : "no"}`,
-                `  Escalated: ${escalated ? "yes" : "no"}`,
-            ].join("\n"),
-            "info",
-        );
-        return;
+    switch (subcommand) {
+        case "status": {
+            const idle = ctx.isIdle();
+            const hasPending = ctx.hasPendingMessages();
+            const escalated = needsEscalation.has(ctx.sessionManager.getSessionId());
+            notifySafely(
+                ctx,
+                [
+                    "pi-bump status:",
+                    `  Agent idle: ${idle ? "yes" : "no"}`,
+                    `  Pending messages: ${hasPending ? "yes" : "no"}`,
+                    `  Escalated: ${escalated ? "yes" : "no"}`,
+                ].join("\n"),
+                "info",
+            );
+            return;
+        }
+        case "help": {
+            notifySafely(
+                ctx,
+                [
+                    "pi-bump  /continue        Resume loop invisibly",
+                    "         /continue status  Show diagnostics",
+                    "         /continue help    This message",
+                    "",
+                    "Double-tap Enter on empty input also triggers invisible continue.",
+                    "When the agent loops, the next continue sends a visible nudge instead.",
+                ].join("\n"),
+                "info",
+            );
+            return;
+        }
+        default:
+            if (subcommand.length > 0) {
+                notifySafely(
+                    ctx,
+                    `Unknown subcommand: /continue ${subcommand}\nTry /continue help`,
+                    "warning",
+                );
+                return;
+            }
     }
 
-    // ---- subcommand: help ---------------------------------------------------
-    if (subcommand === "help") {
-        notifySafely(
-            ctx,
-            [
-                "pi-bump  /continue        Resume loop invisibly",
-                "         /continue status  Show diagnostics",
-                "         /continue help    This message",
-                "",
-                "Double-tap Enter on empty input also triggers invisible continue.",
-                "When the agent loops, the next continue sends a visible nudge instead.",
-            ].join("\n"),
-            "info",
-        );
-        return;
-    }
-
-    // ---- main: fire continue (invisible or escalated visible) ---------------
     if (!ctx.isIdle()) {
         await ctx.waitForIdle();
     }
+    if (ctx.hasPendingMessages()) {
+        notifySafely(ctx, "Cannot continue: messages are pending.", "warning");
+        return;
+    }
 
     const sessionId = ctx.sessionManager.getSessionId();
-    sendContinue(pi, sessionId, needsEscalation);
+    sendContinue(pi, sessionId, needsEscalation, ctx);
 }
 
 /**
@@ -435,30 +462,15 @@ export default function bumpExtension(pi: ExtensionAPI) {
                     lastKeyId = undefined;
                     lastKeyTime = 0;
 
-                    // Only Enter + idle + no pending → actually send a continue.
-                    // All other double-taps (backspace, delete, etc.) fall through
-                    // without consumption so the terminal processes them normally.
-                    if (keyId === Key.enter && ctx.isIdle() && !ctx.hasPendingMessages()) {
-                        sendContinue(pi, sessionId, needsEscalation);
-                        if (isDebug) {
-                            notifySafely(
-                                ctx,
-                                `Double-tap: ${keyId} (${duration}ms)`,
-                                "info",
-                            );
-                        }
-                        return { consume: true };
+                    const isEnter = keyId === Key.enter;
+                    const shouldSend = isEnter && ctx.isIdle() && !ctx.hasPendingMessages();
+                    if (shouldSend) {
+                        sendContinue(pi, sessionId, needsEscalation, ctx);
                     }
                     if (isDebug) {
-                        notifySafely(
-                            ctx,
-                            `Double-tap: ${keyId} (${duration}ms)`,
-                            "info",
-                        );
+                        notifySafely(ctx, `Double-tap: ${keyId} (${duration}ms)`, "info");
                     }
-                    // Explicit return prevents falling through to lastKeyId = keyId,
-                    // which would corrupt the single-tap state machine.
-                    return;
+                    return shouldSend ? { consume: true } : undefined;
                 }
 
                 lastKeyId = keyId;
