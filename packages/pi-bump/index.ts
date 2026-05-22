@@ -246,7 +246,6 @@ async function runContinueCommand(
  *   - Real user input resets escalation and fingerprint state
  */
 export default function bumpExtension(pi: ExtensionAPI) {
-    // @ts-expect-error — monorepo type resolution mismatch (local 0.74.1 vs root 0.75.4)
     const sub = manageSessionSubscription(pi);
     const debugSessions = new Set<string>();
 
@@ -377,10 +376,17 @@ export default function bumpExtension(pi: ExtensionAPI) {
 
         sub.set(
             ctx.ui.onTerminalInput((data) => {
-                const keyId = DEBUG_KEYS.find((keyId) => matchesKey(data, keyId));
+                // Fast path: if user is typing (editor has text), only check Enter.
+                // No need to run expensive key matching for every keystroke.
+                const editorText = ctx.ui.getEditorText().trim();
+                const isDebug = debugSessions.has(sessionId);
+                const keysToCheck = isDebug
+                    ? DEBUG_KEYS
+                    : [Key.enter];
+
+                const keyId = keysToCheck.find((keyId) => matchesKey(data, keyId));
                 if (!keyId) return;
 
-                const editorText = ctx.ui.getEditorText().trim();
                 if (keyId === Key.enter && editorText.length > 0) return;
 
                 const now = Date.now();
@@ -391,8 +397,6 @@ export default function bumpExtension(pi: ExtensionAPI) {
                     lastKeyTime = 0;
                 }
 
-                const isDebug = debugSessions.has(sessionId);
-
                 if (keyId === lastKeyId && now - lastKeyTime < THRESHOLD_MS) {
                     const duration = now - lastKeyTime;
                     lastKeyId = undefined;
@@ -400,6 +404,14 @@ export default function bumpExtension(pi: ExtensionAPI) {
 
                     if (keyId === Key.enter && ctx.isIdle() && !ctx.hasPendingMessages()) {
                         sendContinue(pi, sessionId, needsEscalation);
+                        if (isDebug) {
+                            notifySafely(
+                                ctx,
+                                `Double-tap: ${keyId} (${duration}ms)`,
+                                "info",
+                            );
+                        }
+                        return { consume: true };
                     }
                     if (isDebug) {
                         notifySafely(
@@ -408,7 +420,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
                             "info",
                         );
                     }
-                    return { consume: true };
+                    return;
                 }
 
                 lastKeyId = keyId;

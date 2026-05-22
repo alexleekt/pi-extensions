@@ -318,6 +318,44 @@ async function runTests() {
         check("No visible nudge when tools differ", sentUserMessages.length === 0);
     }
 
+    // Test 12: Double backspace NOT consumed (passes through to terminal)
+    {
+        reset();
+        console.log("\nTest 12: Double backspace passes through (not consumed)");
+        const r1 = terminalHandler("\b");
+        const r2 = terminalHandler("\b");
+        check("First backspace NOT consumed", !r1?.consume);
+        check("Second backspace NOT consumed", !r2?.consume);
+        check("No message sent for backspace double-tap", sentMessages.length === 0);
+        check("No visible nudge for backspace", sentUserMessages.length === 0);
+    }
+
+    // Test 13: Double delete NOT consumed (passes through to terminal)
+    {
+        reset();
+        console.log("\nTest 13: Double delete passes through (not consumed)");
+        const r1 = terminalHandler("\x7F");
+        const r2 = terminalHandler("\x7F");
+        check("First delete NOT consumed", !r1?.consume);
+        check("Second delete NOT consumed", !r2?.consume);
+        check("No message sent for delete double-tap", sentMessages.length === 0);
+    }
+
+    // Test 14: Mixed backspace-enter double-tap does not cross-contaminate
+    {
+        reset();
+        console.log("\nTest 14: Backspace then Enter — no cross-contamination");
+        // Allow any stale lastKeyId state to expire before testing.
+        // In the optimized code backspace is no longer monitored, so a
+        // stale "enter" left by earlier tests would otherwise falsely
+        // match as a double-tap within the 300ms window.
+        await new Promise((r) => setTimeout(r, 350));
+        terminalHandler("\b"); // backspace is not monitored in normal mode
+        const r2 = terminalHandler("\r"); // enter should be a single tap
+        check("Enter after backspace NOT consumed", !r2?.consume);
+        check("No message for mixed keys", sentMessages.length === 0);
+    }
+
     console.log(`\n${pass} passed, ${fail} failed`);
 }
 
