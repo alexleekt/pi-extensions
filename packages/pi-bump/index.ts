@@ -246,7 +246,6 @@ async function runContinueCommand(
  *   - Real user input resets escalation and fingerprint state
  */
 export default function bumpExtension(pi: ExtensionAPI) {
-    // @ts-expect-error — monorepo type resolution mismatch (local 0.74.1 vs root 0.75.4)
     const sub = manageSessionSubscription(pi);
     const debugSessions = new Set<string>();
 
@@ -286,7 +285,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
     }
 
     // Reset state when the user sends real input.
-    pi.on("input", async (event, ctx) => {
+    pi.on("input", (event, ctx) => {
         if (event.source === "interactive") {
             const sessionId = ctx.sessionManager.getSessionId();
             lastFingerprints.set(sessionId, [undefined, undefined]);
@@ -330,8 +329,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
 
     // Replace invisible continue markers with minimal LLM signal.
     // @ts-expect-error — monorepo type resolution mismatch (local 0.74.1 vs root 0.75.4)
-    pi.on("context", async (event) => {
-        let modified = false;
+    pi.on("context", (event) => {
         const messages = (
             event as {
                 messages: Array<{
@@ -341,12 +339,23 @@ export default function bumpExtension(pi: ExtensionAPI) {
                     timestamp?: number;
                 }>;
             }
-        ).messages.map((msg) => {
+        ).messages;
+
+        // Fast path: scan first, allocate only if needed.
+        const hasInvisible = messages.some(
+            (msg) =>
+                msg.role === "custom" &&
+                msg.customType === CONTINUE_CUSTOM_TYPE,
+        );
+        if (!hasInvisible) {
+            return;
+        }
+
+        const modified = messages.map((msg) => {
             if (
                 msg.role === "custom" &&
                 msg.customType === CONTINUE_CUSTOM_TYPE
             ) {
-                modified = true;
                 // Replace with a minimal user message — visible to LLM, invisible to user
                 return {
                     role: "user",
@@ -356,9 +365,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
             }
             return msg;
         });
-        if (modified) {
-            return { messages };
-        }
+        return { messages: modified };
     });
 
     // Clean up per-session state when a session shuts down.
@@ -366,6 +373,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
         const sessionId = ctx.sessionManager.getSessionId();
         lastFingerprints.delete(sessionId);
         needsEscalation.delete(sessionId);
+        debugSessions.delete(sessionId);
     });
 
     pi.on("session_start", (_event, ctx) => {
@@ -377,10 +385,17 @@ export default function bumpExtension(pi: ExtensionAPI) {
 
         sub.set(
             ctx.ui.onTerminalInput((data) => {
-                const keyId = DEBUG_KEYS.find((keyId) => matchesKey(data, keyId));
+                // Fast path: if user is typing (editor has text), only check Enter.
+                // No need to run expensive key matching for every keystroke.
+                const editorText = ctx.ui.getEditorText().trim();
+                const isDebug = debugSessions.has(sessionId);
+                const keysToCheck = isDebug
+                    ? DEBUG_KEYS
+                    : [Key.enter];
+
+                const keyId = keysToCheck.find((keyId) => matchesKey(data, keyId));
                 if (!keyId) return;
 
-                const editorText = ctx.ui.getEditorText().trim();
                 if (keyId === Key.enter && editorText.length > 0) return;
 
                 const now = Date.now();
@@ -391,8 +406,6 @@ export default function bumpExtension(pi: ExtensionAPI) {
                     lastKeyTime = 0;
                 }
 
-                const isDebug = debugSessions.has(sessionId);
-
                 if (keyId === lastKeyId && now - lastKeyTime < THRESHOLD_MS) {
                     const duration = now - lastKeyTime;
                     lastKeyId = undefined;
@@ -400,6 +413,14 @@ export default function bumpExtension(pi: ExtensionAPI) {
 
                     if (keyId === Key.enter && ctx.isIdle() && !ctx.hasPendingMessages()) {
                         sendContinue(pi, sessionId, needsEscalation);
+                        if (isDebug) {
+                            notifySafely(
+                                ctx,
+                                `Double-tap: ${keyId} (${duration}ms)`,
+                                "info",
+                            );
+                        }
+                        return { consume: true };
                     }
                     if (isDebug) {
                         notifySafely(
@@ -408,7 +429,7 @@ export default function bumpExtension(pi: ExtensionAPI) {
                             "info",
                         );
                     }
-                    return { consume: true };
+                    return;
                 }
 
                 lastKeyId = keyId;
