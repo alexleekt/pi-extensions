@@ -16,6 +16,8 @@ export default class ErrorBoundary extends Component<Props, State> {
     }
 
     static getDerivedStateFromError(error: Error): State {
+        // eslint-disable-next-line no-console
+        console.error("[ErrorBoundary] Caught error:", error.message, error.stack);
         return { hasError: true, error };
     }
 

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Browser Repro</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .flex-1 { flex: 1; }
+    .h-full { height: 100%; }
+    .h-screen { height: 100vh; }
+    .overflow-hidden { overflow: hidden; }
+    .overflow-y-auto { overflow-y: auto; }
+    .border-0 { border: 0; }
+    .w-full { width: 100%; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    const IFRAME_CSS_VARS = `
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --muted-foreground: 240 3.8% 46.1%;
+    `;
+
+    const IFRAME_CSS = `body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      margin: 0; padding: 1rem;
+    }`;
+
+    const IFRAME_SCRIPT = `window.addEventListener("message", function(e) {
+      if (e.data?.type === "theme") {
+        document.body.classList.toggle("dark", e.data.theme === "dark");
+      }
+    });`;
+
+    function buildIframeSrcdoc(rawHtml, theme) {
+      return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+:root { ${IFRAME_CSS_VARS} }
+${IFRAME_CSS}
+</style>
+</head>
+<body class="${theme}">
+${rawHtml}
+<script>${IFRAME_SCRIPT}</script>
+</body>
+</html>`;
+    }
+
+    function HtmlContext({ html, resolvedTheme }) {
+      const iframeRef = useRef(null);
+      const [loaded, setLoaded] = useState(false);
+      const srcdoc = useMemo(() => buildIframeSrcdoc(html, resolvedTheme), [html, resolvedTheme]);
+
+      useEffect(() => {
+        const cw = iframeRef.current?.contentWindow;
+        if (!cw || !loaded) return;
+        cw.postMessage({ type: "theme", theme: resolvedTheme }, "*");
+      }, [resolvedTheme, loaded]);
+
+      return React.createElement('iframe', {
+        ref: iframeRef,
+        loading: "lazy",
+        sandbox: "allow-scripts",
+        srcDoc: srcdoc,
+        className: "h-full w-full border-0",
+        title: "HTML context",
+        onLoad: () => setLoaded(true)
+      });
+    }
+
+    function App() {
+      const context = `<div style="text-align:center; padding: 1rem;">
+    <h2 style="color: hsl(var(--primary)); margin-bottom: 0.5rem;">Sample Visualization</h2>
+    <div class="bar-chart" style="display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0; align-items: flex-end;">
+        <div style="width: 40px; height: 80px; background: hsl(var(--primary)); border-radius: 4px;"></div>
+        <div style="width: 40px; height: 120px; background: hsl(var(--destructive)); border-radius: 4px;"></div>
+        <div style="width: 40px; height: 60px; background: hsl(var(--muted-foreground)); border-radius: 4px;"></div>
+        <div style="width: 40px; height: 100px; background: hsl(200 80% 50%); border-radius: 4px;"></div>
+    </div>
+    <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem;">This bar chart uses the wrapper's CSS variables for theme consistency.</p>
+    <script>
+        document.querySelectorAll('.bar-chart > div').forEach((bar, i) => {
+            const target = bar.style.height;
+            bar.style.height = '0px';
+            bar.style.transition = 'height 0.6s ease ' + (i * 0.1) + 's';
+            setTimeout(() => bar.style.height = target, 50);
+        });
+    </script>
+</div>`;
+
+      return React.createElement('div', { className: 'flex h-screen flex-col overflow-hidden' },
+        React.createElement('div', { className: 'flex flex-1 overflow-hidden' },
+          React.createElement('div', { className: 'flex flex-col overflow-hidden', style: { width: '70%' } },
+            React.createElement('div', { className: 'flex-1 overflow-y-auto' },
+              React.createElement(HtmlContext, { html: context, resolvedTheme: 'light' })
+            )
+          )
+        )
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+  </script>
+</body>
+</html>
