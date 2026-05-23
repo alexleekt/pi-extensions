@@ -1,8 +1,13 @@
 # @alexleekt/pi-herdr-tab-sync
 
-> Part of the [`pi-extensions`](../../) monorepo.
+[![npm](https://img.shields.io/npm/v/@alexleekt/pi-herdr-tab-sync)](https://www.npmjs.com/package/@alexleekt/pi-herdr-tab-sync)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> Your session name, everywhere it matters.
 
 Sync pi session name to [herdr](https://herdr.dev) tab label.
+
+Part of the [`pi-extensions`](../../) monorepo.
 
 ## Behavior
 

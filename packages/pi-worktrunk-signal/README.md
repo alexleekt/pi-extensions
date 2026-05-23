@@ -3,7 +3,9 @@
 [![npm](https://img.shields.io/npm/v/@alexleekt/pi-worktrunk-signal)](https://www.npmjs.com/package/@alexleekt/pi-worktrunk-signal)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Signal where you are in the [worktrunk](https://worktrunk.dev) forest — a [Pi](https://pi.dev) extension that brings worktree context to your terminal-native coding harness.
+> Signal where you are in the worktrunk forest.
+
+A [Pi](https://pi.dev) extension that brings worktree context to your terminal-native coding harness.
 
 ## Features
 

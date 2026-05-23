@@ -1,9 +1,11 @@
 # @alexleekt/pi-ask-user-glimpse
 
-[![npm version](https://img.shields.io/npm/v/@alexleekt/pi-ask-user-glimpse.svg)](https://www.npmjs.com/package/@alexleekt/pi-ask-user-glimpse)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm](https://img.shields.io/npm/v/@alexleekt/pi-ask-user-glimpse)](https://www.npmjs.com/package/@alexleekt/pi-ask-user-glimpse)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A Pi extension that replaces `ask_user` with rich native WebView dialogs powered by [glimpseui](https://npmjs.com/package/glimpseui) and styled with shadcn/ui design tokens.
+> Ask better questions. Get better answers.
+
+Rich native WebView dialogs powered by [glimpseui](https://npmjs.com/package/glimpseui) and styled with shadcn/ui design tokens.
 
 > **Stop reading terminal walls of text.** This extension turns every `ask_user` call into a beautiful, searchable, keyboard-navigable dialog — complete with markdown context panels, inline descriptions, and dark mode. Your agent asks better questions. You answer faster.
 

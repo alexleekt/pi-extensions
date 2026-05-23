@@ -1,7 +1,7 @@
 {
     "name": "@alexleekt/pi-herdr-tab-sync",
     "version": "1.1.0",
-    "description": "Sync pi session name or pi-heading topic to herdr tab label. Only activates inside herdr-managed panes.",
+    "description": "Your session name, everywhere it matters. Sync pi session name to herdr tab labels.",
     "type": "module",
     "license": "MIT",
     "author": "Alex Lee <657215+alexleekt@users.noreply.github.com>",

@@ -1,9 +1,11 @@
 # @alexleekt/pi-pkg-guard
 
-> Guards against unregistered pi packages — installed via npm but not registered in pi's settings.
+[![npm](https://img.shields.io/npm/v/@alexleekt/pi-pkg-guard)](https://www.npmjs.com/package/@alexleekt/pi-pkg-guard)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[![npm version](https://badge.fury.io/js/%40alexleekt%2Fpi-pkg-guard.svg)](https://www.npmjs.com/package/@alexleekt/pi-pkg-guard)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+> Don't let orphaned packages clutter your agent.
+
+Guard against unregistered pi packages — installed via npm but not registered in pi's settings.
 
 ---
 

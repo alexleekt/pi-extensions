@@ -1,11 +1,12 @@
 {
     "name": "@alexleekt/pi-ask-user-glimpse",
     "version": "0.4.1",
-    "description": "Pi extension that replaces ask_user with rich native WebView dialogs via glimpseui and shadcn/ui",
+    "description": "Ask better questions. Get better answers. Rich native WebView dialogs for the Pi agent.",
     "type": "module",
     "keywords": [
         "pi-package",
         "pi-extension",
+        "pi",
         "glimpseui",
         "ask_user",
         "interactive"

@@ -1,7 +1,7 @@
 {
     "name": "@alexleekt/pi-heading",
     "version": "0.1.1",
-    "description": "One-line session heading widget for the Pi coding agent",
+    "description": "Know where you are at a glance. One-line session heading widget for the Pi agent.",
     "type": "module",
     "main": "index.ts",
     "scripts": {
@@ -33,8 +33,9 @@
         "LICENSE"
     ],
     "keywords": [
-        "pi",
+        "pi-package",
         "pi-extension",
+        "pi",
         "heading",
         "session-summary"
     ],

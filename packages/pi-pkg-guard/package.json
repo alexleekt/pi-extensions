@@ -1,7 +1,7 @@
 {
     "name": "@alexleekt/pi-pkg-guard",
     "version": "0.13.0",
-    "description": "Guards against unregistered pi packages — installed via npm but not registered in pi's settings",
+    "description": "Don't let orphaned packages clutter your agent. Guard against unregistered pi packages.",
     "type": "module",
     "license": "MIT",
     "author": "Alex Lee <657215+alexleekt@users.noreply.github.com>",
@@ -16,7 +16,7 @@
     "keywords": [
         "pi-package",
         "pi-extension",
-        "pi-coding-agent",
+        "pi",
         "package-manager",
         "guardrails",
         "npm",

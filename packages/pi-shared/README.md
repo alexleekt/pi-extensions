@@ -1,5 +1,10 @@
 # @alexleekt/pi-shared
 
+[![npm](https://img.shields.io/npm/v/@alexleekt/pi-shared)](https://www.npmjs.com/package/@alexleekt/pi-shared)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> The glue that holds the monorepo together.
+
 Shared types and utilities for Pi extensions in this monorepo.
 
 ## Exports

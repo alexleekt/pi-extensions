@@ -1,12 +1,13 @@
 {
     "name": "@alexleekt/pi-shared",
     "version": "0.1.2",
-    "description": "Shared types and utilities for Pi extensions",
+    "description": "The glue that holds the monorepo together. Shared types and utilities for Pi extensions.",
     "type": "module",
     "license": "MIT",
     "keywords": [
         "pi-package",
         "pi-extension",
+        "pi",
         "shared",
         "utilities",
         "types"

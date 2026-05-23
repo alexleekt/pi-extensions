@@ -1,8 +1,11 @@
 # @alexleekt/pi-heading
 
+[![npm](https://img.shields.io/npm/v/@alexleekt/pi-heading)](https://www.npmjs.com/package/@alexleekt/pi-heading)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**One-line session heading widget for the Pi coding agent.**
+> Know where you are at a glance.
+
+One-line session heading widget for the Pi coding agent.
 
 Always know what you're working on — without scrolling back through tool calls and output.
 
