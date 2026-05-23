@@ -1,4 +1,4 @@
-# Always-On & YOLO Mode
+# Ask Styles
 
 > This document describes how `pi-ask-user-glimpse` controls whether the agent asks questions via `ask_user` or proceeds autonomously.
 > The behavior is **merged into the main extension** — no separate middleware file is needed.
@@ -17,17 +17,11 @@ Pi extensions cannot convert a **completed assistant text message** into a tool 
 
 Therefore, the only reliable way to force tool usage is to influence the LLM **before** generation — via prompt injection.
 
-## Style Modes
+## Styles
 
-The main extension (`index.ts`) hooks `before_agent_start` and injects a system-prompt mandate based on the current style mode. The mode is persisted per-session via `pi.appendEntry("ask-user-style", { mode: "always" | "plain" | "yolo" })`.
+The main extension (`index.ts`) hooks `before_agent_start` and injects a system-prompt mandate based on the current style mode. The mode is persisted per-session via `pi.appendEntry("ask-user-style", { mode: "plain" | "yolo" })`.
 
-### Always Dialog *(default)*
-
-Injects the standard mandate:
-
-> "When you need to ask the user a question, you MUST use the `ask_user` tool. Do NOT write questions as free-form assistant text."
-
-### Plain Text
+### Plain Text *(default)*
 
 No mandate is injected. The agent writes questions as free-form assistant text (bypassing the rich WebView dialog).
 
@@ -35,36 +29,33 @@ No mandate is injected. The agent writes questions as free-form assistant text (
 
 Injects the YOLO mandate:
 
-> "You are in YOLO mode. Do NOT ask the user for input or confirmation. Go with your best recommendation and proceed immediately. Only use `ask_user` if the action would cause irreversible harm, data loss, security compromise, or violate explicit hard constraints."
+> "You are in YOLO style. Do NOT ask the user for input or confirmation. Go with your best recommendation and proceed immediately. Only use `ask_user` if the action would cause irreversible harm, data loss, security compromise, or violate explicit hard constraints."
 
 ### Manual override: `/ask-style`
 
-Cycles through the three states:
-
-Cycles through three states:
-- **Always Dialog** *(default)* — always inject the `ask_user` mandate
-- **Plain Text** — disable all dialog injection
+Cycles through two states:
+- **Plain Text** *(default)* — disable all dialog injection
 - **YOLO** — never ask; the agent proceeds with its best recommendation
 
-The mandate for the active mode is appended to the system prompt on every turn (when `ask_user` is in the tool set).
+The mandate for the active style is appended to the system prompt on every turn (when `ask_user` is in the tool set).
 
 ## How It Works
 
 1. Hook `before_agent_start` — fires before the LLM sees the prompt.
 2. Verify `ask_user` is in `selectedTools` (safety check).
-3. Read the current style mode from the session journal.
+3. Read the current style from the session journal.
 4. Append the appropriate mandate (or nothing, for Plain Text).
 
 ## Pros
 
 - **Skill-agnostic** — works regardless of whether a named skill is loaded.
-- **User-controllable** — `/ask-style` cycles through three modes on demand.
+- **User-controllable** — `/ask-style` cycles through two styles on demand.
 - **Zero round-trips** — no extra LLM calls needed.
 
 ## Cons
 
 - The LLM could theoretically ignore the mandate, though in practice system-prompt overrides are highly effective.
-- YOLO mode trades safety for speed — use it only when you trust the agent's judgment.
+- YOLO style trades safety for speed — use it only when you trust the agent's judgment.
 
 ## Legacy: Separate Middleware File
 
@@ -80,7 +71,6 @@ This is an *example* of an alternative approach, not a recommended one. It hooks
 
 | Approach | Detects Reliably | Forces Tool Usage | Extra Round-trip | Token Cost | Status |
 |----------|------------------|-------------------|------------------|------------|--------|
-| Always Dialog (`before_agent_start`) | ✅ Always | ✅ System prompt | ❌ No | Low (~100 chars) | **Active** |
 | `/ask-style` Plain Text | ✅ Always | ❌ None | ❌ No | Zero | **Active** |
 | `/ask-style` YOLO | ✅ Always | ✅ System prompt | ❌ No | Low (~100 chars) | **Active** |
 | `input` transform (example) | ⚠️ Regex | ✅ Injected text | ❌ No | Medium | Legacy example |

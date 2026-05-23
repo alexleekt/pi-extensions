@@ -212,31 +212,24 @@ npm run validate:gui # same + opens actual WebView for visual check
 npm run check        # dry-run npm pack
 ```
 
-## Always-On: When `ask_user` Is Used Automatically
+## Ask-Style Toggle: `/ask-style`
 
-Some skills instruct the agent to "ask questions one at a time" but never tell it to **use a tool** — so the agent writes plain text, bypassing the rich WebView dialog.
-
-This extension always injects a system-prompt mandate that tells the LLM to use `ask_user` for every question. You can toggle this off per-session if needed.
-
-### Manual toggle: `/ask-style`
-
-Override the default for the current session:
+By default, the agent asks questions as free-form text. You can change this per-session:
 
 ```
 /ask-style
 ```
 
-Cycles through three states:
+Cycles through two states:
 
 | State | Behavior |
 |-------|----------|
-| **Always Dialog** *(default)* | Always use `ask_user` for every question |
-| **Plain Text** | Disable everything — let the agent write questions as plain text |
-| **YOLO** | Never ask — the agent proceeds with its best recommendation |
+| **Plain Text** *(default)* | Agent writes questions as free-form text |
+| **YOLO** | Agent proceeds with its best recommendation without asking |
 
 The setting is persisted in the session and survives restarts.
 
-### YOLO mode
+### YOLO style
 
 When YOLO is active, the extension injects a mandate telling the agent **not** to ask for input or confirmation. Instead, the agent goes with its best recommendation and keeps moving. It will only use `ask_user` if the action would cause irreversible harm, data loss, or security compromise.
 

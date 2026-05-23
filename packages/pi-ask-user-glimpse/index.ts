@@ -7,7 +7,6 @@ import {
     type CustomJournalEntry,
 } from "@alexleekt/pi-shared/types";
 
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { StringEnum, Type } from "@earendil-works/pi-ai";
 import type {
     ExtensionAPI,
@@ -25,28 +24,12 @@ import {
 /* ── Module-level reference to ExtensionAPI for tool execute closure ── */
 let _pi: ExtensionAPI | undefined;
 
-/* ── Style mode constants ── */
-
-const ASK_USER_MANDATE = `
-## Tool Usage Mandate — Auto-injected by pi-ask-user-glimpse
-
-When you need to ask the user a question, you MUST use the \`ask_user\`
-tool. Do NOT write questions as free-form assistant text. Each question
-should be a separate \`ask_user\` tool call.
-
-Rules:
-- One question per \`ask_user\` call.
-- Provide concise options when the question has discrete choices.
-- List options from most recommended to least recommended.
-- Set \`allowMultiple: true\` when more than one choice is valid.
-- Set \`allowFreeform: true\` when the user might want to answer in their own words.
-- Wait for the tool result before continuing to the next question.
-`;
+/* ── Style constants ── */
 
 const YOLO_MANDATE = `
-## Tool Usage Mandate — Auto-injected by pi-ask-user-glimpse (YOLO Mode)
+## Tool Usage Mandate — Auto-injected by pi-ask-user-glimpse (YOLO Style)
 
-You are in YOLO mode. Do NOT ask the user for input or confirmation.
+You are in YOLO style. Do NOT ask the user for input or confirmation.
 Go with your best recommendation and proceed immediately.
 
 Only use \`ask_user\` if the action would cause irreversible harm,
@@ -58,7 +41,7 @@ Rules:
 - If you must use \`ask_user\`, list options from most recommended to least recommended.
 `;
 
-type StyleMode = "always" | "plain" | "yolo";
+type StyleMode = "plain" | "yolo";
 
 function findCustomData(
     entries: unknown[],
@@ -74,10 +57,10 @@ function findCustomData(
 function getStyleMode(entries: unknown[]): StyleMode {
     const data = findCustomData(entries, "ask-user-style");
     const mode = data?.mode;
-    if (mode === "always" || mode === "plain" || mode === "yolo") {
+    if (mode === "plain" || mode === "yolo") {
         return mode;
     }
-    return data?.enabled === false ? "plain" : "always";
+    return "plain";
 }
 
 function getThemeSettings(entries: unknown[]): {
@@ -104,25 +87,7 @@ function getThemeSettings(entries: unknown[]): {
     };
 }
 
-/* ── Auto-catch helpers ── */
-
-function findLastAssistantMessage(
-    messages: AgentMessage[],
-): AgentMessage | undefined {
-    return [...messages].reverse().find((m) => m.role === "assistant");
-}
-
-/** Track which assistant messages we've already auto-caught. */
-function wasAutoCaught(entries: unknown[], messageText: string): boolean {
-    return entries.some(
-        (e) =>
-            isCustomEntry(e) &&
-            e.customType === "ask-user-auto-caught" &&
-            (e.data as Record<string, unknown>)?.text === messageText,
-    );
-}
-
-/** Extract text blocks from a content array (AgentMessage or journal entry). */
+/** Extract text blocks from a content array (journal entry). */
 function extractTextFromContent(content: unknown): string {
     if (typeof content === "string") return content;
     if (!Array.isArray(content)) return "";
@@ -136,13 +101,6 @@ function extractTextFromContent(content: unknown): string {
         )
         .map((c) => c.text)
         .join("\n");
-}
-
-function extractTextFromAgentMessage(message: AgentMessage): string {
-    if (message.role !== "assistant") return "";
-    const content = message.content;
-    if (!Array.isArray(content)) return "";
-    return extractTextFromContent(content);
 }
 
 /* ── Shared helpers for consistent ask_user UX across all entry points ── */
@@ -197,18 +155,16 @@ async function runAskUserWithTheme(
 /** Extract plain text from a Pi journal assistant entry. */
 function extractTextFromAssistantEntry(entry: unknown): string {
     if (!entry || typeof entry !== "object") return "";
-    const msg = (entry as Record<string, unknown>).message;
-    if (!msg || typeof msg !== "object") return "";
-    return extractTextFromContent((msg as Record<string, unknown>).content);
+    const content = ((entry as Record<string, unknown>).message as Record<string, unknown> | undefined)?.content;
+    return extractTextFromContent(content);
 }
 
 /** Find the most recent assistant entry in the session journal. */
 function findLastAssistantEntry(entries: unknown[]): unknown | undefined {
     return [...entries].reverse().find((e) => {
         if (!e || typeof e !== "object") return false;
-        const entry = e as Record<string, unknown>;
-        const msg = entry.message;
-        if (!msg || typeof msg !== "object" || msg === null) return false;
+        const msg = (e as Record<string, unknown>).message;
+        if (!msg || typeof msg !== "object") return false;
         return (msg as Record<string, unknown>).role === "assistant";
     });
 }
@@ -724,7 +680,7 @@ export default function (pi: ExtensionAPI) {
         }
     }
 
-    // ── Inject mandate based on style mode ──
+    // ── Inject mandate based on ask style ──
     pi.on("before_agent_start", async (event, ctx) => {
         const hasAskUser =
             event.systemPromptOptions.selectedTools?.includes("ask_user");
@@ -735,83 +691,28 @@ export default function (pi: ExtensionAPI) {
 
         const styleMode = getStyleMode(ctx.sessionManager.getEntries());
 
-        if (styleMode === "always") {
-            return { systemPrompt: event.systemPrompt + ASK_USER_MANDATE };
-        }
         if (styleMode === "yolo") {
             return { systemPrompt: event.systemPrompt + YOLO_MANDATE };
         }
         // "plain" → no injection
     });
 
-    // ── Auto-catch: detect free-form questions and auto-trigger dialog ──
-    pi.on("agent_end", async (event, ctx) => {
-        if (!ctx.hasUI) return;
-
-        const entries = ctx.sessionManager.getEntries();
-        const styleMode = getStyleMode(entries);
-        // Auto-catch only when the agent is expected to use dialogs
-        if (styleMode !== "always") return;
-
-        const lastAssistant = findLastAssistantMessage(event.messages);
-        if (!lastAssistant) return;
-
-        const text = extractTextFromAgentMessage(lastAssistant).trim();
-        if (!text) return;
-
-        // Skip if we already auto-caught this exact text
-        if (wasAutoCaught(entries, text)) return;
-
-        const questions = extractQuestions(text);
-        if (questions.length === 0) return;
-
-        // Don't auto-catch if the user has already started typing a response
-        const editorText = ctx.ui.getEditorText().trim();
-        if (editorText.length > 0) {
-            ctx.ui.notify(
-                "The assistant asked a question — use /ask to answer via dialog, or /ask-style plain to disable auto-catch",
-                "info",
-            );
-            return;
-        }
-
-        const result = await runAskUserWithTheme(
-            buildAskLastParams(questions, text),
-            undefined,
-            ctx,
-        );
-
-        // Mark as caught so we don't re-trigger on the same message
-        await pi.appendEntry("ask-user-auto-caught", { text });
-
-        if (result.details.cancelled) return;
-
-        const textContent = result.content[0];
-        const answer = textContent?.type === "text" ? textContent.text : "";
-        if (!answer) return;
-
-        await deliverAnswer(answerPrefix(questions.length), answer, ctx);
-    });
-
-    // ── Manual style toggle for ask_user behavior ──
+    // ── Manual style toggle ──
     pi.registerCommand("ask-style", {
         description:
-            "Cycle ask_user style: Always Dialog → Plain Text → YOLO → Always Dialog",
+            "Cycle ask_user style: Plain Text → YOLO → Plain Text",
         handler: async (_args, ctx) => {
             const styleMode = getStyleMode(ctx.sessionManager.getEntries());
 
             let nextMode: StyleMode;
             let label: string;
 
-            if (styleMode === "always") {
-                nextMode = "plain";
-                label = "Plain Text (no dialog injection)";
-            } else if (styleMode === "plain") {
+            if (styleMode === "plain") {
                 nextMode = "yolo";
                 label = "YOLO — go with your recommendation";
             } else {
-                nextMode = "always";
-                label = "Always Dialog (default)";
+                nextMode = "plain";
+                label = "Plain Text (no dialog injection)";
             }
 
             await pi.appendEntry("ask-user-style", { mode: nextMode });
