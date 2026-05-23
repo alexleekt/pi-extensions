@@ -17,8 +17,9 @@ export default function GlobalKeyboardHint({ payload }: GlobalKeyboardHintProps)
                         { keys: ["Esc"], label: "cancel" },
                         { keys: ["↑", "↓"], label: "navigate" },
                         { keys: ["1", "…", "9"], label: "select" },
+                        { keys: ["Enter"], label: "choose" },
+                        { keys: [modKey(), "Enter"], label: "submit" },
                         { keys: ["0"], label: "comments" },
-                        { keys: ["Enter"], label: "submit" },
                     ]}
                 />
             );
@@ -29,9 +30,10 @@ export default function GlobalKeyboardHint({ payload }: GlobalKeyboardHintProps)
                         { keys: ["Esc"], label: "cancel" },
                         { keys: ["↑", "↓"], label: "navigate" },
                         { keys: ["1", "…", "9"], label: "toggle" },
-                        { keys: ["0"], label: "comments" },
+                        { keys: ["Enter"], label: "choose" },
                         { keys: ["Space"], label: "toggle" },
                         { keys: [modKey(), "Enter"], label: "submit" },
+                        { keys: ["0"], label: "comments" },
                     ]}
                 />
             );
