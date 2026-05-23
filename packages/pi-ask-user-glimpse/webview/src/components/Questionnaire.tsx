@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { useDialogKeys } from "../hooks/useDialogKeys";
-import { sendToGlimpse } from "../util/glimpse";
+import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { renderOptionText } from "../util/html";
-import { modKey } from "../util/platform";
 import AdditionalComments from "./AdditionalComments";
+import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
+import GlobalKeyboardHint from "./GlobalKeyboardHint";
 import { CheckIcon, CommentIcon, isSelectAllOption, RadioIcon } from "./icons";
 
 interface QuestionnaireProps {
@@ -21,10 +22,12 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
     const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [additionalComments, setAdditionalComments] = useState("");
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const optionRefs = useRef<
         Map<string, HTMLButtonElement | HTMLTextAreaElement | null>
     >(new Map());
     const questionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+    const commentsRef = useRef<HTMLTextAreaElement | null>(null);
 
     // Auto-scroll to first unanswered question on mount
     useEffect(() => {
@@ -141,7 +144,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         return String(ans).trim().length > 0;
     }).length;
 
-    // Component-specific keydown: Space to toggle, Arrow navigation between options
+    // Component-specific keydown: Space to toggle, Arrow navigation between options, number keys to select
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement;
@@ -150,15 +153,41 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                 target instanceof HTMLTextAreaElement;
 
             if (e.key === "Escape") return; // handled by useDialogKeys
-            if (e.key === "Tab") return;
+            if (e.key === "Tab") return; // browser handles zone navigation
             if (isInInput) return;
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) return; // handled by useDialogKeys
+
+            const questionTitle = target
+                .closest("[data-question]")
+                ?.getAttribute("data-question");
+
+            // Number keys 1-9 to select/toggle options in the focused question
+            if (e.key >= "1" && e.key <= "9") {
+                const idx = parseInt(e.key, 10) - 1;
+                if (!questionTitle) return;
+                const q = questions.find((qq) => qq.title === questionTitle);
+                if (!q?.options || idx < 0 || idx >= q.options.length) return;
+                const opt = q.options[idx];
+                if (q.allowMultiple) {
+                    toggleMultiAnswer(questionTitle, opt.title);
+                } else {
+                    setSingleAnswer(questionTitle, opt.title);
+                }
+                return;
+            }
+
+            // 0 to focus global additional comments
+            if (e.key === "0") {
+                e.preventDefault();
+                commentsRef.current?.focus();
+                commentsRef.current?.scrollIntoView({ block: "nearest" });
+                return;
+            }
 
             if (
                 (e.key === " " || e.key === "Spacebar") &&
                 target.tagName === "BUTTON"
             ) {
-                const questionTitle = target.dataset.question;
                 const optionTitle = target.dataset.option;
                 if (questionTitle && optionTitle) {
                     const q = questions.find(
@@ -175,11 +204,10 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
             if (e.key === "ArrowUp" || e.key === "ArrowDown") {
                 if (target.tagName === "BUTTON" && target.dataset.question) {
                     e.preventDefault();
-                    const questionTitle = target.dataset.question;
                     const currentOption = target.dataset.option;
                     const siblings = Array.from(
                         document.querySelectorAll<HTMLButtonElement>(
-                            `button[data-question="${questionTitle}"]`,
+                            `button[data-question="${target.dataset.question}"]`,
                         ),
                     );
                     const idx = siblings.findIndex(
@@ -201,10 +229,24 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [questions, toggleMultiAnswer]);
+    }, [questions, toggleMultiAnswer, setSingleAnswer]);
+
+    const isDirty =
+        Object.keys(answers).length > 0 ||
+        Object.values(comments).some((c) => c.trim() !== "") ||
+        additionalComments.trim() !== "";
+
+    const handleCancel = useCallback(() => {
+        if (isDirty) {
+            setShowCancelConfirm(true);
+            return;
+        }
+        sendCancelled();
+    }, [isDirty]);
 
     useDialogKeys({
         onSubmit: handleSubmit,
+        onCancel: handleCancel,
         isSubmitting,
         isCommentOpen: !!showCommentFor,
         onCloseComment: () => setShowCommentFor(null),
@@ -243,6 +285,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                     questionRefs.current.set(q.title, el);
                                 }}
                                 key={q.title}
+                                data-question={q.title}
                                 className={`rounded-xl border p-4 bg-card ${isRequired && !isAnswered ? "border-destructive/50" : "border-border"}`}
                             >
                                 <div className="mb-1 flex items-center gap-2">
@@ -297,6 +340,11 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                                               );
                                                           }}
                                                           key={opt.title}
+                                                          tabIndex={
+                                                              optIdx === 0
+                                                                  ? 0
+                                                                  : -1
+                                                          }
                                                           data-question={
                                                               q.title
                                                           }
@@ -359,8 +407,8 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                                                   />
                                                                   {opt.recommended && (
                                                                       <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                                                          Recommended
-                                                                      </span>
+                                                                      Recommended
+                                                                  </span>
                                                                   )}
                                                               </div>
                                                               {descHtml && (
@@ -397,6 +445,11 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                                               );
                                                           }}
                                                           key={opt.title}
+                                                          tabIndex={
+                                                              optIdx === 0
+                                                                  ? 0
+                                                                  : -1
+                                                          }
                                                           data-question={
                                                               q.title
                                                           }
@@ -437,8 +490,8 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                                                   />
                                                                   {opt.recommended && (
                                                                       <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                                                          Recommended
-                                                                      </span>
+                                                                      Recommended
+                                                                  </span>
                                                                   )}
                                                               </div>
                                                               {descHtml && (
@@ -524,6 +577,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                         );
                     })}
                     <AdditionalComments
+                        ref={commentsRef}
                         value={additionalComments}
                         onChange={setAdditionalComments}
                     />
@@ -533,10 +587,19 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
             <DialogFooter
                 isSubmitting={isSubmitting}
                 onSubmit={handleSubmit}
-                hint={`${answeredCount} / ${questions.length} answered · ${modKey()}+Enter to submit`}
+                onCancel={handleCancel}
+                hint={<GlobalKeyboardHint payload={payload} />}
             >
                 {/* no extra children */}
             </DialogFooter>
+            <CancelConfirmModal
+                isOpen={showCancelConfirm}
+                onStay={() => setShowCancelConfirm(false)}
+                onDiscard={() => {
+                    setShowCancelConfirm(false);
+                    sendCancelled();
+                }}
+            />
         </div>
     );
 }

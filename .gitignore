@@ -17,3 +17,6 @@ packages/*/.a5c/
 # Git worktrees
 .worktrees/
 **/.pi/messenger/
+# Dev test scripts
+test-dialog.mjs
+test-results/

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { useDialogKeys } from "../hooks/useDialogKeys";
-import { sendToGlimpse } from "../util/glimpse";
+import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { renderOptionText } from "../util/html";
 import AdditionalComments from "./AdditionalComments";
+import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
+import GlobalKeyboardHint from "./GlobalKeyboardHint";
 import { CheckIcon, CommentIcon, isSelectAllOption, RadioIcon } from "./icons";
 
 interface MultiSelectProps {
@@ -15,24 +17,13 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [comment, setComment] = useState("");
     const [showComment, setShowComment] = useState(false);
-    const [query, setQuery] = useState("");
     const [activeIndex, setActiveIndex] = useState(-1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [additionalComments, setAdditionalComments] = useState("");
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
-    const searchRef = useRef<HTMLInputElement | null>(null);
-
-    const showSearch = payload.options.length > 6 || payload.allowFreeform;
-
-    const filtered = useMemo(() => {
-        if (!query) return payload.options;
-        const q = query.toLowerCase();
-        return payload.options.filter(
-            (o) =>
-                o.title.toLowerCase().includes(q) ||
-                (o.description?.toLowerCase() ?? "").includes(q),
-        );
-    }, [payload.options, query]);
+    const freeformRef = useRef<HTMLButtonElement | null>(null);
+    const commentsRef = useRef<HTMLTextAreaElement | null>(null);
 
     const selectAllOption = useMemo(
         () => payload.options.find((opt) => isSelectAllOption(opt.title)),
@@ -44,10 +35,9 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         comment: "",
         showComment: false,
         additionalComments: "",
-        query: "",
         activeIndex: -1,
         isSubmitting: false,
-        filtered: payload.options,
+        options: payload.options,
         allowFreeform: payload.allowFreeform,
         selectAllOption: undefined as typeof selectAllOption,
     });
@@ -56,22 +46,21 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         comment,
         showComment,
         additionalComments,
-        query,
         activeIndex,
         isSubmitting,
-        filtered,
+        options: payload.options,
         allowFreeform: payload.allowFreeform,
         selectAllOption,
     };
 
     const handleFreeform = useCallback(() => {
-        sendToGlimpse({ kind: "freeform", text: stateRef.current.query });
+        sendToGlimpse({ kind: "freeform", text: "" });
     }, []);
 
     const toggle = useCallback((title: string) => {
         const s = stateRef.current;
         if (s.selectAllOption && title === s.selectAllOption.title) {
-            const regular = s.filtered
+            const regular = s.options
                 .filter((opt) => !isSelectAllOption(opt.title))
                 .map((opt) => opt.title);
             setSelected(new Set(regular));
@@ -107,23 +96,34 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         sendToGlimpse(result);
     }, [handleFreeform]);
 
+    const isDirty =
+        selected.size > 0 ||
+        comment.trim() !== "" ||
+        additionalComments.trim() !== "";
+
+    const handleCancel = useCallback(() => {
+        if (isDirty) {
+            setShowCancelConfirm(true);
+            return;
+        }
+        sendCancelled();
+    }, [isDirty]);
+
     useDialogKeys({
         onSubmit: handleSubmit,
+        onCancel: handleCancel,
         isSubmitting,
         isCommentOpen: showComment,
         onCloseComment: () => setShowComment(false),
     });
 
     useEffect(() => {
-        setActiveIndex(-1);
-        if (!showSearch) {
-            const id = requestAnimationFrame(() => {
-                optionRefs.current[0]?.focus();
-                setActiveIndex(0);
-            });
-            return () => cancelAnimationFrame(id);
-        }
-    }, [showSearch]);
+        const id = requestAnimationFrame(() => {
+            optionRefs.current[0]?.focus();
+            setActiveIndex(0);
+        });
+        return () => cancelAnimationFrame(id);
+    }, []);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -134,20 +134,36 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                 target instanceof HTMLTextAreaElement;
 
             if (e.key === "Escape") return; // handled by useDialogKeys
-            if (e.key === "Tab") return;
-            if (target === searchRef.current && e.key === "ArrowDown") {
-                e.preventDefault();
-                setActiveIndex(0);
-                optionRefs.current[0]?.focus();
-                return;
-            }
+            if (e.key === "Tab") return; // browser handles zone navigation
             if (isInInput) return;
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) return; // handled by useDialogKeys
+
+            // Number keys 1-9 to toggle options (without submitting)
+            if (e.key >= "1" && e.key <= "9") {
+                const idx = parseInt(e.key, 10) - 1;
+                if (idx >= 0 && idx < s.options.length) {
+                    toggle(s.options[idx].title);
+                    setActiveIndex(idx);
+                    optionRefs.current[idx]?.focus();
+                    optionRefs.current[idx]?.scrollIntoView({
+                        block: "nearest",
+                    });
+                }
+                return;
+            }
+
+            // 0 to focus additional comments
+            if (e.key === "0") {
+                e.preventDefault();
+                commentsRef.current?.focus();
+                commentsRef.current?.scrollIntoView({ block: "nearest" });
+                return;
+            }
 
             if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setActiveIndex((prev) => {
-                    const next = Math.min(prev + 1, s.filtered.length - 1);
+                    const next = Math.min(prev + 1, s.options.length - 1);
                     optionRefs.current[next]?.focus();
                     optionRefs.current[next]?.scrollIntoView({
                         block: "nearest",
@@ -157,47 +173,43 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
                 setActiveIndex((prev) => {
-                    const next = Math.max(prev - 1, -1);
-                    if (next === -1) searchRef.current?.focus();
-                    else {
-                        optionRefs.current[next]?.focus();
-                        optionRefs.current[next]?.scrollIntoView({
-                            block: "nearest",
-                        });
-                    }
+                    const next = Math.max(prev - 1, 0);
+                    optionRefs.current[next]?.focus();
+                    optionRefs.current[next]?.scrollIntoView({
+                        block: "nearest",
+                    });
                     return next;
                 });
             } else if (e.key === " " || e.key === "Spacebar") {
                 e.preventDefault();
-                if (s.activeIndex >= 0 && s.activeIndex < s.filtered.length)
-                    toggle(s.filtered[s.activeIndex].title);
+                if (s.activeIndex >= 0 && s.activeIndex < s.options.length)
+                    toggle(s.options[s.activeIndex].title);
             } else if (e.key === "Enter") {
                 e.preventDefault();
-                if (s.activeIndex >= 0 && s.activeIndex < s.filtered.length) {
-                    toggle(s.filtered[s.activeIndex].title);
-                } else if (s.allowFreeform) {
+                const focusedEl = document.activeElement;
+                const freeformFocused =
+                    s.allowFreeform &&
+                    focusedEl != null &&
+                    (focusedEl === freeformRef.current ||
+                        freeformRef.current?.contains(focusedEl));
+                if (freeformFocused) {
                     setIsSubmitting(true);
                     handleFreeform();
+                } else if (
+                    s.activeIndex >= 0 &&
+                    s.activeIndex < s.options.length
+                ) {
+                    toggle(s.options[s.activeIndex].title);
                 }
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [toggle, handleSubmit, handleFreeform]);
+    }, [toggle, handleFreeform]);
 
     return (
         <div className="flex h-full flex-col">
             <div className="shrink-0 border-b border-border p-4">
-                {showSearch && (
-                    <input
-                        ref={searchRef}
-                        type="text"
-                        placeholder="Search options..."
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
-                    />
-                )}
                 {selected.size > 0 && (
                     <div className="mt-2 flex items-center gap-2">
                         <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -211,7 +223,7 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                         </button>
                     </div>
                 )}
-                {filtered.length > 1 && !query && (
+                {payload.options.length > 1 && (
                     <div className="mt-2 flex items-center gap-2">
                         <button
                             onClick={() => {
@@ -244,16 +256,13 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                     aria-label="Options"
                     aria-multiselectable="true"
                 >
-                    {filtered.length > 0 ? (
-                        filtered.map((opt, idx) => {
+                    {payload.options.length > 0 ? (
+                        payload.options.map((opt, idx) => {
                             const isSelected = selected.has(opt.title);
                             const isSelectAll = isSelectAllOption(opt.title);
-                            const titleHtml = renderOptionText(
-                                opt.title,
-                                query,
-                            );
+                            const titleHtml = renderOptionText(opt.title);
                             const descHtml = opt.description
-                                ? renderOptionText(opt.description, query)
+                                ? renderOptionText(opt.description)
                                 : null;
                             return (
                                 <button
@@ -317,7 +326,7 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                         })
                     ) : (
                         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
-                            No matching options.
+                            No options available.
                             {payload.allowFreeform && (
                                 <span>
                                     {" "}
@@ -331,12 +340,12 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
 
                 {payload.allowFreeform && (
                     <button
+                        ref={freeformRef}
+                        tabIndex={0}
                         onClick={handleFreeform}
                         className="mt-4 w-full rounded-lg border border-dashed border-border p-3 text-left text-sm text-muted-foreground transition-colors hover:bg-accent"
                     >
-                        {query.trim()
-                            ? `Custom: "${query.trim().slice(0, 30)}${query.trim().length > 30 ? "…" : ""}"`
-                            : "My answer isn't listed above"}
+                        My answer isn't listed above
                     </button>
                 )}
             </div>
@@ -344,10 +353,11 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
             <DialogFooter
                 isSubmitting={isSubmitting}
                 onSubmit={handleSubmit}
+                onCancel={handleCancel}
+                hint={<GlobalKeyboardHint payload={payload} />}
                 submitDisabled={
-                    !payload.allowFreeform && selected.size === 0 && !query
+                    !payload.allowFreeform && selected.size === 0
                 }
-                hint="Space to toggle · Enter to toggle"
             >
                 {payload.allowComment && (
                     <div className="mb-3">
@@ -375,10 +385,19 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                     </div>
                 )}
                 <AdditionalComments
+                    ref={commentsRef}
                     value={additionalComments}
                     onChange={setAdditionalComments}
                 />
             </DialogFooter>
+            <CancelConfirmModal
+                isOpen={showCancelConfirm}
+                onStay={() => setShowCancelConfirm(false)}
+                onDiscard={() => {
+                    setShowCancelConfirm(false);
+                    sendCancelled();
+                }}
+            />
         </div>
     );
 }

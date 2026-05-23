@@ -1,9 +1,10 @@
 import { useCallback, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
-import { sendToGlimpse } from "../util/glimpse";
-import { modKey } from "../util/platform";
+import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { useDialogKeys } from "../hooks/useDialogKeys";
+import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
+import GlobalKeyboardHint from "./GlobalKeyboardHint";
 
 const MAX_FREEFORM_LENGTH = 2000;
 
@@ -16,6 +17,7 @@ export default function Freeform({
 }: FreeformProps) {
     const [text, setText] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
     const handleSubmit = useCallback(() => {
         if (isSubmitting) return;
@@ -23,7 +25,17 @@ export default function Freeform({
         sendToGlimpse({ kind: "freeform", text: text.trim() });
     }, [isSubmitting, text]);
 
-    useDialogKeys({ onSubmit: handleSubmit, isSubmitting });
+    const isDirty = text.trim() !== "";
+
+    const handleCancel = useCallback(() => {
+        if (isDirty) {
+            setShowCancelConfirm(true);
+            return;
+        }
+        sendCancelled();
+    }, [isDirty]);
+
+    useDialogKeys({ onSubmit: handleSubmit, onCancel: handleCancel, isSubmitting });
 
     return (
         <div className="flex h-full flex-col">
@@ -40,7 +52,16 @@ export default function Freeform({
             <DialogFooter
                 isSubmitting={isSubmitting}
                 onSubmit={handleSubmit}
-                hint={`${text.length}/${MAX_FREEFORM_LENGTH} · ${modKey()}+Enter to submit`}
+                onCancel={handleCancel}
+                hint={<GlobalKeyboardHint payload={payload} />}
+            />
+            <CancelConfirmModal
+                isOpen={showCancelConfirm}
+                onStay={() => setShowCancelConfirm(false)}
+                onDiscard={() => {
+                    setShowCancelConfirm(false);
+                    sendCancelled();
+                }}
             />
         </div>
     );

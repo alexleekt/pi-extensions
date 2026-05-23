@@ -5,12 +5,14 @@ interface ShortcutsModalProps {
 }
 
 const SHORTCUTS = [
+    { keys: ["1", "…", "9"], action: "Select or toggle option" },
+    { keys: ["0"], action: "Focus additional comments" },
     { keys: ["↑", "↓"], action: "Navigate options" },
     { keys: ["Enter"], action: "Select / Submit" },
     { keys: [`${modKey()}+Enter`], action: "Submit answer" },
     { keys: ["Space"], action: "Toggle multi-select option" },
+    { keys: ["Tab"], action: "Move focus between blocks" },
     { keys: ["Escape"], action: "Cancel dialog" },
-    { keys: ["Tab"], action: "Move focus" },
 ];
 
 export default function ShortcutsModal({ onClose }: ShortcutsModalProps) {

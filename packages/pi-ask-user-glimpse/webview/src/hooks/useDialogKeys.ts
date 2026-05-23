@@ -73,6 +73,12 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
                 target instanceof HTMLTextAreaElement;
 
             if (e.key === "Escape") {
+                // If a textarea is focused, blur it first (don't cancel yet)
+                if (target instanceof HTMLTextAreaElement) {
+                    e.preventDefault();
+                    target.blur();
+                    return;
+                }
                 if (s.isCommentOpen && s.onCloseComment) {
                     e.preventDefault();
                     s.onCloseComment();

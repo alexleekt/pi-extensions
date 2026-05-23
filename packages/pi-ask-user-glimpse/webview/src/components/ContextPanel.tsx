@@ -4,14 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PI_CHARTS_LIBRARY } from "../util/pi-charts.js";
 import { renderMarkdownInline, sanitizeHtml } from "../util/markdown.js";
 import { useSettings } from "../util/settings.js";
-import { HelpIcon } from "./icons";
 import SettingsButton from "./SettingsButton";
 
 interface ContextPanelProps {
     context: string;
     contextFormat?: "markdown" | "html";
     question?: string;
-    onShowShortcuts?: () => void;
 }
 
 class MermaidRenderer extends marked.Renderer {
@@ -166,7 +164,6 @@ export default function ContextPanel({
     context,
     contextFormat,
     question,
-    onShowShortcuts,
 }: ContextPanelProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const { resolvedTheme } = useSettings();
@@ -215,18 +212,9 @@ export default function ContextPanel({
                                 }}
                             />
                         </div>
-                        {onShowShortcuts && (
-                            <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                                <button
-                                    onClick={onShowShortcuts}
-                                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                                    title="Keyboard shortcuts"
-                                >
-                                    <HelpIcon />
-                                </button>
-                                <SettingsButton />
-                            </div>
-                        )}
+                        <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                            <SettingsButton />
+                        </div>
                     </div>
                 </div>
             )}

@@ -124,6 +124,14 @@ function saveThemeMetadata(metadata: AskUserMetadata) {
     }
 }
 
+/** Strip XML-style `<thinking>` blocks and markdown reasoning blocks from text. */
+function stripThinkingBlocks(text: string): string {
+    return text
+        .replace(/<thinking>[\s\S]*?<\/thinking>/g, "")
+        .replace(/```\s*thinking\n[\s\S]*?```/g, "")
+        .trim();
+}
+
 /** Execute ask_user with full enrichment + persistence, used by tool and commands alike. */
 async function runAskUserWithTheme(
     rawParams: AskUserParams,
@@ -134,18 +142,12 @@ async function runAskUserWithTheme(
     const params = enrichWithThemeSettings(rawParams, entries);
     let metadata: AskUserMetadata = {};
 
-    // Capture the agent's preceding message as additional context
-    const preamble = buildAgentPreamble(params, entries);
-    const enrichedParams: AskUserParams = preamble
-        ? {
-              ...params,
-              context: params.context
-                  ? `${preamble}\n\n---\n\n${params.context}`
-                  : preamble,
-          }
+    // Strip reasoning chains from explicitly-passed context
+    const cleanedParams: AskUserParams = params.context
+        ? { ...params, context: stripThinkingBlocks(params.context) }
         : params;
 
-    const result = await askUserHandler(enrichedParams, signal, ctx, (m) => {
+    const result = await askUserHandler(cleanedParams, signal, ctx, (m) => {
         metadata = m;
     });
     saveThemeMetadata(metadata);
@@ -169,39 +171,7 @@ function findLastAssistantEntry(entries: unknown[]): unknown | undefined {
     });
 }
 
-/**
- * Extract the agent's introductory text from the most recent assistant
- * message, excluding text that is already duplicated in the question or
- * context fields.
- */
-function buildAgentPreamble(
-    params: AskUserParams,
-    entries: unknown[],
-): string | undefined {
-    const lastAssistant = findLastAssistantEntry(entries);
-    if (!lastAssistant) return undefined;
-
-    const text = extractTextFromAssistantEntry(lastAssistant).trim();
-    if (!text) return undefined;
-
-    const question = params.question.trim();
-
-    // Skip if the assistant text is just the question itself
-    if (text === question) return undefined;
-
-    // If the text ends with the question, take only the prefix
-    if (text.endsWith(question)) {
-        const prefix = text.slice(0, text.length - question.length).trim();
-        return prefix || undefined;
-    }
-
-    // Skip if the assistant text is already fully contained in the context
-    if (params.context?.trim().includes(text)) return undefined;
-
-    return text;
-}
-
-/* ── /ask: extract questions & implicit requests ── */
+/* ── /ask: extract explicit questions only ── */
 
 function splitSentences(text: string): string[] {
     const PLACEHOLDER = "\x00";
@@ -230,19 +200,6 @@ function splitSentences(text: string): string[] {
         .filter((s) => s.length > 0);
 }
 
-const IMPLICIT_REQUEST_PATTERNS = [
-    /\b(let me know|let us know)\b/i,
-    /\b(tell me|tell us)\b/i,
-    /\b(share your|share any)\b/i,
-    /\b(what do you think|what are your thoughts)\b/i,
-    /\b(which\b.*\b(would you|do you|should we)\b)/i,
-    /\b(should we|can you confirm|please confirm|could you confirm)\b/i,
-    /\b(i need your (input|feedback|thoughts|opinion))\b/i,
-    /\b(your (thoughts|opinion|preference|feedback))\b/i,
-    /\b(please provide|could you provide|can you provide)\b/i,
-    /\b(would you like|do you want|do you prefer)\b/i,
-];
-
 function hasQuotedQuestion(sentence: string): boolean {
     return /["'`].*\?.*["'`]/.test(sentence) && !sentence.endsWith("?");
 }
@@ -251,25 +208,17 @@ function looksLikeTernary(sentence: string): boolean {
     return /\?\s*[:;]/.test(sentence) || /=\s*\S+\s*\?/.test(sentence);
 }
 
+/** Extract only explicit questions (sentences ending in ?).
+ *  Implicit requests like "let me know" are ignored — the freeform textarea
+ *  already handles open-ended input without creating phantom questionnaire rows. */
 function extractQuestions(text: string): string[] {
-    const explicit: string[] = [];
-    const implicit: string[] = [];
-
-    for (const sentence of splitSentences(text)) {
-        if (sentence.endsWith("?")) {
-            if (hasQuotedQuestion(sentence)) continue;
-            if (looksLikeTernary(sentence)) continue;
-            if (sentence.length < 3) continue;
-            explicit.push(sentence);
-            continue;
-        }
-
-        if (IMPLICIT_REQUEST_PATTERNS.some((p) => p.test(sentence))) {
-            implicit.push(sentence);
-        }
-    }
-
-    return [...explicit, ...implicit];
+    return splitSentences(text).filter((sentence) => {
+        if (!sentence.endsWith("?")) return false;
+        if (hasQuotedQuestion(sentence)) return false;
+        if (looksLikeTernary(sentence)) return false;
+        if (sentence.length < 3) return false;
+        return true;
+    });
 }
 
 function truncate(str: string, max: number): string {
@@ -280,23 +229,24 @@ function buildAskLastParams(
     questions: string[],
     fullText: string,
 ): AskUserParams {
+    const cleanContext = stripThinkingBlocks(fullText);
     if (questions.length === 0) {
         return {
             question: "The assistant would like your input on the following:",
-            context: fullText,
+            context: cleanContext,
             allowFreeform: true,
         };
     }
     if (questions.length === 1) {
         return {
             question: questions[0],
-            context: fullText,
+            context: cleanContext,
             allowFreeform: true,
         };
     }
     return {
         question: "The assistant asked multiple questions",
-        context: fullText,
+        context: cleanContext,
         questions: questions.map((q) => ({
             title: truncate(q, 60),
             description: q,
@@ -446,7 +396,7 @@ function buildDebugParams(mode: string): AskUserParams | null {
   </script>
 
   <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem; line-height: 1.5; margin-top: 1rem;">
-    Try keyboard navigation (↑↓ to move, Enter to select, / to search), theme toggle (⚙️), and the comment field.
+    Try keyboard shortcuts: <strong>1-9</strong> per question · <strong>0</strong> comments · <strong>Tab</strong> next · <strong>Esc</strong> cancel · <strong>⌘Enter</strong> submit · <strong>↑↓</strong> navigate · <strong>Space</strong> toggle · theme toggle (⚙️).
   </p>
 </div>`,
                 questions: [
@@ -801,4 +751,5 @@ export default function (pi: ExtensionAPI) {
             ctx.ui.notify(`Result: ${text}`, "info");
         },
     });
+
 }

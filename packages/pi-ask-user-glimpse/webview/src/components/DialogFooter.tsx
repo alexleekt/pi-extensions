@@ -1,17 +1,19 @@
+import type { ReactNode } from "react";
 import { sendCancelled } from "../util/glimpse";
-import { modKey } from "../util/platform";
 
 interface DialogFooterProps {
     /** Whether a submission is already in flight. */
     isSubmitting: boolean;
     /** Called when the submit button is clicked. */
     onSubmit: () => void;
-    /** Optional hint text shown on the left. Defaults to "{modKey}+Enter to submit". */
-    hint?: string;
+    /** Called when the cancel button is clicked or Escape is pressed. Defaults to sendCancelled(). */
+    onCancel?: () => void;
+    /** Optional hint shown on the left (e.g. <GlobalKeyboardHint />). */
+    hint?: ReactNode;
     /** Optional additional content above the action bar (e.g. comment toggle). */
-    children?: React.ReactNode;
+    children?: ReactNode;
     /** Optional extra buttons between Cancel and Submit. */
-    extraActions?: React.ReactNode;
+    extraActions?: ReactNode;
     /** Disable submit even when not submitting (e.g. nothing selected yet). */
     submitDisabled?: boolean;
 }
@@ -19,7 +21,8 @@ interface DialogFooterProps {
 export default function DialogFooter({
     isSubmitting,
     onSubmit,
-    hint = `${modKey()}+Enter to submit`,
+    onCancel,
+    hint,
     children,
     extraActions,
     submitDisabled,
@@ -27,11 +30,11 @@ export default function DialogFooter({
     return (
         <div className="shrink-0 border-t border-border p-4">
             {children}
-            <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-muted-foreground">{hint}</span>
-                <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">{hint}</div>
+                <div className="flex shrink-0 items-center gap-2">
                     <button
-                        onClick={sendCancelled}
+                        onClick={onCancel ?? sendCancelled}
                         className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
                     >
                         Cancel

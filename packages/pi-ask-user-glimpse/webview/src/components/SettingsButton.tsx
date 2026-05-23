@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AnimationLevel, ThemeMode } from "../../../shared/ask-user";
 import { useSettings } from "../util/settings";
 
@@ -6,7 +6,7 @@ function CogIcon() {
     return (
         <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="8" cy="8" r="2.5" />
-            <path d="M12.8 8a4.8 4.8 0 0 0 .2-1.2l1.8-.5-.9-2.4-1.8.5a4.8 4.8 0 0 0-1.2-.7l.2-1.9h-2.6l.2 1.9a4.8 4.8 0 0 0-1.2.7l-1.8-.5-.9 2.4 1.8.5a4.8 4.8 0 0 0 .2 1.2l-1.8.5.9 2.4 1.8-.5a4.8 4.8 0 0 0 1.2.7l-.2 1.9h2.6l-.2-1.9a4.8 4.8 0 0 0 1.2-.7l1.8.5.9-2.4-1.8-.5z" />
+            <path d="M12.8 8a4.8 4.8 0 0 0 .2-1.2l1.8-.5-.9-2.4-1.8.5a4.8 4.8 0 0 0-1.2-.7l.2-1.9h-2.6l.2 1.9a4.8 4.8 0 0 0 1.2.7l-1.8-.5-.9 2.4 1.8.5a4.8 4.8 0 0 0 .2 1.2l-1.8.5.9 2.4 1.8-.5a4.8 4.8 0 0 0 1.2.7l-.2 1.9h2.6l-.2-1.9a4.8 4.8 0 0 0 1.2-.7l1.8.5.9-2.4-1.8-.5z" />
         </svg>
     );
 }
@@ -35,9 +35,19 @@ interface SettingsButtonProps {
     buttonClassName?: string;
 }
 
+/** Flattened option for keyboard navigation (theme + animation). */
+interface FlatOption {
+    type: "theme" | "animation";
+    value: string;
+    label: string;
+}
+
 export default function SettingsButton({ buttonClassName }: SettingsButtonProps) {
     const { theme, setTheme, animationLevel, setAnimationLevel } = useSettings();
     const [open, setOpen] = useState(false);
+    const [focusedIndex, setFocusedIndex] = useState(0);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     const themeOptions: { value: ThemeMode; label: string }[] = [
         { value: "light", label: "☀️ Light" },
@@ -46,14 +56,84 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
     ];
 
     const animationOptions: { value: AnimationLevel; label: string }[] = [
-        { value: "none", label: "○ None" },
-        { value: "minimal", label: "○ Minimal" },
-        { value: "all", label: "● All" },
+        { value: "none", label: "None" },
+        { value: "minimal", label: "Minimal" },
+        { value: "all", label: "All" },
     ];
+
+    const allOptions: FlatOption[] = [
+        ...themeOptions.map((o) => ({ type: "theme" as const, value: o.value, label: o.label })),
+        ...animationOptions.map((o) => ({ type: "animation" as const, value: o.value, label: o.label })),
+    ];
+
+    const closeAndReturnFocus = useCallback(() => {
+        setOpen(false);
+        triggerRef.current?.focus();
+    }, []);
+
+    // When opening, focus the currently selected option
+    useEffect(() => {
+        if (!open) return;
+        let idx = allOptions.findIndex((o) =>
+            o.type === "theme" ? o.value === theme : o.value === animationLevel,
+        );
+        if (idx === -1) idx = 0;
+        setFocusedIndex(idx);
+        const id = requestAnimationFrame(() => {
+            optionRefs.current[idx]?.focus();
+        });
+        return () => cancelAnimationFrame(id);
+    }, [open, allOptions, theme, animationLevel]);
+
+    // Keyboard navigation inside the dropdown
+    useEffect(() => {
+        if (!open) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                closeAndReturnFocus();
+                return;
+            }
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                setFocusedIndex((prev) => {
+                    const next = Math.min(prev + 1, allOptions.length - 1);
+                    optionRefs.current[next]?.focus();
+                    return next;
+                });
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                setFocusedIndex((prev) => {
+                    const next = Math.max(prev - 1, 0);
+                    optionRefs.current[next]?.focus();
+                    return next;
+                });
+            } else if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                const opt = allOptions[focusedIndex];
+                if (!opt) return;
+                if (opt.type === "theme") {
+                    setTheme(opt.value as ThemeMode);
+                } else {
+                    setAnimationLevel(opt.value as AnimationLevel);
+                }
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown, true);
+        return () => window.removeEventListener("keydown", handleKeyDown, true);
+    }, [open, allOptions, focusedIndex, closeAndReturnFocus, setTheme, setAnimationLevel]);
+
+    const isSelected = (opt: FlatOption) =>
+        opt.type === "theme" ? opt.value === theme : opt.value === animationLevel;
 
     return (
         <div className="relative">
             <button
+                ref={triggerRef}
                 onClick={() => setOpen((s) => !s)}
                 className={buttonClassName ?? "rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"}
                 title="Settings"
@@ -70,44 +150,56 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                         <div className="mb-2 px-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Theme
                         </div>
-                        {themeOptions.map((opt) => (
-                            <button
-                                key={opt.value}
-                                onClick={() => {
-                                    setTheme(opt.value);
-                                }}
-                                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
-                                    theme === opt.value
-                                        ? "bg-primary/10 text-primary font-medium"
-                                        : "text-foreground hover:bg-accent"
-                                }`}
-                            >
-                                <ThemeIcon theme={opt.value} />
-                                {opt.label}
-                            </button>
-                        ))}
+                        {themeOptions.map((opt, idx) => {
+                            const flatIdx = idx;
+                            const selected = opt.value === theme;
+                            return (
+                                <button
+                                    ref={(el) => {
+                                        optionRefs.current[flatIdx] = el;
+                                    }}
+                                    key={opt.value}
+                                    tabIndex={focusedIndex === flatIdx ? 0 : -1}
+                                    onClick={() => setTheme(opt.value)}
+                                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
+                                        selected
+                                            ? "bg-primary/10 text-primary font-medium"
+                                            : "text-foreground hover:bg-accent"
+                                    }`}
+                                >
+                                    <ThemeIcon theme={opt.value} />
+                                    {opt.label}
+                                </button>
+                            );
+                        })}
                         <div className="my-2 border-t border-border" />
                         <div className="mb-2 px-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Animations
                         </div>
-                        {animationOptions.map((opt) => (
-                            <button
-                                key={opt.value}
-                                onClick={() => {
-                                    setAnimationLevel(opt.value);
-                                }}
-                                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
-                                    animationLevel === opt.value
-                                        ? "bg-primary/10 text-primary font-medium"
-                                        : "text-foreground hover:bg-accent"
-                                }`}
-                            >
-                                <span className="w-3.5 text-center">
-                                    {animationLevel === opt.value ? "●" : "○"}
-                                </span>
-                                {opt.label.replace("○ ", "").replace("● ", "")}
-                            </button>
-                        ))}
+                        {animationOptions.map((opt, idx) => {
+                            const flatIdx = themeOptions.length + idx;
+                            const selected = opt.value === animationLevel;
+                            return (
+                                <button
+                                    ref={(el) => {
+                                        optionRefs.current[flatIdx] = el;
+                                    }}
+                                    key={opt.value}
+                                    tabIndex={focusedIndex === flatIdx ? 0 : -1}
+                                    onClick={() => setAnimationLevel(opt.value)}
+                                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
+                                        selected
+                                            ? "bg-primary/10 text-primary font-medium"
+                                            : "text-foreground hover:bg-accent"
+                                    }`}
+                                >
+                                    <span className="w-3.5 text-center">
+                                        {selected ? "●" : "○"}
+                                    </span>
+                                    {opt.label}
+                                </button>
+                            );
+                        })}
                     </div>
                 </>
             )}

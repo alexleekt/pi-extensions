@@ -6,7 +6,6 @@ import Freeform from "./components/Freeform";
 import HeaderBar from "./components/HeaderBar";
 import MultiSelect from "./components/MultiSelect";
 import Questionnaire from "./components/Questionnaire";
-import ShortcutsModal from "./components/ShortcutsModal";
 import SingleSelect from "./components/SingleSelect";
 
 function getPayload(): AskUserPayload {
@@ -44,7 +43,6 @@ const MIN_PANEL_WIDTH = 25;     // percent — ensures settings dropdown (208px)
 const MAX_PANEL_WIDTH = 80;     // percent
 
 export default function App() {
-    const [showShortcuts, setShowShortcuts] = useState(false);
     const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
     const [isDragging, setIsDragging] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -82,8 +80,7 @@ export default function App() {
     if (!hasContext) {
         return (
             <div className="flex h-screen flex-col overflow-hidden">
-                <HeaderBar onShowShortcuts={() => setShowShortcuts(true)} question={payload.question} />
-                {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
+                <HeaderBar question={payload.question} />
                 <div className="flex-1 overflow-hidden">{renderComponent(payload)}</div>
             </div>
         );
@@ -93,8 +90,6 @@ export default function App() {
 
     return (
         <div className="flex h-screen flex-col overflow-hidden">
-            {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
-
             <div className="flex flex-1 overflow-hidden">
                 {/* Left panel */}
                 <div
@@ -109,7 +104,6 @@ export default function App() {
                             context={payload.context!}
                             contextFormat={payload.contextFormat}
                             question={payload.question}
-                            onShowShortcuts={() => setShowShortcuts(true)}
                         />
                     </ErrorBoundary>
                 </div>

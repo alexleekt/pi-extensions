@@ -1,0 +1,28 @@
+# Worktrunk project config for pi-extensions monorepo
+# Team-wide automation — runs for all developers in this repo
+
+# Install workspace dependencies when creating a new worktree.
+# Each worktree is a separate working directory, so node_modules must be
+# bootstrapped before any package scripts will run.
+pre-create = "npm ci"
+
+# Build the webview after dependencies are installed so dist/ is ready.
+pre-start = "cd packages/pi-ask-user-glimpse && npm run build"
+
+# Rebuild after switching to a worktree that might have stale dist/.
+# Worktrees share nothing, so switching from a branch with changes back to
+# main could leave outdated dist/index.html in place.
+post-switch = "cd packages/pi-ask-user-glimpse && npm run validate || npm run build"
+
+# Validate code quality before every commit.
+# Typecheck runs across all packages; lint is scoped to extension code
+# only (webview has its own Vite/Tailwind build toolchain).
+[pre-commit]
+typecheck = "just typecheck"
+lint = "just lint"
+validate-build = "cd packages/pi-ask-user-glimpse && npm run validate"
+
+# Run tests before merging to ensure no regressions.
+[pre-merge]
+test = "cd packages/pi-ask-user-glimpse && npm run test"
+test-e2e = "cd packages/pi-ask-user-glimpse && npm run test:e2e"
