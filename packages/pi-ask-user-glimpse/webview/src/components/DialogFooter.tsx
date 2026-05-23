@@ -31,7 +31,7 @@ export default function DialogFooter({
         <div className="shrink-0 border-t border-border p-4">
             {children}
             <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">{hint}</div>
+                <div className="flex-1 min-w-fit">{hint}</div>
                 <div className="flex shrink-0 items-center gap-2">
                     <button
                         onClick={onCancel ?? sendCancelled}
