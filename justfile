@@ -11,6 +11,7 @@ fmt:
 lint:
     npx @biomejs/biome check packages/pi-shared/session.ts \
         packages/pi-bump packages/pi-pkg-guard \
+        packages/pi-worktrunk-signal \
         packages/pi-ask-user-glimpse/index.ts \
         packages/pi-ask-user-glimpse/tool \
         packages/pi-ask-user-glimpse/shared \

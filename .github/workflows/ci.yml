@@ -18,6 +18,7 @@ jobs:
                     - pi-ask-user-glimpse
                     - pi-heading
                     - pi-herdr-tab-sync
+                    - pi-worktrunk-signal
         steps:
             - name: Checkout
               uses: actions/checkout@v6
