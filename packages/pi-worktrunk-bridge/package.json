@@ -4,6 +4,10 @@
   "description": "Signal where you are in the worktrunk forest — overlay, statusline, and activity tracking",
   "keywords": ["pi-package", "pi-extension", "worktrunk", "git-worktree"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexleekt/pi-extensions.git"
+  },
   "pi": {
     "extensions": ["./index.ts"]
   }
