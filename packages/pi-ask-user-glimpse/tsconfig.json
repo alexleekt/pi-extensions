@@ -6,7 +6,7 @@
     "include": [
         "index.ts",
         "tool/**/*.ts",
-        "fallback/**/*.ts",
+        
         "types/**/*.d.ts",
         "shared/**/*.ts"
     ],

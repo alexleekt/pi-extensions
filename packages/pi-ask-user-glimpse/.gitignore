@@ -1,3 +1,5 @@
 # Package-specific artifacts not covered by root .gitignore
 webview/src/index.generated.css
 screenshots/*.html
+.p/
+.understand-anything/

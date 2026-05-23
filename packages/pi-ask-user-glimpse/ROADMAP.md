@@ -65,4 +65,4 @@ All helpers read CSS custom properties (`--primary`, `--foreground`, etc.) for a
 
 - ~~HTML context iframe with theme propagation~~ (v0.4.0)
 - ~~Mermaid diagram support in markdown context~~ (v0.3.0)
-- ~~Auto-catch free-form questions~~ (v0.4.0)
+- ~~Auto-catch free-form questions~~ (v0.4.0) — **Removed in v0.5.0**: caused excessive dialog interruptions

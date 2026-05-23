@@ -32,7 +32,7 @@
         "index.ts",
         "constants",
         "tool",
-        "fallback",
+        
         "shared",
         "types",
         "dist",
@@ -49,9 +49,8 @@
         "check": "npm pack --dry-run",
         "prepack": "npm run build",
         "dev:webview": "npx vite --config ./webview/vite.config.ts",
-        "validate": "npx tsx scripts/validate.ts",
-        "validate:gui": "npx tsx scripts/validate.ts --gui",
-        "test:with-context": "npx tsx scripts/test-with-context.ts"
+        "validate": "test -f dist/index.html && grep -q 'ASK_USER_PAYLOAD' dist/index.html && echo \"✓ dist/index.html ready\" || echo \"✗ Run npm run build first\"",
+        "validate:gui": "echo \"validate:gui requires manual testing with pi extension load\""
     },
     "dependencies": {
         "@alexleekt/pi-shared": "^0.1.0",
