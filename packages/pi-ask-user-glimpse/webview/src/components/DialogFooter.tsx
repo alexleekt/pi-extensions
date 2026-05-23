@@ -30,23 +30,25 @@ export default function DialogFooter({
     return (
         <div className="shrink-0 border-t border-border p-4">
             {children}
-            {/* Keyboard hint bar spans the full footer width */}
-            {hint && <div className="mb-3">{hint}</div>}
-            <div className="flex items-center justify-end gap-2">
-                <button
-                    onClick={onCancel ?? sendCancelled}
-                    className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
-                >
-                    Cancel
-                </button>
-                {extraActions}
-                <button
-                    onClick={onSubmit}
-                    disabled={isSubmitting || submitDisabled}
-                    className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
-                >
-                    {isSubmitting ? "Submitting…" : "Submit"}
-                </button>
+            {/* Single row: hints left (50%), buttons right (50%), vertically centered */}
+            <div className="grid grid-cols-2 items-center gap-4">
+                <div className="flex items-center">{hint}</div>
+                <div className="flex items-center justify-end gap-2">
+                    <button
+                        onClick={onCancel ?? sendCancelled}
+                        className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+                    >
+                        Cancel
+                    </button>
+                    {extraActions}
+                    <button
+                        onClick={onSubmit}
+                        disabled={isSubmitting || submitDisabled}
+                        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
+                    >
+                        {isSubmitting ? "Submitting…" : "Submit"}
+                    </button>
+                </div>
             </div>
         </div>
     );
