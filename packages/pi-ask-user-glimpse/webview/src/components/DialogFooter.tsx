@@ -30,10 +30,10 @@ export default function DialogFooter({
     return (
         <div className="shrink-0 border-t border-border p-4">
             {children}
-            {/* Single row: hints left (50%), buttons right (50%), vertically centered */}
-            <div className="grid grid-cols-2 items-center gap-4">
-                <div className="flex items-center min-w-0">{hint}</div>
-                <div className="flex items-center justify-end gap-2">
+            {/* Single row: hints left, buttons right, both at bottom */}
+            <div className="flex items-end justify-between gap-4">
+                <div className="flex items-center">{hint}</div>
+                <div className="flex items-center gap-2">
                     <button
                         onClick={onCancel ?? sendCancelled}
                         className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
