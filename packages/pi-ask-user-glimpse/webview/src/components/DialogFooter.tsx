@@ -32,7 +32,7 @@ export default function DialogFooter({
             {children}
             {/* Single row: hints left (50%), buttons right (50%), vertically centered */}
             <div className="grid grid-cols-2 items-center gap-4">
-                <div className="flex items-center">{hint}</div>
+                <div className="flex items-center min-w-0">{hint}</div>
                 <div className="flex items-center justify-end gap-2">
                     <button
                         onClick={onCancel ?? sendCancelled}

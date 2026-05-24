@@ -25,12 +25,12 @@ export default function KeyboardHint({ items }: KeyboardHintProps) {
                     {item.keys.map((k) => (
                         <kbd
                             key={k}
-                            className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-border bg-muted px-1 text-[10px] font-mono leading-none text-muted-foreground"
+                            className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-border bg-muted px-1 text-xs font-mono leading-none text-muted-foreground dark:border-muted-foreground/30"
                         >
                             {k}
                         </kbd>
                     ))}
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                         {item.label}
                     </span>
                 </span>
