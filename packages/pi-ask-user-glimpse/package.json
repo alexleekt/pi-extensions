@@ -48,6 +48,7 @@
         "typecheck": "tsc --noEmit",
         "check": "npm pack --dry-run",
         "prepack": "npm run build",
+        "prepare": "npm run build",
         "dev:webview": "npx vite --config ./webview/vite.config.ts",
         "test": "vitest run",
         "test:watch": "vitest",
