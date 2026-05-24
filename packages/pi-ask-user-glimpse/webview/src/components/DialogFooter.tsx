@@ -30,10 +30,10 @@ export default function DialogFooter({
     return (
         <div className="shrink-0 border-t border-border p-4">
             {children}
-            {/* Responsive footer: hints flex, buttons stay right */}
-            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                <div className="min-w-0 flex-1">{hint}</div>
-                <div className="flex items-center gap-2 shrink-0">
+            {/* Single row: hints left (flexible), buttons right (compact) */}
+            <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">{hint}</div>
+                <div className="flex shrink-0 items-center gap-2">
                     <button
                         onClick={onCancel ?? sendCancelled}
                         className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"

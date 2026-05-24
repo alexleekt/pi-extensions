@@ -19,7 +19,7 @@ interface KeyboardHintProps {
  */
 export default function KeyboardHint({ items }: KeyboardHintProps) {
     return (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {items.map((item, idx) => (
                 <span key={idx} className="inline-flex items-center gap-1">
                     {item.keys.map((k) => (

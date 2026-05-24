@@ -38,7 +38,7 @@ function renderComponent(payload: AskUserPayload) {
     }
 }
 
-const DEFAULT_PANEL_WIDTH = 55; // percent — gives dialog more room for keyboard hints
+const DEFAULT_PANEL_WIDTH = 70; // percent
 const MIN_PANEL_WIDTH = 25;     // percent — ensures settings dropdown (208px) fits at 1000px window
 const MAX_PANEL_WIDTH = 80;     // percent
 
