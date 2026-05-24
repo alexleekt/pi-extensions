@@ -1,7 +1,7 @@
 {
   "name": "@alexleekt/pi-worktrunk-signal",
-  "version": "0.2.0",
-  "description": "Signal where you are in the worktrunk forest — overlay, statusline, and activity tracking",
+  "version": "0.3.0",
+  "description": "Signal where you are in the worktrunk forest — activity tracking and worktree switching",
   "keywords": ["pi-package", "pi-extension", "pi", "worktrunk", "git-worktree"],
   "license": "MIT",
   "repository": {
