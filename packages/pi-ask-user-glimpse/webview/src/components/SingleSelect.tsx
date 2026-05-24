@@ -135,51 +135,10 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
                 onCancel={handleCancel}
                 hint={<GlobalKeyboardHint payload={payload} />}
                 submitDisabled={!hasFreeform && selected === null}
-            >
-                {payload.allowComment && (
-                    <div className="mb-3">
-                        <button
-                            onClick={() => setShowComment((s) => !s)}
-                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                            aria-expanded={showComment}
-                        >
-                            <CommentIcon />
-                            {showComment
-                                ? "Hide comment"
-                                : comment.trim()
-                                  ? "Edit comment"
-                                  : "Add comment"}
-                        </button>
-                        {showComment && (
-                            <textarea
-                                value={comment}
-                                onChange={(e) => setComment(e.target.value)}
-                                placeholder="Optional comment…"
-                                className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
-                                rows={3}
-                            />
-                        )}
-                    </div>
-                )}
-                <AdditionalComments
-                    ref={commentsRef}
-                    value={additionalComments}
-                    onChange={setAdditionalComments}
-                />
-            </DialogFooter>
+            />
         ),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [
-            isSubmitting,
-            handleSubmit,
-            handleCancel,
-            payload,
-            hasFreeform,
-            selected,
-            showComment,
-            comment,
-            additionalComments,
-        ],
+        [isSubmitting, handleSubmit, handleCancel, payload, hasFreeform, selected],
     );
     useFooterPortal(footer);
 
@@ -400,6 +359,40 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
                         <span className="font-medium">{FREEFORM_OPTION_TITLE}</span>
                     </button>
                 )}
+            </div>
+
+            {/* Additional comments — stays in right panel above the full-width footer */}
+            <div className="shrink-0 border-t border-border px-4 py-3">
+                {payload.allowComment && (
+                    <div className="mb-3">
+                        <button
+                            onClick={() => setShowComment((s) => !s)}
+                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                            aria-expanded={showComment}
+                        >
+                            <CommentIcon />
+                            {showComment
+                                ? "Hide comment"
+                                : comment.trim()
+                                  ? "Edit comment"
+                                  : "Add comment"}
+                        </button>
+                        {showComment && (
+                            <textarea
+                                value={comment}
+                                onChange={(e) => setComment(e.target.value)}
+                                placeholder="Optional comment…"
+                                className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+                                rows={3}
+                            />
+                        )}
+                    </div>
+                )}
+                <AdditionalComments
+                    ref={commentsRef}
+                    value={additionalComments}
+                    onChange={setAdditionalComments}
+                />
             </div>
 
             <CancelConfirmModal

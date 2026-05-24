@@ -261,9 +261,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
                 hint={<GlobalKeyboardHint payload={payload} />}
-            >
-                {/* no extra children */}
-            </DialogFooter>
+            />
         ),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [isSubmitting, handleSubmit, handleCancel, payload],
