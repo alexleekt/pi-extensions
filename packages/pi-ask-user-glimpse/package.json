@@ -48,7 +48,6 @@
         "typecheck": "tsc --noEmit",
         "check": "npm pack --dry-run",
         "prepack": "npm run build",
-        "prepare": "npm run build",
         "dev:webview": "npx vite --config ./webview/vite.config.ts",
         "test": "vitest run",
         "test:watch": "vitest",
@@ -69,7 +68,9 @@
             "command": "npx tailwindcss -c ./webview/tailwind.config.js -i ./webview/src/index.css -o ./webview/src/index.generated.css --content './webview/index.html,./webview/src/**/*.{js,ts,jsx,tsx}'",
             "files": [
                 "./webview/src/**/*.css",
+                "./webview/src/**/*.{ts,tsx,js,jsx}",
                 "./webview/tailwind.config.js",
+                "./webview/postcss.config.js",
                 "./webview/index.html"
             ],
             "output": [
@@ -82,6 +83,8 @@
                 "./webview/src/**/*.{ts,tsx}",
                 "./webview/index.html",
                 "./webview/vite.config.ts",
+                "./webview/tsconfig.json",
+                "./webview/postcss.config.js",
                 "./webview/src/index.generated.css"
             ],
             "output": [
