@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { useDialogKeys } from "../hooks/useDialogKeys";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
@@ -6,6 +6,7 @@ import { renderOptionText } from "../util/html";
 import AdditionalComments from "./AdditionalComments";
 import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
+import { useFooterPortal } from "./FooterContext";
 import GlobalKeyboardHint from "./GlobalKeyboardHint";
 import { CheckIcon, CommentIcon, isSelectAllOption, RadioIcon } from "./icons";
 
@@ -251,6 +252,23 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         isCommentOpen: !!showCommentFor,
         onCloseComment: () => setShowCommentFor(null),
     });
+
+    /* Render footer via portal so it spans full window width beneath both panels. */
+    const footer = useMemo(
+        () => (
+            <DialogFooter
+                isSubmitting={isSubmitting}
+                onSubmit={handleSubmit}
+                onCancel={handleCancel}
+                hint={<GlobalKeyboardHint payload={payload} />}
+            >
+                {/* no extra children */}
+            </DialogFooter>
+        ),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [isSubmitting, handleSubmit, handleCancel, payload],
+    );
+    useFooterPortal(footer);
 
     return (
         <div className="flex h-full flex-col">
@@ -584,14 +602,6 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                 </div>
             </div>
 
-            <DialogFooter
-                isSubmitting={isSubmitting}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-                hint={<GlobalKeyboardHint payload={payload} />}
-            >
-                {/* no extra children */}
-            </DialogFooter>
             <CancelConfirmModal
                 isOpen={showCancelConfirm}
                 onStay={() => setShowCancelConfirm(false)}

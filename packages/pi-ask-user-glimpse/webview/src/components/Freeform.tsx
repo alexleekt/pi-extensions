@@ -1,9 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { useDialogKeys } from "../hooks/useDialogKeys";
 import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
+import { useFooterPortal } from "./FooterContext";
 import GlobalKeyboardHint from "./GlobalKeyboardHint";
 
 const MAX_FREEFORM_LENGTH = 2000;
@@ -37,6 +38,21 @@ export default function Freeform({
 
     useDialogKeys({ onSubmit: handleSubmit, onCancel: handleCancel, isSubmitting });
 
+    /* Render footer via portal so it spans full window width beneath both panels. */
+    const footer = useMemo(
+        () => (
+            <DialogFooter
+                isSubmitting={isSubmitting}
+                onSubmit={handleSubmit}
+                onCancel={handleCancel}
+                hint={<GlobalKeyboardHint payload={payload} />}
+            />
+        ),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [isSubmitting, handleSubmit, handleCancel, payload],
+    );
+    useFooterPortal(footer);
+
     return (
         <div className="flex h-full flex-col">
             <div className="flex-1 p-4">
@@ -49,12 +65,6 @@ export default function Freeform({
                 />
             </div>
 
-            <DialogFooter
-                isSubmitting={isSubmitting}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-                hint={<GlobalKeyboardHint payload={payload} />}
-            />
             <CancelConfirmModal
                 isOpen={showCancelConfirm}
                 onStay={() => setShowCancelConfirm(false)}

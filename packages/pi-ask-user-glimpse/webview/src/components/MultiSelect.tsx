@@ -6,6 +6,7 @@ import { renderOptionText } from "../util/html";
 import AdditionalComments from "./AdditionalComments";
 import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
+import { useFooterPortal } from "./FooterContext";
 import GlobalKeyboardHint from "./GlobalKeyboardHint";
 import { CheckIcon, CommentIcon, isSelectAllOption } from "./icons";
 
@@ -144,6 +145,63 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         isCommentOpen: showComment,
         onCloseComment: () => setShowComment(false),
     });
+
+    /* Render footer via portal so it spans full window width beneath both panels. */
+    const footer = useMemo(
+        () => (
+            <DialogFooter
+                isSubmitting={isSubmitting}
+                onSubmit={handleSubmit}
+                onCancel={handleCancel}
+                hint={<GlobalKeyboardHint payload={payload} />}
+                submitDisabled={!hasFreeform && selected.size === 0}
+            >
+                {payload.allowComment && (
+                    <div className="mb-3">
+                        <button
+                            onClick={() => setShowComment((s) => !s)}
+                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                            aria-expanded={showComment}
+                        >
+                            <CommentIcon />
+                            {showComment
+                                ? "Hide comment"
+                                : comment.trim()
+                                  ? "Edit comment"
+                                  : "Add comment"}
+                        </button>
+                        {showComment && (
+                            <textarea
+                                value={comment}
+                                onChange={(e) => setComment(e.target.value)}
+                                placeholder="Optional comment…"
+                                className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+                                rows={3}
+                            />
+                        )}
+                    </div>
+                )}
+                <AdditionalComments
+                    ref={commentsRef}
+                    value={additionalComments}
+                    onChange={setAdditionalComments}
+                />
+            </DialogFooter>
+        ),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [
+            isSubmitting,
+            handleSubmit,
+            handleCancel,
+            payload,
+            hasFreeform,
+            selected.size,
+            showComment,
+            comment,
+            additionalComments,
+        ],
+    );
+    useFooterPortal(footer);
 
     useEffect(() => {
         const id = requestAnimationFrame(() => {
@@ -430,46 +488,6 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                 )}
             </div>
 
-            <DialogFooter
-                isSubmitting={isSubmitting}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-                hint={<GlobalKeyboardHint payload={payload} />}
-                submitDisabled={
-                    !hasFreeform && selected.size === 0
-                }
-            >
-                {payload.allowComment && (
-                    <div className="mb-3">
-                        <button
-                            onClick={() => setShowComment((s) => !s)}
-                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                            aria-expanded={showComment}
-                        >
-                            <CommentIcon />
-                            {showComment
-                                ? "Hide comment"
-                                : comment.trim()
-                                  ? "Edit comment"
-                                  : "Add comment"}
-                        </button>
-                        {showComment && (
-                            <textarea
-                                value={comment}
-                                onChange={(e) => setComment(e.target.value)}
-                                placeholder="Optional comment…"
-                                className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
-                                rows={3}
-                            />
-                        )}
-                    </div>
-                )}
-                <AdditionalComments
-                    ref={commentsRef}
-                    value={additionalComments}
-                    onChange={setAdditionalComments}
-                />
-            </DialogFooter>
             <CancelConfirmModal
                 isOpen={showCancelConfirm}
                 onStay={() => setShowCancelConfirm(false)}
