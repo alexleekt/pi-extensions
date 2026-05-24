@@ -1,0 +1,51 @@
+{
+  "name": "@alexleekt/pi-event-horizon-provider",
+  "version": "0.1.0",
+  "description": "Pi provider for Event Horizon — a LiteLLM proxy that collapses any model name to a configured target",
+  "type": "module",
+  "keywords": [
+    "pi",
+    "pi-extension",
+    "pi-package",
+    "provider",
+    "litellm",
+    "proxy"
+  ],
+  "author": "Alex Lee <alex@alexleekt.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexleekt/pi-extensions.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alexleekt/pi-extensions/issues"
+  },
+  "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-event-horizon-provider#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "files": [
+    "index.ts",
+    "README.md",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "ROADMAP.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "echo 'nothing to clean'",
+    "build": "echo 'nothing to build'",
+    "check": "echo 'nothing to check'"
+  },
+  "dependencies": {
+    "yaml": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
