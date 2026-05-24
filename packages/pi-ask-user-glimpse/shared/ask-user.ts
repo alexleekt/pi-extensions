@@ -44,3 +44,6 @@ export interface QuestionnaireDetail {
     kind: "selection" | "freeform";
     comment?: string;
 }
+
+/** Sentinel title used for the freeform "not listed" option in select dialogs. */
+export const FREEFORM_OPTION_TITLE = "My answer isn't listed above";

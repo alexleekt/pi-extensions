@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AskUserPayload } from "../../../shared/ask-user";
+import { FREEFORM_OPTION_TITLE, type AskUserPayload } from "../../../shared/ask-user";
 import { useDialogKeys } from "../hooks/useDialogKeys";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { renderOptionText } from "../util/html";
@@ -24,6 +24,9 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
     const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const freeformRef = useRef<HTMLButtonElement | null>(null);
     const commentsRef = useRef<HTMLTextAreaElement | null>(null);
+
+    const hasFreeform = payload.allowFreeform;
+    const maxIndex = hasFreeform ? payload.options.length : payload.options.length - 1;
 
     const stateRef = useRef({
         selected: null as string | null,
@@ -59,25 +62,47 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
         sendToGlimpse(result);
     }, []);
 
-    const handleFreeform = useCallback(() => {
-        sendToGlimpse({ kind: "freeform", text: "" });
+    const sendFreeformResult = useCallback(() => {
+        const s = stateRef.current;
+        const result: Record<string, unknown> = {
+            kind: "freeform",
+            text: "",
+        };
+        if (s.showComment && s.comment.trim())
+            result.comment = s.comment.trim();
+        if (s.additionalComments.trim())
+            result.additionalComments = s.additionalComments.trim();
+        sendToGlimpse(result);
     }, []);
+
+    const handleFreeform = useCallback(() => {
+        setSelected(FREEFORM_OPTION_TITLE);
+        setActiveIndex(payload.options.length);
+        freeformRef.current?.focus();
+        freeformRef.current?.scrollIntoView({ block: "nearest" });
+    }, [payload.options.length]);
 
     const handleSubmit = useCallback(() => {
         const s = stateRef.current;
         if (s.isSubmitting) return;
+        setIsSubmitting(true);
+
+        if (s.selected === FREEFORM_OPTION_TITLE) {
+            sendFreeformResult();
+            return;
+        }
+
         const fallbackSelection =
             s.activeIndex >= 0 && s.activeIndex < s.options.length
                 ? s.options[s.activeIndex].title
                 : null;
         const selection = s.selected ?? fallbackSelection;
-        setIsSubmitting(true);
         if (s.allowFreeform && selection === null) {
-            handleFreeform();
+            sendFreeformResult();
         } else {
             sendResult(selection);
         }
-    }, [handleFreeform, sendResult]);
+    }, [sendResult, sendFreeformResult]);
 
     const isDirty =
         selected !== null ||
@@ -102,11 +127,16 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
 
     useEffect(() => {
         const id = requestAnimationFrame(() => {
-            optionRefs.current[0]?.focus();
-            setActiveIndex(0);
+            if (payload.options.length > 0) {
+                optionRefs.current[0]?.focus();
+                setActiveIndex(0);
+            } else if (hasFreeform) {
+                freeformRef.current?.focus();
+                setActiveIndex(0);
+            }
         });
         return () => cancelAnimationFrame(id);
-    }, []);
+    }, [hasFreeform, payload.options.length]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -136,6 +166,18 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
                 return;
             }
 
+            // Minus key to select freeform option (without submitting)
+            if (e.key === "-" || e.key === "_") {
+                if (s.allowFreeform) {
+                    e.preventDefault();
+                    setSelected(FREEFORM_OPTION_TITLE);
+                    setActiveIndex(s.options.length);
+                    freeformRef.current?.focus();
+                    freeformRef.current?.scrollIntoView({ block: "nearest" });
+                }
+                return;
+            }
+
             // 0 to focus additional comments
             if (e.key === "0") {
                 e.preventDefault();
@@ -147,21 +189,35 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
             if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setActiveIndex((prev) => {
-                    const next = Math.min(prev + 1, s.options.length - 1);
-                    optionRefs.current[next]?.focus();
-                    optionRefs.current[next]?.scrollIntoView({
-                        block: "nearest",
-                    });
+                    const next = Math.min(prev + 1, maxIndex);
+                    if (next < s.options.length) {
+                        optionRefs.current[next]?.focus();
+                        optionRefs.current[next]?.scrollIntoView({
+                            block: "nearest",
+                        });
+                    } else if (s.allowFreeform && next === s.options.length) {
+                        freeformRef.current?.focus();
+                        freeformRef.current?.scrollIntoView({
+                            block: "nearest",
+                        });
+                    }
                     return next;
                 });
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
                 setActiveIndex((prev) => {
                     const next = Math.max(prev - 1, 0);
-                    optionRefs.current[next]?.focus();
-                    optionRefs.current[next]?.scrollIntoView({
-                        block: "nearest",
-                    });
+                    if (next < s.options.length) {
+                        optionRefs.current[next]?.focus();
+                        optionRefs.current[next]?.scrollIntoView({
+                            block: "nearest",
+                        });
+                    } else if (s.allowFreeform && next === s.options.length) {
+                        freeformRef.current?.focus();
+                        freeformRef.current?.scrollIntoView({
+                            block: "nearest",
+                        });
+                    }
                     return next;
                 });
             } else if (e.key === "Enter") {
@@ -174,8 +230,8 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
                     (focusedEl === freeformRef.current ||
                         freeformRef.current?.contains(focusedEl));
                 if (freeformFocused) {
-                    setIsSubmitting(true);
-                    handleFreeform();
+                    // Enter on freeform: only select, do not submit
+                    setSelected(FREEFORM_OPTION_TITLE);
                 } else if (
                     s.activeIndex >= 0 &&
                     s.activeIndex < s.options.length
@@ -184,15 +240,15 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
                     setSelected(opt.title);
                     setIsSubmitting(true);
                     sendResult(opt.title);
-                } else if (s.allowFreeform) {
-                    setIsSubmitting(true);
-                    handleFreeform();
+                } else if (s.allowFreeform && s.activeIndex === s.options.length) {
+                    // Freeform is active via navigation but not focused: just select
+                    setSelected(FREEFORM_OPTION_TITLE);
                 }
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [sendResult, handleFreeform]);
+    }, [sendResult, maxIndex]);
 
     return (
         <div className="flex h-full flex-col">
@@ -266,14 +322,24 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
                     )}
                 </div>
 
-                {payload.allowFreeform && (
+                {hasFreeform && (
                     <button
                         ref={freeformRef}
-                        tabIndex={0}
+                        tabIndex={activeIndex === payload.options.length ? 0 : -1}
                         onClick={handleFreeform}
-                        className="mt-4 w-full rounded-lg border border-dashed border-border p-3 text-left text-sm text-muted-foreground transition-colors hover:bg-accent"
+                        role="option"
+                        aria-selected={selected === FREEFORM_OPTION_TITLE}
+                        className={`mt-4 flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm transition-colors ${
+                            selected === FREEFORM_OPTION_TITLE
+                                ? "border-primary bg-primary/5"
+                                : "border-dashed border-border text-muted-foreground hover:bg-accent"
+                        } ${activeIndex === payload.options.length ? "ring-2 ring-ring" : ""}`}
                     >
-                        My answer isn't listed above
+                        <RadioIcon checked={selected === FREEFORM_OPTION_TITLE} />
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                            -
+                        </span>
+                        <span className="font-medium">{FREEFORM_OPTION_TITLE}</span>
                     </button>
                 )}
             </div>
@@ -284,7 +350,7 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
                 onCancel={handleCancel}
                 hint={<GlobalKeyboardHint payload={payload} />}
                 submitDisabled={
-                    !payload.allowFreeform && selected === null
+                    !hasFreeform && selected === null
                 }
             >
                 {payload.allowComment && (

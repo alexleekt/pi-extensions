@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AskUserPayload } from "../../../shared/ask-user";
+import { FREEFORM_OPTION_TITLE, type AskUserPayload } from "../../../shared/ask-user";
 import { useDialogKeys } from "../hooks/useDialogKeys";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { renderOptionText } from "../util/html";
@@ -7,7 +7,7 @@ import AdditionalComments from "./AdditionalComments";
 import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
 import GlobalKeyboardHint from "./GlobalKeyboardHint";
-import { CheckIcon, CommentIcon, isSelectAllOption, RadioIcon } from "./icons";
+import { CheckIcon, CommentIcon, isSelectAllOption } from "./icons";
 
 interface MultiSelectProps {
     payload: AskUserPayload;
@@ -24,6 +24,9 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
     const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const freeformRef = useRef<HTMLButtonElement | null>(null);
     const commentsRef = useRef<HTMLTextAreaElement | null>(null);
+
+    const hasFreeform = payload.allowFreeform;
+    const maxIndex = hasFreeform ? payload.options.length : payload.options.length - 1;
 
     const selectAllOption = useMemo(
         () => payload.options.find((opt) => isSelectAllOption(opt.title)),
@@ -53,10 +56,6 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         selectAllOption,
     };
 
-    const handleFreeform = useCallback(() => {
-        sendToGlimpse({ kind: "freeform", text: "" });
-    }, []);
-
     const toggle = useCallback((title: string) => {
         const s = stateRef.current;
         if (s.selectAllOption && title === s.selectAllOption.title) {
@@ -76,13 +75,42 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         });
     }, []);
 
+    const handleFreeform = useCallback(() => {
+        toggle(FREEFORM_OPTION_TITLE);
+        setActiveIndex(payload.options.length);
+        freeformRef.current?.focus();
+        freeformRef.current?.scrollIntoView({ block: "nearest" });
+    }, [toggle, payload.options.length]);
+
     const handleSubmit = useCallback(() => {
         const s = stateRef.current;
         if (s.isSubmitting) return;
-        const hasSelection = s.selected.size > 0;
         setIsSubmitting(true);
+
+        if (s.selected.has(FREEFORM_OPTION_TITLE)) {
+            const result: Record<string, unknown> = {
+                kind: "freeform",
+                text: "",
+            };
+            if (s.showComment && s.comment.trim())
+                result.comment = s.comment.trim();
+            if (s.additionalComments.trim())
+                result.additionalComments = s.additionalComments.trim();
+            sendToGlimpse(result);
+            return;
+        }
+
+        const hasSelection = s.selected.size > 0;
         if (!hasSelection && s.allowFreeform) {
-            handleFreeform();
+            const result: Record<string, unknown> = {
+                kind: "freeform",
+                text: "",
+            };
+            if (s.showComment && s.comment.trim())
+                result.comment = s.comment.trim();
+            if (s.additionalComments.trim())
+                result.additionalComments = s.additionalComments.trim();
+            sendToGlimpse(result);
             return;
         }
         const result: Record<string, unknown> = {
@@ -94,7 +122,7 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         if (s.additionalComments.trim())
             result.additionalComments = s.additionalComments.trim();
         sendToGlimpse(result);
-    }, [handleFreeform]);
+    }, []);
 
     const isDirty =
         selected.size > 0 ||
@@ -119,11 +147,16 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
 
     useEffect(() => {
         const id = requestAnimationFrame(() => {
-            optionRefs.current[0]?.focus();
-            setActiveIndex(0);
+            if (payload.options.length > 0) {
+                optionRefs.current[0]?.focus();
+                setActiveIndex(0);
+            } else if (hasFreeform) {
+                freeformRef.current?.focus();
+                setActiveIndex(0);
+            }
         });
         return () => cancelAnimationFrame(id);
-    }, []);
+    }, [hasFreeform, payload.options.length]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -152,6 +185,18 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                 return;
             }
 
+            // Minus key to toggle freeform option (without submitting)
+            if (e.key === "-" || e.key === "_") {
+                if (s.allowFreeform) {
+                    e.preventDefault();
+                    toggle(FREEFORM_OPTION_TITLE);
+                    setActiveIndex(s.options.length);
+                    freeformRef.current?.focus();
+                    freeformRef.current?.scrollIntoView({ block: "nearest" });
+                }
+                return;
+            }
+
             // 0 to focus additional comments
             if (e.key === "0") {
                 e.preventDefault();
@@ -163,27 +208,43 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
             if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setActiveIndex((prev) => {
-                    const next = Math.min(prev + 1, s.options.length - 1);
-                    optionRefs.current[next]?.focus();
-                    optionRefs.current[next]?.scrollIntoView({
-                        block: "nearest",
-                    });
+                    const next = Math.min(prev + 1, maxIndex);
+                    if (next < s.options.length) {
+                        optionRefs.current[next]?.focus();
+                        optionRefs.current[next]?.scrollIntoView({
+                            block: "nearest",
+                        });
+                    } else if (s.allowFreeform && next === s.options.length) {
+                        freeformRef.current?.focus();
+                        freeformRef.current?.scrollIntoView({
+                            block: "nearest",
+                        });
+                    }
                     return next;
                 });
             } else if (e.key === "ArrowUp") {
                 e.preventDefault();
                 setActiveIndex((prev) => {
                     const next = Math.max(prev - 1, 0);
-                    optionRefs.current[next]?.focus();
-                    optionRefs.current[next]?.scrollIntoView({
-                        block: "nearest",
-                    });
+                    if (next < s.options.length) {
+                        optionRefs.current[next]?.focus();
+                        optionRefs.current[next]?.scrollIntoView({
+                            block: "nearest",
+                        });
+                    } else if (s.allowFreeform && next === s.options.length) {
+                        freeformRef.current?.focus();
+                        freeformRef.current?.scrollIntoView({
+                            block: "nearest",
+                        });
+                    }
                     return next;
                 });
             } else if (e.key === " " || e.key === "Spacebar") {
                 e.preventDefault();
                 if (s.activeIndex >= 0 && s.activeIndex < s.options.length)
                     toggle(s.options[s.activeIndex].title);
+                else if (s.allowFreeform && s.activeIndex === s.options.length)
+                    toggle(FREEFORM_OPTION_TITLE);
             } else if (e.key === "Enter") {
                 e.preventDefault();
                 const focusedEl = document.activeElement;
@@ -193,19 +254,22 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                     (focusedEl === freeformRef.current ||
                         freeformRef.current?.contains(focusedEl));
                 if (freeformFocused) {
-                    setIsSubmitting(true);
-                    handleFreeform();
+                    // Enter on freeform: only toggle, do not submit
+                    toggle(FREEFORM_OPTION_TITLE);
                 } else if (
                     s.activeIndex >= 0 &&
                     s.activeIndex < s.options.length
                 ) {
                     toggle(s.options[s.activeIndex].title);
+                } else if (s.allowFreeform && s.activeIndex === s.options.length) {
+                    // Freeform active via navigation: just toggle
+                    toggle(FREEFORM_OPTION_TITLE);
                 }
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [toggle, handleFreeform]);
+    }, [toggle, maxIndex]);
 
     return (
         <div className="flex h-full flex-col">
@@ -338,14 +402,30 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                     )}
                 </div>
 
-                {payload.allowFreeform && (
+                {hasFreeform && (
                     <button
                         ref={freeformRef}
-                        tabIndex={0}
+                        tabIndex={activeIndex === payload.options.length ? 0 : -1}
                         onClick={handleFreeform}
-                        className="mt-4 w-full rounded-lg border border-dashed border-border p-3 text-left text-sm text-muted-foreground transition-colors hover:bg-accent"
+                        role="option"
+                        aria-selected={selected.has(FREEFORM_OPTION_TITLE)}
+                        className={`mt-4 flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm transition-colors ${
+                            selected.has(FREEFORM_OPTION_TITLE)
+                                ? "border-primary bg-primary/5"
+                                : "border-dashed border-border text-muted-foreground hover:bg-accent"
+                        } ${activeIndex === payload.options.length ? "ring-2 ring-ring" : ""}`}
                     >
-                        My answer isn't listed above
+                        <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
+                            selected.has(FREEFORM_OPTION_TITLE)
+                                ? "bg-primary text-primary-foreground"
+                                : "border border-border"
+                        }`}>
+                            {selected.has(FREEFORM_OPTION_TITLE) && <CheckIcon checked={true} />}
+                        </div>
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                            -
+                        </span>
+                        <span className="font-medium">{FREEFORM_OPTION_TITLE}</span>
                     </button>
                 )}
             </div>
@@ -356,7 +436,7 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                 onCancel={handleCancel}
                 hint={<GlobalKeyboardHint payload={payload} />}
                 submitDisabled={
-                    !payload.allowFreeform && selected.size === 0
+                    !hasFreeform && selected.size === 0
                 }
             >
                 {payload.allowComment && (

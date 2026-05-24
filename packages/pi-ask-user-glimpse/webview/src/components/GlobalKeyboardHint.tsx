@@ -10,33 +10,35 @@ interface GlobalKeyboardHintProps {
  *  Intended to be placed inside DialogFooter — no wrapper borders or padding. */
 export default function GlobalKeyboardHint({ payload }: GlobalKeyboardHintProps) {
     switch (payload.type) {
-        case "single-select":
-            return (
-                <KeyboardHint
-                    items={[
-                        { keys: ["Esc"], label: "cancel" },
-                        { keys: ["↑", "↓"], label: "navigate" },
-                        { keys: ["1", "…", "9"], label: "select" },
-                        { keys: ["Enter"], label: "choose" },
-                        { keys: [modKey(), "Enter"], label: "submit" },
-                        { keys: ["0"], label: "comments" },
-                    ]}
-                />
-            );
-        case "multi-select":
-            return (
-                <KeyboardHint
-                    items={[
-                        { keys: ["Esc"], label: "cancel" },
-                        { keys: ["↑", "↓"], label: "navigate" },
-                        { keys: ["1", "…", "9"], label: "toggle" },
-                        { keys: ["Enter"], label: "choose" },
-                        { keys: ["Space"], label: "toggle" },
-                        { keys: [modKey(), "Enter"], label: "submit" },
-                        { keys: ["0"], label: "comments" },
-                    ]}
-                />
-            );
+        case "single-select": {
+            const items = [
+                { keys: ["Esc"], label: "cancel" },
+                { keys: ["↑", "↓"], label: "navigate" },
+                { keys: ["1", "…", "9"], label: "select" },
+                { keys: ["Enter"], label: "choose" },
+                { keys: [modKey(), "Enter"], label: "submit" },
+                { keys: ["0"], label: "comments" },
+            ];
+            if (payload.allowFreeform) {
+                items.push({ keys: ["-"], label: "not listed" });
+            }
+            return <KeyboardHint items={items} />;
+        }
+        case "multi-select": {
+            const items = [
+                { keys: ["Esc"], label: "cancel" },
+                { keys: ["↑", "↓"], label: "navigate" },
+                { keys: ["1", "…", "9"], label: "toggle" },
+                { keys: ["Enter"], label: "choose" },
+                { keys: ["Space"], label: "toggle" },
+                { keys: [modKey(), "Enter"], label: "submit" },
+                { keys: ["0"], label: "comments" },
+            ];
+            if (payload.allowFreeform) {
+                items.push({ keys: ["-"], label: "not listed" });
+            }
+            return <KeyboardHint items={items} />;
+        }
         case "questionnaire":
             return (
                 <KeyboardHint

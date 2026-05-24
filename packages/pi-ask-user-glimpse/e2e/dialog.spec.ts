@@ -86,6 +86,42 @@ test.describe("pi-ask-user-glimpse dialog", () => {
         await expect(hint.getByText("submit", { exact: true })).toBeVisible();
     });
 
+    test("minus key selects freeform option without submitting", async ({ page }) => {
+        await page.click("body");
+        await page.keyboard.press("-");
+
+        const freeformOption = page.locator("button[role='option']").filter({ hasText: "My answer isn't listed above" });
+        await expect(freeformOption).toHaveAttribute("aria-selected", "true");
+        await expect(page.getByText("Submitting…")).not.toBeVisible();
+    });
+
+    test("Enter on freeform only selects, does not submit", async ({ page }) => {
+        // Navigate to freeform option
+        const freeformOption = page.locator("button[role='option']").filter({ hasText: "My answer isn't listed above" });
+        await freeformOption.focus();
+        await page.keyboard.press("Enter");
+
+        await expect(freeformOption).toHaveAttribute("aria-selected", "true");
+        await expect(page.getByText("Submitting…")).not.toBeVisible();
+    });
+
+    test("submit button works with freeform selected", async ({ page }) => {
+        await page.click("body");
+        await page.keyboard.press("-");
+
+        const freeformOption = page.locator("button[role='option']").filter({ hasText: "My answer isn't listed above" });
+        await expect(freeformOption).toHaveAttribute("aria-selected", "true");
+
+        await page.getByRole("button", { name: "Submit" }).click();
+        await expect(page.getByText("Submitting…")).toBeVisible();
+    });
+
+    test("footer shows not-listed hint when freeform is enabled", async ({ page }) => {
+        const hint = page.locator(".flex-wrap"); // KeyboardHint container
+        await expect(hint.getByText("-")).toBeVisible();
+        await expect(hint.getByText("not listed")).toBeVisible();
+    });
+
     test("Cancel button triggers confirm when dirty", async ({ page }) => {
         // Click the first option to select it
         const firstOption = page.locator("button[role='option']").first();
@@ -114,5 +150,28 @@ test.describe("multi-select dialog", () => {
         await page.keyboard.press("Space");
         // Check icon should be visible (checkmark)
         await expect(page.locator("svg").first()).toBeVisible();
+    });
+
+    test("minus key toggles freeform option without submitting", async ({ page }) => {
+        const payload = buildPayload("multi-select");
+        const content = injectPayload(html, payload);
+        await page.setContent(content);
+
+        await page.click("body");
+        await page.keyboard.press("-");
+
+        const freeformOption = page.locator("button[role='option']").filter({ hasText: "My answer isn't listed above" });
+        await expect(freeformOption).toHaveAttribute("aria-selected", "true");
+        await expect(page.getByText("Submitting…")).not.toBeVisible();
+    });
+
+    test("multi-select footer shows not-listed hint", async ({ page }) => {
+        const payload = buildPayload("multi-select");
+        const content = injectPayload(html, payload);
+        await page.setContent(content);
+
+        const hint = page.locator(".flex-wrap");
+        await expect(hint.getByText("-")).toBeVisible();
+        await expect(hint.getByText("not listed")).toBeVisible();
     });
 });
