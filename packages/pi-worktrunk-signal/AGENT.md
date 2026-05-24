@@ -13,10 +13,9 @@ This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](.
 ## Invariants (Never Break These)
 
 1. **Never block the agent** — All worktrunk operations (`wt list`, `wt switch`, etc.) must use async child process spawning. Never `await` a `wt` command in a message handler.
-2. **Only inside herdr** — Activity tracking and statusline only activate when `HERDR_ENV=1` is set. Check `process.env.HERDR_ENV` before any UI modifications.
-3. **Cache has TTL** — The statusline cache must have a TTL (default 30s). Always check `now - cached.fetchedAt < cached.ttlMs` before returning cached data.
-4. **Marker cleanup** — `session_shutdown` must clear all `worktrunk.state.*.marker` git config entries to avoid stale markers in `wt list`.
-5. **Path resolution** — Use `git worktree list --porcelain` to resolve actual paths, never assume a directory naming convention.
+2. **Only inside herdr** — Activity tracking only activates when `HERDR_ENV=1` is set. Check `process.env.HERDR_ENV` before any UI modifications.
+3. **Marker cleanup** — `session_shutdown` must clear all `worktrunk.state.*.marker` git config entries to avoid stale markers in `wt list`.
+4. **Path resolution** — Use `git worktree list --porcelain` to resolve actual paths, never assume a directory naming convention.
 
 ## Critical Rules
 
@@ -39,7 +38,6 @@ All `wt` CLI calls go through `execFile` or `exec` with proper error handling. T
 | Scenario | Action |
 |----------|--------|
 | Adding new `wt` commands | Verify `wt` is installed first, degrade gracefully |
-| Changing statusline format | Update cache key logic if format changes |
 | Modifying activity markers | Ensure `session_shutdown` cleans them up |
 | Bug fixes with clear solution | Proceed |
 

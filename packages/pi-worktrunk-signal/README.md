@@ -14,8 +14,6 @@ A [Pi](https://pi.dev) extension that brings worktree context to your terminal-n
 | **Activity Tracking** | Automatically sets 🤖/💬 markers in `wt list` when Pi is working or idle |
 | **`/wt-switch-create`** | Create or re-enter a worktrunk worktree and relaunch Pi in it |
 | **`/wt-list`** | Interactive worktree list — switch or create from a styled overlay |
-| **`/wt-statusline-refresh`** | Force-refresh the cached worktrunk statusline |
-| **Footer Statusline** | Shows `wt list statusline` in Pi's footer after each turn (30s TTL cache) |
 | **`spawn_worktree_agent`** | Spawn a Pi subagent in an isolated worktree |
 
 ## Install
@@ -46,15 +44,6 @@ $ wt list
 ```
 
 Markers are cleared when the Pi session ends (or use `wt config state marker clear` if stale).
-
-### Footer Statusline (with caching)
-
-The extension fetches `wt list statusline --format=table` and displays it in Pi's footer. To avoid the 1–2 second CI latency on every turn, the result is **cached for 30 seconds**.
-
-Force a refresh anytime:
-```
-/wt-statusline-refresh
-```
 
 ### `/wt-list`
 

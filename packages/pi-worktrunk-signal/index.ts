@@ -60,44 +60,6 @@ function clearMarker(cwd: string, branch: string): Promise<void> {
   });
 }
 
-interface StatuslineCache {
-  value: string;
-  fetchedAt: number;
-  ttlMs: number;
-}
-
-const statuslineCache: Map<string, StatuslineCache> = new Map();
-const DEFAULT_STATUSLINE_TTL_MS = 30_000; // 30 seconds
-
-function fetchStatusline(cwd: string, forceRefresh = false): Promise<string | null> {
-  return new Promise((resolve) => {
-    const now = Date.now();
-    const cached = statuslineCache.get(cwd);
-    if (!forceRefresh && cached && now - cached.fetchedAt < cached.ttlMs) {
-      return resolve(cached.value);
-    }
-
-    exec(
-      "wt list statusline --format=table 2>/dev/null",
-      { cwd, encoding: "utf-8", timeout: 3000 },
-      (err, stdout) => {
-        if (err || !stdout.trim()) return resolve(null);
-        const value = stdout.trim();
-        statuslineCache.set(cwd, { value, fetchedAt: now, ttlMs: DEFAULT_STATUSLINE_TTL_MS });
-        resolve(value);
-      }
-    );
-  });
-}
-
-function invalidateStatuslineCache(cwd?: string) {
-  if (cwd) {
-    statuslineCache.delete(cwd);
-  } else {
-    statuslineCache.clear();
-  }
-}
-
 function findWorktreePath(cwd: string, branch: string): Promise<string | null> {
   return new Promise((resolve) => {
     execFile(
@@ -280,12 +242,6 @@ export default function (pi: ExtensionAPI) {
       await setMarker(cwd, branch, "💬");
       markerSet = true;
     }
-
-    if (!ctx.hasUI) return;
-
-    // Update statusline on startup (cached)
-    const status = await fetchStatusline(cwd);
-    if (status) ctx.ui.setStatus("worktrunk", status);
   });
 
   pi.on("turn_start", async (_event, ctx) => {
@@ -306,12 +262,6 @@ export default function (pi: ExtensionAPI) {
       currentBranch = branch;
       await setMarker(cwd, branch, "💬");
     }
-
-    if (!ctx.hasUI) return;
-
-    // Refresh statusline after each turn (cached to avoid 1–2s CI latency)
-    const status = await fetchStatusline(cwd);
-    if (status) ctx.ui.setStatus("worktrunk", status);
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
@@ -468,27 +418,6 @@ export default function (pi: ExtensionAPI) {
 
       // ── Switch to existing worktree ──
       await relaunchInWorktree(pi, ctx, result);
-    },
-  });
-
-  // ── /wt-statusline-refresh Command ────────────────────────────────────
-
-  pi.registerCommand("wt-statusline-refresh", {
-    description: "Force-refresh the worktrunk statusline (bypasses cache)",
-    handler: async (_args, ctx) => {
-      const cwd = ctx.cwd;
-      invalidateStatuslineCache(cwd);
-      try {
-        const status = await fetchStatusline(cwd, true);
-        if (status && ctx.hasUI) {
-          ctx.ui.setStatus("worktrunk", status);
-          ctx.ui.notify("Statusline refreshed.", "info");
-        } else if (ctx.hasUI) {
-          ctx.ui.notify("No statusline available.", "warning");
-        }
-      } catch (e: any) {
-        if (ctx.hasUI) ctx.ui.notify(`Refresh failed: ${e.message || e}`, "error");
-      }
     },
   });
 
