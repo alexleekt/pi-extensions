@@ -36,7 +36,7 @@ export default function DialogFooter({
                 <div className="flex shrink-0 items-center gap-2">
                     <button
                         onClick={onCancel ?? sendCancelled}
-                        className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+                        className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
                     >
                         Cancel
                     </button>
@@ -44,7 +44,7 @@ export default function DialogFooter({
                     <button
                         onClick={onSubmit}
                         disabled={isSubmitting || submitDisabled}
-                        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
+                        className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
                     >
                         {isSubmitting ? "Submitting…" : "Submit"}
                     </button>

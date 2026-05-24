@@ -38,7 +38,7 @@ function renderComponent(payload: AskUserPayload) {
     }
 }
 
-const DEFAULT_PANEL_WIDTH = 70; // percent
+const DEFAULT_PANEL_WIDTH = 60; // percent — gives dialog 40% width for footer hints
 const MIN_PANEL_WIDTH = 25;     // percent — ensures settings dropdown (208px) fits at 1000px window
 const MAX_PANEL_WIDTH = 80;     // percent
 
