@@ -5,7 +5,7 @@
 
 **One-command rebuild and reload for Pi extensions.**
 
-When you edit a Pi extension, the changes aren't live immediately — jiti caches the compiled code, and webview bundles must be rebuilt. This extension automates the full cycle in a single command.
+When you edit a Pi extension, `/reload` doesn't always pick up changes — especially with symlinked monorepos or webview bundles. This extension automates the full cycle.
 
 ## Usage
 
@@ -23,11 +23,33 @@ When you edit a Pi extension, the changes aren't live immediately — jiti cache
 /rebuild-extension pi-ask-user-glimpse
 ```
 
-### What happens
+## When you need this
 
-1. **Jiti cache cleared** — Removes cached compiled files so Pi picks up your latest TypeScript
-2. **Webview rebuilt** — Runs `npm run build` (or `npm run build:webview`) in the extension directory
-3. **Runtime reloaded** — Pi re-scans and re-registers the extension with fresh code
+### 1. Symlinked monorepo (essential)
+
+If your extension is a symlink into a git worktree or monorepo, `/reload` is **broken by design**:
+
+- Jiti caches compiled `.mjs` files keyed by the *resolved realpath*
+- When you switch worktrees, the realpath changes
+- Jiti creates a *new* cache file but the *old* one still matches the symlink name
+- `/reload` loads the stale cache file
+
+This extension surgically deletes only the matching cache files, not the whole cache.
+
+### 2. Webview extensions (very useful)
+
+Extensions with a React/Vite webview need `npm run build` to produce `dist/index.html`. `/reload` only re-registers the server-side code — it doesn't rebuild the bundle. This extension runs the build step for you.
+
+### 3. Pure TypeScript extensions (convenience)
+
+For simple `.ts` extensions that aren't symlinked, `/reload` usually works because jiti checks file modification times. If it doesn't, setting `JITI_FS_CACHE=false` is the cleaner upstream fix. This extension is optional here — it's sugar, not necessity.
+
+## What happens
+
+1. **Jiti cache cleared** — Finds and deletes compiled `.mjs` files matching the extension
+2. **Cache verified** — Confirms `.mjs` files were actually deleted; warns if any remain
+3. **Webview rebuilt** — Runs `npm run build` (or `npm run build:webview`) if the extension has one
+4. **Runtime reloaded** — `ctx.reload()` re-registers everything with fresh code
 
 ### Safety guards
 
@@ -46,7 +68,7 @@ Pi auto-discovers globally installed `pi-package` extensions.
 
 ## Why a full reload is needed
 
-Jiti (Pi's TypeScript loader) caches compiled `.mjs` files on disk. Clearing those files removes the on-disk cache, but Pi also holds the extension's commands and state in memory. The `ctx.reload()` call at the end re-registers everything so your new code is actually active.
+Jiti caches compiled `.mjs` files on disk. Clearing those files removes the on-disk cache, but Pi also holds the extension's commands and state in memory. The `ctx.reload()` call at the end re-registers everything so your new code is actually active.
 
 ## License
 

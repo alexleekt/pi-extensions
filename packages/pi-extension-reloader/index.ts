@@ -247,18 +247,31 @@ export default function (pi: ExtensionAPI) {
 
             // ── Clear jiti cache (always, for any extension type) ──
             const cacheDir = findJitiCacheDir();
+            let clearedCount = 0;
+            let remainingCount = 0;
             if (cacheDir) {
                 const files = findExtensionCacheFiles(cacheDir, basename(extPath));
                 if (files.length > 0) {
                     for (const f of files) {
                         try {
                             unlinkSync(f);
+                            clearedCount++;
                         } catch { /* ignore */ }
                     }
-                    ctx.ui.notify(
-                        `Cleared ${files.length} jiti cache file(s)`,
-                        "info",
-                    );
+                    // Verify deletion — check if any matched files still exist
+                    const remaining = files.filter((f) => existsSync(f));
+                    remainingCount = remaining.length;
+                    if (remainingCount > 0) {
+                        ctx.ui.notify(
+                            `Cache clear incomplete: ${remainingCount} file(s) could not be deleted. Changes may not take effect.`,
+                            "warning",
+                        );
+                    } else if (clearedCount > 0) {
+                        ctx.ui.notify(
+                            `Cleared ${clearedCount} jiti cache file(s)`,
+                            "info",
+                        );
+                    }
                 }
             } else {
                 ctx.ui.notify(
