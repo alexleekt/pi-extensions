@@ -17,49 +17,10 @@ const DEFAULT_INSTANCE = {
   url: "http://localhost:4000",
 };
 
-// Layered model discovery: A + B + C
-// A: Hardcoded registry for known models (fallback)
-const KNOWN_MODEL_REGISTRY: Record<string, {
-  contextWindow: number;
-  maxTokens: number;
-  reasoning: boolean;
-  input: Array<"text" | "image">;
-  cost: { input: number; output: number; cacheRead: number; cacheWrite: number };
-}> = {
-  "anthropic/claude-sonnet-4-20250514": {
-    contextWindow: 200_000,
-    maxTokens: 16_384,
-    reasoning: false,
-    input: ["text", "image"],
-    cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
-  },
-  "anthropic/claude-opus-4-20250514": {
-    contextWindow: 200_000,
-    maxTokens: 16_384,
-    reasoning: false,
-    input: ["text", "image"],
-    cost: { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 },
-  },
-  "openai/gpt-4o": {
-    contextWindow: 128_000,
-    maxTokens: 16_384,
-    reasoning: false,
-    input: ["text", "image"],
-    cost: { input: 2.5, output: 10, cacheRead: 1.25, cacheWrite: 0 },
-  },
-  "openai/gpt-4o-mini": {
-    contextWindow: 128_000,
-    maxTokens: 16_384,
-    reasoning: false,
-    input: ["text", "image"],
-    cost: { input: 0.15, output: 0.6, cacheRead: 0.075, cacheWrite: 0 },
-  },
-};
-
-// Static safe defaults (final fallback)
-const STATIC_DEFAULTS = {
-  contextWindow: 128_000,
-  maxTokens: 16_384,
+// Fallback spec for when the proxy is unreachable — reflects modern model baselines
+const MODERN_FALLBACK = {
+  contextWindow: 256_000,
+  maxTokens: 32_768,
   reasoning: false,
   input: ["text", "image"] as Array<"text" | "image">,
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
@@ -172,7 +133,7 @@ async function ensureConfig(): Promise<InstancesConfig> {
 }
 
 // ---------------------------------------------------------------------------
-// Model discovery (layered: C → A → B → static defaults + overrides)
+// Model discovery (layered: /v1/models → /health → instances.yaml → fallback)
 // ---------------------------------------------------------------------------
 
 async function discoverModelSpecs(baseUrl: string, config: InstanceConfig): Promise<{
@@ -184,7 +145,7 @@ async function discoverModelSpecs(baseUrl: string, config: InstanceConfig): Prom
   source: string;
   targetModel?: string;
 }> {
-  // Layer 1 (C): LiteLLM /v1/models with model_info
+  // Layer 1: LiteLLM /v1/models with model_info
   try {
     const response = await fetch(`${baseUrl}/v1/models`, { signal: AbortSignal.timeout(3000) });
     if (response.ok) {
@@ -193,11 +154,11 @@ async function discoverModelSpecs(baseUrl: string, config: InstanceConfig): Prom
       if (model?.model_info) {
         const info = model.model_info;
         return {
-          contextWindow: info.context_window ?? STATIC_DEFAULTS.contextWindow,
-          maxTokens: info.max_tokens ?? STATIC_DEFAULTS.maxTokens,
-          reasoning: STATIC_DEFAULTS.reasoning,
+          contextWindow: info.context_window ?? MODERN_FALLBACK.contextWindow,
+          maxTokens: info.max_tokens ?? MODERN_FALLBACK.maxTokens,
+          reasoning: MODERN_FALLBACK.reasoning,
           input: info.supports_vision ? ["text", "image"] : ["text"],
-          cost: { ...STATIC_DEFAULTS.cost },
+          cost: { ...MODERN_FALLBACK.cost },
           source: "litellm-model-info",
         };
       }
@@ -206,43 +167,31 @@ async function discoverModelSpecs(baseUrl: string, config: InstanceConfig): Prom
     // Fall through
   }
 
-  // Layer 2 (A): Event Horizon /health enrichment
+  // Layer 2: Event Horizon /health enrichment
   try {
     const response = await fetch(`${baseUrl}/health`, { signal: AbortSignal.timeout(3000) });
     if (response.ok) {
       const data = (await response.json()) as HealthResponse;
       const target = data.target_model;
-      if (target) {
-        // Layer 2b (B): Hardcoded registry lookup
-        const registered = KNOWN_MODEL_REGISTRY[target];
-        if (registered) {
-          return {
-            ...registered,
-            source: `registry:${target}`,
-            targetModel: target,
-          };
-        }
-        // Partial enrichment from /health model_info
-        if (data.model_info) {
-          const info = data.model_info;
-          const cost = info.cost
-            ? {
-                input: info.cost.input ?? STATIC_DEFAULTS.cost.input,
-                output: info.cost.output ?? STATIC_DEFAULTS.cost.output,
-                cacheRead: info.cost.cache_read ?? STATIC_DEFAULTS.cost.cacheRead,
-                cacheWrite: info.cost.cache_write ?? STATIC_DEFAULTS.cost.cacheWrite,
-              }
-            : { ...STATIC_DEFAULTS.cost };
-          return {
-            contextWindow: info.context_window ?? STATIC_DEFAULTS.contextWindow,
-            maxTokens: info.max_tokens ?? STATIC_DEFAULTS.maxTokens,
-            reasoning: STATIC_DEFAULTS.reasoning,
-            input: info.supports_vision ? ["text", "image"] : ["text"],
-            cost,
-            source: "health-model-info",
-            targetModel: target,
-          };
-        }
+      if (target && data.model_info) {
+        const info = data.model_info;
+        const cost = info.cost
+          ? {
+              input: info.cost.input ?? MODERN_FALLBACK.cost.input,
+              output: info.cost.output ?? MODERN_FALLBACK.cost.output,
+              cacheRead: info.cost.cache_read ?? MODERN_FALLBACK.cost.cacheRead,
+              cacheWrite: info.cost.cache_write ?? MODERN_FALLBACK.cost.cacheWrite,
+            }
+          : { ...MODERN_FALLBACK.cost };
+        return {
+          contextWindow: info.context_window ?? MODERN_FALLBACK.contextWindow,
+          maxTokens: info.max_tokens ?? MODERN_FALLBACK.maxTokens,
+          reasoning: MODERN_FALLBACK.reasoning,
+          input: info.supports_vision ? ["text", "image"] : ["text"],
+          cost,
+          source: "health-model-info",
+          targetModel: target,
+        };
       }
     }
   } catch {
@@ -258,22 +207,22 @@ async function discoverModelSpecs(baseUrl: string, config: InstanceConfig): Prom
     config.cost !== undefined
   ) {
     return {
-      contextWindow: config.contextWindow ?? STATIC_DEFAULTS.contextWindow,
-      maxTokens: config.maxTokens ?? STATIC_DEFAULTS.maxTokens,
-      reasoning: config.reasoning ?? STATIC_DEFAULTS.reasoning,
-      input: config.input ?? STATIC_DEFAULTS.input,
+      contextWindow: config.contextWindow ?? MODERN_FALLBACK.contextWindow,
+      maxTokens: config.maxTokens ?? MODERN_FALLBACK.maxTokens,
+      reasoning: config.reasoning ?? MODERN_FALLBACK.reasoning,
+      input: config.input ?? MODERN_FALLBACK.input,
       cost: {
-        input: config.cost?.input ?? STATIC_DEFAULTS.cost.input,
-        output: config.cost?.output ?? STATIC_DEFAULTS.cost.output,
-        cacheRead: config.cost?.cacheRead ?? STATIC_DEFAULTS.cost.cacheRead,
-        cacheWrite: config.cost?.cacheWrite ?? STATIC_DEFAULTS.cost.cacheWrite,
+        input: config.cost?.input ?? MODERN_FALLBACK.cost.input,
+        output: config.cost?.output ?? MODERN_FALLBACK.cost.output,
+        cacheRead: config.cost?.cacheRead ?? MODERN_FALLBACK.cost.cacheRead,
+        cacheWrite: config.cost?.cacheWrite ?? MODERN_FALLBACK.cost.cacheWrite,
       },
       source: "instances.yaml",
     };
   }
 
-  // Layer 4: static defaults
-  return { ...STATIC_DEFAULTS, source: "static-defaults" };
+  // Layer 4: modern fallback (proxy unreachable)
+  return { ...MODERN_FALLBACK, source: "modern-fallback" };
 }
 
 // ---------------------------------------------------------------------------
