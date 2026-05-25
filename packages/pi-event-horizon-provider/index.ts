@@ -400,6 +400,11 @@ export default async function (pi: ExtensionAPI) {
         }
     });
 
+    // Clear the status widget when the user sends any input
+    pi.on("input", async (_event, ctx) => {
+        ctx.ui.setWidget("pi-event-horizon:status", undefined);
+    });
+
     // Status command
     pi.registerCommand("event-horizon", {
         description: "Event Horizon proxy status and configuration",
@@ -439,8 +444,6 @@ export default async function (pi: ExtensionAPI) {
                 lines.push("");
 
                 for (const r of rows) {
-                    const STATUS_WIDTH = 8;
-
                     const stateText =
                         r.reachable === true
                             ? "online"
@@ -448,20 +451,22 @@ export default async function (pi: ExtensionAPI) {
                               ? "offline"
                               : "checking";
 
-                    const statusCol =
+                    const dot =
                         r.reachable === true
-                            ? theme.fg(
-                                  "success",
-                                  `●${stateText}`.padEnd(STATUS_WIDTH),
-                              )
+                            ? theme.fg("success", "●")
                             : r.reachable === false
-                              ? theme.fg(
-                                    "error",
-                                    stateText.padEnd(STATUS_WIDTH),
-                                )
-                              : theme.fg("dim", stateText.padEnd(STATUS_WIDTH));
+                              ? theme.fg("error", "●")
+                              : theme.fg("dim", "●");
 
-                    const namePad = " ".repeat(maxNameLen - r.name.length);
+                    const statusStr =
+                        r.reachable === true
+                            ? theme.fg("success", stateText)
+                            : r.reachable === false
+                              ? theme.fg("error", stateText)
+                              : theme.fg("dim", stateText);
+
+                    // Left-pad name for right-justification: <left-pad>rudolph ● online
+                    const nameLeftPad = " ".repeat(maxNameLen - r.name.length);
 
                     let targetPart = "";
                     if (r.targetModel) {
@@ -474,11 +479,12 @@ export default async function (pi: ExtensionAPI) {
 
                     let costPart = "";
                     if (r.specs) {
-                        costPart = `  $${r.specs.cost.input}/$${r.specs.cost.output} per 1M ($${r.specs.cost.cacheRead}/$${r.specs.cost.cacheWrite})`;
+                        const c = r.specs.cost;
+                        costPart = `  $${c.input.toFixed(2)}/${c.output.toFixed(2)} per 1M (cache $${c.cacheRead.toFixed(2)}/${c.cacheWrite.toFixed(2)})`;
                     }
 
                     lines.push(
-                        `  ${theme.bold(r.name)}${namePad}  ${statusCol}  ${targetPart}${costPart}`,
+                        `  ${nameLeftPad}${theme.bold(r.name)} ${dot} ${statusStr}  ${targetPart}${costPart}`,
                     );
                 }
 
@@ -496,31 +502,27 @@ export default async function (pi: ExtensionAPI) {
             // Show initial "checking..." widget
             updateWidget();
 
-            try {
-                // 4. Fire checks in parallel; update widget as each resolves
-                const promises = instances.map(
-                    async ([name, instance], index) => {
-                        const baseUrl = instance.url.replace(/\/$/, "");
-                        const check = await checkInstance(name, instance.url);
-                        const specs = await discoverModelSpecs(
-                            baseUrl,
-                            instance,
-                            check.response,
-                        );
+            // 4. Fire checks in parallel; update widget as each resolves
+            const promises = instances.map(
+                async ([name, instance], index) => {
+                    const baseUrl = instance.url.replace(/\/$/, "");
+                    const check = await checkInstance(name, instance.url);
+                    const specs = await discoverModelSpecs(
+                        baseUrl,
+                        instance,
+                        check.response,
+                    );
 
-                        rows[index].reachable = check.reachable;
-                        rows[index].targetModel = check.targetModel;
-                        rows[index].error = check.error;
-                        rows[index].specs = specs;
+                    rows[index].reachable = check.reachable;
+                    rows[index].targetModel = check.targetModel;
+                    rows[index].error = check.error;
+                    rows[index].specs = specs;
 
-                        updateWidget();
-                    },
-                );
+                    updateWidget();
+                },
+            );
 
-                await Promise.allSettled(promises);
-            } finally {
-                ctx.ui.setWidget("pi-event-horizon:status", undefined);
-            }
+            await Promise.allSettled(promises);
         },
     });
 }
