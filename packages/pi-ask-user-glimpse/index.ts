@@ -723,7 +723,7 @@ export default function (pi: ExtensionAPI) {
     });
 
     pi.registerCommand("ask-debug", {
-        description: "Open a debug multi-select prompt to test ask_user rendering",
+        description: "Open a debug prompt to test each ask_user dialog type",
         handler: async (_args, ctx) => {
             if (!ctx.hasUI) {
                 console.warn(
@@ -732,14 +732,32 @@ export default function (pi: ExtensionAPI) {
                 return;
             }
 
-            const params = buildDebugParams("multi-select");
+            const mode = await ctx.ui.select("Choose a prompt type to test:", [
+                "single-select",
+                "multi-select",
+                "freeform",
+                "questionnaire",
+                "kitchen-sink",
+            ]);
+            if (!mode) return;
+
+            const params = buildDebugParams(mode);
             if (!params) return;
 
             const result = await runAskUserWithTheme(params, undefined, ctx);
             const textContent = result.content[0];
             const text =
                 textContent.type === "text" ? textContent.text : "No response";
-            ctx.ui.notify(`Result: ${text}`, "info");
+
+            // Render debug result in the conversation thread without triggering AI processing
+            _pi?.sendMessage(
+                {
+                    customType: "ask-debug-result",
+                    content: [{ type: "text", text: `[debug] ${mode} → ${text}` }],
+                    display: true,
+                },
+                { triggerTurn: false },
+            );
         },
     });
 
