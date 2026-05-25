@@ -4,7 +4,6 @@ import ContextPanel from "./components/ContextPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { FooterContext } from "./components/FooterContext";
 import Freeform from "./components/Freeform";
-import HeaderBar from "./components/HeaderBar";
 import MultiSelect from "./components/MultiSelect";
 import Questionnaire from "./components/Questionnaire";
 import SingleSelect from "./components/SingleSelect";
@@ -62,8 +61,6 @@ export default function App() {
         );
     }
 
-    const hasContext = !!payload.context;
-
     useEffect(() => {
         if (!isDragging) return;
         const handleMouseMove = (e: MouseEvent) => {
@@ -79,15 +76,6 @@ export default function App() {
         };
     }, [isDragging]);
 
-    if (!hasContext) {
-        return (
-            <div className="flex h-screen flex-col overflow-hidden">
-                <HeaderBar question={payload.question} />
-                <div className="flex-1 overflow-hidden">{renderComponent(payload)}</div>
-            </div>
-        );
-    }
-
     const componentPayload: AskUserPayload = { ...payload, context: undefined };
 
     return (
@@ -95,7 +83,7 @@ export default function App() {
             <div className="flex h-screen flex-col overflow-hidden">
                 {/* Top area: context + dialog side by side */}
                 <div className="flex flex-1 overflow-hidden">
-                    {/* Left panel */}
+                    {/* Left panel — always present; shows question + context when available */}
                     <div
                         className={`flex flex-col overflow-hidden ${
                             isCollapsed ? "w-0 opacity-0" : "opacity-100"
@@ -103,9 +91,8 @@ export default function App() {
                         style={isCollapsed ? undefined : { width: `${panelWidth}%` }}
                     >
                         <ErrorBoundary>
-                            {/* context is defined when hasContext is true */}
                             <ContextPanel
-                                context={payload.context!}
+                                context={payload.context ?? ""}
                                 contextFormat={payload.contextFormat}
                                 question={payload.question}
                             />
