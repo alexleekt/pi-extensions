@@ -151,7 +151,7 @@ async function discoverModelSpecs(baseUrl: string, config: InstanceConfig): Prom
     if (response.ok) {
       const data = (await response.json()) as { data?: LiteLLMModel[] };
       const model = data.data?.find((m) => m.id === "singularity");
-      if (model?.model_info) {
+      if (model?.model_info?.context_window || model?.model_info?.max_tokens) {
         const info = model.model_info;
         return {
           contextWindow: info.context_window ?? MODERN_FALLBACK.contextWindow,
