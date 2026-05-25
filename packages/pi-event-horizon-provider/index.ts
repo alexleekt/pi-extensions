@@ -17,13 +17,14 @@ const DEFAULT_INSTANCE = {
   url: "http://localhost:4000",
 };
 
-// Fallback spec for when the proxy is unreachable — reflects modern model baselines
+// Fallback spec for when the proxy is unreachable — reflects modern model baselines.
+// Cost is a guess: Claude Sonnet 4 tier (common workhorse pricing).
 const MODERN_FALLBACK = {
   contextWindow: 256_000,
   maxTokens: 32_768,
   reasoning: false,
   input: ["text", "image"] as Array<"text" | "image">,
-  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+  cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
 };
 
 // ---------------------------------------------------------------------------
