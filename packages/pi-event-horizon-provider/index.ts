@@ -439,31 +439,29 @@ export default async function (pi: ExtensionAPI) {
                 lines.push("");
 
                 for (const r of rows) {
+                    const STATUS_WIDTH = 8;
+
                     const stateText =
                         r.reachable === true
                             ? "online"
                             : r.reachable === false
                               ? "offline"
-                              : "checking...";
-                    const stateColor =
+                              : "checking";
+
+                    const statusCol =
                         r.reachable === true
-                            ? "success"
+                            ? theme.fg(
+                                  "success",
+                                  `●${stateText}`.padEnd(STATUS_WIDTH),
+                              )
                             : r.reachable === false
-                              ? "error"
-                              : "dim";
-                    const bullet =
-                        r.reachable === true
-                            ? "●"
-                            : r.reachable === false
-                              ? "○"
-                              : "⋯";
+                              ? theme.fg(
+                                    "error",
+                                    stateText.padEnd(STATUS_WIDTH),
+                                )
+                              : theme.fg("dim", stateText.padEnd(STATUS_WIDTH));
 
                     const namePad = " ".repeat(maxNameLen - r.name.length);
-
-                    const statusWithBullet = theme.fg(
-                        stateColor,
-                        `${stateText} ${bullet}`,
-                    );
 
                     let targetPart = "";
                     if (r.targetModel) {
@@ -480,7 +478,7 @@ export default async function (pi: ExtensionAPI) {
                     }
 
                     lines.push(
-                        `  ${theme.bold(r.name)}${namePad}  ${statusWithBullet} ${targetPart}${costPart}`,
+                        `  ${theme.bold(r.name)}${namePad}  ${statusCol}  ${targetPart}${costPart}`,
                     );
                 }
 
