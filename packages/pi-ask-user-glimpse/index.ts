@@ -723,7 +723,7 @@ export default function (pi: ExtensionAPI) {
     });
 
     pi.registerCommand("ask-debug", {
-        description: "Open a debug prompt to test each ask_user dialog type",
+        description: "Open a debug multi-select prompt to test ask_user rendering",
         handler: async (_args, ctx) => {
             if (!ctx.hasUI) {
                 console.warn(
@@ -732,16 +732,7 @@ export default function (pi: ExtensionAPI) {
                 return;
             }
 
-            const mode = await ctx.ui.select("Choose a prompt type to test:", [
-                "single-select",
-                "multi-select",
-                "freeform",
-                "questionnaire",
-                "kitchen-sink",
-            ]);
-            if (!mode) return;
-
-            const params = buildDebugParams(mode);
+            const params = buildDebugParams("multi-select");
             if (!params) return;
 
             const result = await runAskUserWithTheme(params, undefined, ctx);
