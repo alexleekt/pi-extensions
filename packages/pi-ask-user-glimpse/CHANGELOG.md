@@ -2,7 +2,7 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
-## [Unreleased]
+## [0.5.0] — 2026-05-24
 
 ### Added
 - **Kitchen-sink debug mode** — `/ask-debug` now includes a `kitchen-sink` option that opens a comprehensive questionnaire demonstrating every major feature in one dialog: HTML context panel, recommended badges, multi-select, single-select, freeform, comments, and skip. Replaces the previous 9-mode menu (which had 5 redundant single-select variations) with a clean 5-mode list.
