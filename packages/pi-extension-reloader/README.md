@@ -70,6 +70,37 @@ Pi auto-discovers globally installed `pi-package` extensions.
 
 Jiti caches compiled `.mjs` files on disk. Clearing those files removes the on-disk cache, but Pi also holds the extension's commands and state in memory. The `ctx.reload()` call at the end re-registers everything so your new code is actually active.
 
+## Troubleshooting: "I reloaded but still don't see changes"
+
+Before blaming jiti, check the **working tree branch**.
+
+If your extension is a symlink into a git repo, `/rebuild-extension` rebuilds whatever branch is currently checked out. It does **not** switch branches for you.
+
+### Quick diagnostic
+
+```bash
+# 1. Check which branch is actually checked out
+cd $(readlink ~/.pi/agent/extensions/<name>)
+git branch --show-current
+git log --oneline -5
+
+# 2. If the branch is wrong, switch it first
+git switch <your-feature-branch>
+
+# 3. Then rebuild
+/rebuild-extension <name>
+```
+
+### Prevention: use git worktrees for parallel branches
+
+Instead of switching branches on the same working tree, create a dedicated worktree per branch so the symlink always points to the right code:
+
+```bash
+git worktree add ../pi-extension-async event-horizon-async-status
+```
+
+Then update your Pi extensions path to point at the worktree, or keep separate `settings.json` entries per branch.
+
 ## Alternatives and upstream context
 
 This extension exists because Pi's extension loader disables jiti's in-memory cache (`moduleCache: false`) but leaves disk cache (`fsCache`) at its default `true`. Jiti supports `rebuildFsCache: true` which checks file mtimes and rebuilds stale cache automatically — Pi doesn't use it.

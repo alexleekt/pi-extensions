@@ -15,6 +15,27 @@
 - Keep the extension as a single `index.ts` file — no build step needed
 - Test `/rebuild-extension` against a real symlinked extension before declaring done
 
+## Troubleshooting: "Changes still not showing after reload"
+
+The most common false-positive is **not** a jiti cache issue — it's the working tree branch.
+
+### Diagnostic order (always run in this sequence)
+
+1. **Branch check** — In the extension's source repo, run `git branch --show-current`. If the working tree is on `main` but your changes are on a feature branch, `/rebuild-extension` correctly rebuilds the `main` version. Switch branches first.
+2. **Commit check** — `git log --oneline -5` confirms the expected commits are actually present on the current branch.
+3. **Cache check** — Only after verifying the source is correct, check whether jiti compiled the new code: `find /tmp -name "*<extension-name>*" -newer <source-file>`.
+
+### Prevention: git worktree for parallel branches
+
+If you maintain multiple extension branches (e.g., `main` + `feature/async-widget`), use `git worktree add` instead of switching branches on the same working tree:
+
+```bash
+git worktree add ../pi-extension-feature-branch feature/async-widget
+# Point the symlink at the worktree, or keep a second extensions dir entry
+```
+
+This eliminates the "which branch is checked out?" ambiguity entirely.
+
 ## Tool Usage
 - Use `Edit` tool for precise changes to `index.ts`
 - Use `Bash` for file operations and verification
