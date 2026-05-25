@@ -54,6 +54,21 @@ const KNOWN_MODEL_REGISTRY: Record<string, {
     input: ["text", "image"],
     cost: { input: 0.15, output: 0.6, cacheRead: 0.075, cacheWrite: 0 },
   },
+  // Fireworks / Moonshot Kimi K2.6
+  "fireworks_ai/accounts/fireworks/routers/kimi-k2p6-turbo": {
+    contextWindow: 262_144,
+    maxTokens: 262_144,
+    reasoning: false,
+    input: ["text", "image"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+  },
+  "moonshot/kimi-k2.6": {
+    contextWindow: 262_144,
+    maxTokens: 262_144,
+    reasoning: false,
+    input: ["text", "image"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+  },
 };
 
 // Static safe defaults (final fallback)
