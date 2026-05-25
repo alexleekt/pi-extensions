@@ -407,7 +407,7 @@ export default async function (pi: ExtensionAPI) {
             const theme = ctx.ui.theme;
 
             // 1. Clear any stale widget
-            ctx.ui.setWidget("event-horizon", undefined);
+            ctx.ui.setWidget("pi-event-horizon:status", undefined);
 
             // 2. Read fresh config
             const freshConfig = await ensureConfig();
@@ -443,8 +443,8 @@ export default async function (pi: ExtensionAPI) {
                         r.reachable === true
                             ? theme.fg("success", "●")
                             : r.reachable === false
-                              ? theme.fg("error", "●")
-                              : theme.fg("dim", "●");
+                              ? theme.fg("error", "○")
+                              : theme.fg("dim", "⋯");
 
                     const stateText =
                         r.reachable === true
@@ -464,7 +464,11 @@ export default async function (pi: ExtensionAPI) {
 
                     let targetPart = "";
                     if (r.targetModel) {
-                        targetPart = `→ ${r.targetModel}`;
+                        const displayTarget =
+                            r.targetModel.length > 18
+                                ? `${r.targetModel.slice(0, 15)}...`
+                                : r.targetModel;
+                        targetPart = `→ ${displayTarget}`;
                     } else if (r.error) {
                         targetPart = `→ ${theme.fg("warning", r.error)}`;
                     } else {
@@ -489,37 +493,37 @@ export default async function (pi: ExtensionAPI) {
             };
 
             const updateWidget = () => {
-                ctx.ui.setWidget("event-horizon", renderWidget(), {
-                    placement: "aboveEditor",
-                });
+                ctx.ui.setWidget("pi-event-horizon:status", renderWidget());
             };
 
             // Show initial "checking..." widget
             updateWidget();
 
-            // 4. Fire checks in parallel; update widget as each resolves
-            const promises = instances.map(async ([name, instance], index) => {
-                const baseUrl = instance.url.replace(/\/$/, "");
-                const check = await checkInstance(name, instance.url);
-                const specs = await discoverModelSpecs(
-                    baseUrl,
-                    instance,
-                    check.response,
+            try {
+                // 4. Fire checks in parallel; update widget as each resolves
+                const promises = instances.map(
+                    async ([name, instance], index) => {
+                        const baseUrl = instance.url.replace(/\/$/, "");
+                        const check = await checkInstance(name, instance.url);
+                        const specs = await discoverModelSpecs(
+                            baseUrl,
+                            instance,
+                            check.response,
+                        );
+
+                        rows[index].reachable = check.reachable;
+                        rows[index].targetModel = check.targetModel;
+                        rows[index].error = check.error;
+                        rows[index].specs = specs;
+
+                        updateWidget();
+                    },
                 );
 
-                rows[index].reachable = check.reachable;
-                rows[index].targetModel = check.targetModel;
-                rows[index].error = check.error;
-                rows[index].specs = specs;
-
-                updateWidget();
-            });
-
-            await Promise.allSettled(promises);
-
-            // Widget persists until the next /event-horizon run (which clears
-            // it on entry) or until the user dismisses it. No auto-clear timer
-            // to avoid racing with a rapid re-invocation.
+                await Promise.allSettled(promises);
+            } finally {
+                ctx.ui.setWidget("pi-event-horizon:status", undefined);
+            }
         },
     });
 }
