@@ -439,13 +439,6 @@ export default async function (pi: ExtensionAPI) {
                 lines.push("");
 
                 for (const r of rows) {
-                    const bullet =
-                        r.reachable === true
-                            ? theme.fg("success", "●")
-                            : r.reachable === false
-                              ? theme.fg("error", "○")
-                              : theme.fg("dim", "⋯");
-
                     const stateText =
                         r.reachable === true
                             ? "online"
@@ -458,9 +451,19 @@ export default async function (pi: ExtensionAPI) {
                             : r.reachable === false
                               ? "error"
                               : "dim";
-                    const state = theme.fg(stateColor, stateText.padEnd(7));
+                    const bullet =
+                        r.reachable === true
+                            ? "●"
+                            : r.reachable === false
+                              ? "○"
+                              : "⋯";
 
                     const namePad = " ".repeat(maxNameLen - r.name.length);
+
+                    const statusWithBullet = theme.fg(
+                        stateColor,
+                        `${stateText} ${bullet}`,
+                    );
 
                     let targetPart = "";
                     if (r.targetModel) {
@@ -477,7 +480,7 @@ export default async function (pi: ExtensionAPI) {
                     }
 
                     lines.push(
-                        `  ${theme.bold(r.name)}${namePad}  ${bullet} ${state}  ${targetPart}${costPart}`,
+                        `  ${theme.bold(r.name)}${namePad}  ${statusWithBullet} ${targetPart}${costPart}`,
                     );
                 }
 
