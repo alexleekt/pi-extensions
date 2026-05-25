@@ -90,6 +90,7 @@ interface HealthResponse {
     context_window?: number;
     max_tokens?: number;
     supports_vision?: boolean;
+    cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
   };
   available_models?: string[];
   litellm: { status: string; code?: number; error?: string };
@@ -223,12 +224,21 @@ async function discoverModelSpecs(baseUrl: string, config: InstanceConfig): Prom
         }
         // Partial enrichment from /health model_info
         if (data.model_info) {
+          const info = data.model_info;
+          const cost = info.cost
+            ? {
+                input: info.cost.input ?? STATIC_DEFAULTS.cost.input,
+                output: info.cost.output ?? STATIC_DEFAULTS.cost.output,
+                cacheRead: info.cost.cache_read ?? STATIC_DEFAULTS.cost.cacheRead,
+                cacheWrite: info.cost.cache_write ?? STATIC_DEFAULTS.cost.cacheWrite,
+              }
+            : { ...STATIC_DEFAULTS.cost };
           return {
-            contextWindow: data.model_info.context_window ?? STATIC_DEFAULTS.contextWindow,
-            maxTokens: data.model_info.max_tokens ?? STATIC_DEFAULTS.maxTokens,
+            contextWindow: info.context_window ?? STATIC_DEFAULTS.contextWindow,
+            maxTokens: info.max_tokens ?? STATIC_DEFAULTS.maxTokens,
             reasoning: STATIC_DEFAULTS.reasoning,
-            input: data.model_info.supports_vision ? ["text", "image"] : ["text"],
-            cost: { ...STATIC_DEFAULTS.cost },
+            input: info.supports_vision ? ["text", "image"] : ["text"],
+            cost,
             source: "health-model-info",
             targetModel: target,
           };
