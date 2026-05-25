@@ -1,10 +1,11 @@
 # @alexleekt/pi-extension-reloader
 
+[![npm](https://img.shields.io/npm/v/@alexleekt/pi-extension-reloader)](https://www.npmjs.com/package/@alexleekt/pi-extension-reloader)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**One-command rebuild, cache-clear, and reload for local Pi extensions.**
+**One-command rebuild and reload for Pi extensions.**
 
-When you're developing a Pi extension, changing the source isn't enough — jiti's filesystem cache keeps the old compiled `.mjs` around, and the webview bundle in `dist/` might be stale. This extension automates the full cycle: rebuild the webview, purge jiti cache, and reload the Pi runtime.
+When you edit a Pi extension, the changes aren't live immediately — jiti caches the compiled code, and webview bundles must be rebuilt. This extension automates the full cycle in a single command.
 
 ## Usage
 
@@ -14,7 +15,7 @@ When you're developing a Pi extension, changing the source isn't enough — jiti
 
 | Argument | Description |
 |----------|-------------|
-| `<name>` | Bare extension name (e.g. `pi-ask-user-glimpse`) or absolute path |
+| `<name>` | Extension name as it appears in `~/.pi/agent/extensions/` |
 
 ### Example
 
@@ -24,26 +25,14 @@ When you're developing a Pi extension, changing the source isn't enough — jiti
 
 ### What happens
 
-1. **Jiti cache cleared** — Finds and deletes cached `.mjs` files for the extension
+1. **Jiti cache cleared** — Removes cached compiled files so Pi picks up your latest TypeScript
 2. **Webview rebuilt** — Runs `npm run build` (or `npm run build:webview`) in the extension directory
-3. **Status persisted** — Journal entries record the rebuild start/completion so you can see it after reload
-4. **Pi runtime reloaded** — `ctx.reload()` brings in the fresh code
+3. **Runtime reloaded** — Pi re-scans and re-registers the extension with fresh code
 
 ### Safety guards
 
-- **Npm packages are protected** — If the extension lives under `node_modules/`, only the jiti cache is cleared; no rebuild is attempted
-- **Path traversal rejected** — Arguments with `..`, `/`, or `\` are blocked unless they're absolute paths
-- **Local-only rebuilds** — Extensions outside `~/.pi/agent/extensions/` are still treated as local and rebuilt
-
-## Jiti cache discovery
-
-The extension automatically discovers jiti's cache directory by checking, in order:
-
-1. `JITI_FS_CACHE` environment variable
-2. Common temp paths: `os.tmpdir()/jiti`, `/tmp/jiti`
-3. Deep scan of `os.tmpdir()` for directories containing `.mjs` files with `jitiImport` signatures
-
-If no cache directory is found, the rebuild still proceeds (webview + reload), but you'll see a warning.
+- **Npm packages are protected** — Extensions under `node_modules/` only get their cache cleared; no rebuild is attempted (npm manages those)
+- **Path traversal blocked** — Arguments with `..`, `/`, or `\` are rejected unless they're absolute paths
 
 ## Installation
 
@@ -53,14 +42,9 @@ npm install -g @alexleekt/pi-extension-reloader
 
 Pi auto-discovers globally installed `pi-package` extensions.
 
-Or symlink into `~/.pi/agent/extensions/`:
+## Why a full reload is needed
 
-```bash
-cd ~/.pi/agent/extensions
-ln -s /path/to/pi-extension-reloader .
-```
-
-> **No build step needed.** This extension is a single TypeScript file loaded directly by Pi's jiti runtime. Unlike `pi-ask-user-glimpse` (which bundles a webview), there's no `npm run build`, no Wireit, and no `dist/` directory.
+Jiti (Pi's TypeScript loader) caches compiled `.mjs` files on disk. Clearing those files removes the on-disk cache, but Pi also holds the extension's commands and state in memory. The `ctx.reload()` call at the end re-registers everything so your new code is actually active.
 
 ## License
 
