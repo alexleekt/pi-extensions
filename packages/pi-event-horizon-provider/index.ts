@@ -464,11 +464,7 @@ export default async function (pi: ExtensionAPI) {
 
                     let targetPart = "";
                     if (r.targetModel) {
-                        const displayTarget =
-                            r.targetModel.length > 18
-                                ? `${r.targetModel.slice(0, 15)}...`
-                                : r.targetModel;
-                        targetPart = `→ ${displayTarget}`;
+                        targetPart = `→ ${r.targetModel}`;
                     } else if (r.error) {
                         targetPart = `→ ${theme.fg("warning", r.error)}`;
                     } else {
@@ -477,11 +473,11 @@ export default async function (pi: ExtensionAPI) {
 
                     let costPart = "";
                     if (r.specs) {
-                        costPart = `  $${r.specs.cost.input}/$${r.specs.cost.output} per 1M  ${theme.fg("dim", `(cache: $${r.specs.cost.cacheRead}/$${r.specs.cost.cacheWrite})`)}`;
+                        costPart = `  $${r.specs.cost.input}/$${r.specs.cost.output} per 1M ($${r.specs.cost.cacheRead}/$${r.specs.cost.cacheWrite})`;
                     }
 
                     lines.push(
-                        `  ${bullet} ${namePad}${theme.bold(r.name)}  ${state}  ${targetPart}${costPart}`,
+                        `  ${theme.bold(r.name)}${namePad}  ${bullet} ${state}  ${targetPart}${costPart}`,
                     );
                 }
 
