@@ -313,7 +313,9 @@ export default async function (pi: ExtensionAPI) {
       const results = await Promise.all(
         Object.entries(freshConfig.instances).map(async ([name, instance]) => {
           const check = await checkInstance(name, instance.url);
-          return { name, ...check };
+          const baseUrl = instance.url.replace(/\/$/, "");
+          const specs = await discoverModelSpecs(baseUrl, instance);
+          return { name, ...check, specs };
         })
       );
 
@@ -323,22 +325,32 @@ export default async function (pi: ExtensionAPI) {
 
       const online = results.filter((r) => r.reachable).length;
 
+      const maxNameLen = Math.max(...results.map((r) => r.name.length));
+
       for (const r of results) {
         const bullet = r.reachable
           ? ctx.ui.theme.fg("success", "●")
           : ctx.ui.theme.fg("error", "●");
-        const state = r.reachable
-          ? ctx.ui.theme.fg("success", "online")
-          : ctx.ui.theme.fg("error", "offline");
-        lines.push(`  ${bullet} ${ctx.ui.theme.bold(r.name)}  ${state}`);
 
+        const stateText = r.reachable ? "online" : "offline";
+        const state = r.reachable
+          ? ctx.ui.theme.fg("success", stateText.padEnd(7))
+          : ctx.ui.theme.fg("error", stateText.padEnd(7));
+
+        const namePad = " ".repeat(maxNameLen - r.name.length);
+
+        let targetPart = "";
         if (r.targetModel) {
-          lines.push(`    → ${r.targetModel}`);
+          targetPart = `→ ${r.targetModel}`;
         } else if (r.error) {
-          lines.push(`    → ${ctx.ui.theme.fg("warning", r.error)}`);
+          targetPart = `→ ${ctx.ui.theme.fg("warning", r.error)}`;
         } else {
-          lines.push(`    → ${ctx.ui.theme.fg("dim", "unknown target")}`);
+          targetPart = `→ ${ctx.ui.theme.fg("dim", "unknown target")}`;
         }
+
+        const costPart = `  $${r.specs.cost.input}/$${r.specs.cost.output} per 1M  ${ctx.ui.theme.fg("dim", `(cache: $${r.specs.cost.cacheRead}/$${r.specs.cost.cacheWrite})`)}`;
+
+        lines.push(`  ${bullet} ${namePad}${ctx.ui.theme.bold(r.name)}  ${state}  ${targetPart}${costPart}`);
       }
 
       lines.push("");
