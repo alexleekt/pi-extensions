@@ -42,6 +42,8 @@ npm install -g @alexleekt/pi-extension-reloader
 
 Pi auto-discovers globally installed `pi-package` extensions.
 
+> **Zero build step for this extension.** `pi-extension-reloader` ships as a single TypeScript file. Pi compiles it on-the-fly — no `npm run build`, no bundle, no `dist/` directory.
+
 ## Why a full reload is needed
 
 Jiti (Pi's TypeScript loader) caches compiled `.mjs` files on disk. Clearing those files removes the on-disk cache, but Pi also holds the extension's commands and state in memory. The `ctx.reload()` call at the end re-registers everything so your new code is actually active.
