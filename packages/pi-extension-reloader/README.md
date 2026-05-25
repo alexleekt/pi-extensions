@@ -70,6 +70,24 @@ Pi auto-discovers globally installed `pi-package` extensions.
 
 Jiti caches compiled `.mjs` files on disk. Clearing those files removes the on-disk cache, but Pi also holds the extension's commands and state in memory. The `ctx.reload()` call at the end re-registers everything so your new code is actually active.
 
+## Alternatives and upstream context
+
+This extension exists because Pi's extension loader disables jiti's in-memory cache (`moduleCache: false`) but leaves disk cache (`fsCache`) at its default `true`. Jiti supports `rebuildFsCache: true` which checks file mtimes and rebuilds stale cache automatically — Pi doesn't use it.
+
+**If you want to avoid this extension entirely:**
+
+```bash
+# Disable jiti disk cache globally (slower reloads, always fresh)
+export JITI_FS_CACHE=false
+pi
+```
+
+This eliminates the stale-cache problem for all extensions, at the cost of recompiling from source on every load.
+
+**Honest assessment:**
+- The cache-clearing half of this extension becomes unnecessary if Pi adds `rebuildFsCache: true` (or `fsCache: false` for local extensions) in its loader
+- The webview rebuild half remains useful — `/reload` will never run `npm run build` for you
+
 ## License
 
 MIT
