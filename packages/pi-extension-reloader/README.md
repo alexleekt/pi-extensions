@@ -60,6 +60,8 @@ cd ~/.pi/agent/extensions
 ln -s /path/to/pi-extension-reloader .
 ```
 
+> **No build step needed.** This extension is a single TypeScript file loaded directly by Pi's jiti runtime. Unlike `pi-ask-user-glimpse` (which bundles a webview), there's no `npm run build`, no Wireit, and no `dist/` directory.
+
 ## License
 
 MIT
