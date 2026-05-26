@@ -1,20 +1,18 @@
 # Progress
 
 ## Status
-In Progress — Researching wheel reinvention (existing tools vs custom solutions)
+In Progress
 
 ## Tasks
-- [x] Load memex context
-- [ ] Research Pi built-in commands for cache clearing
-- [ ] Research jiti CLI tools for cache management
-- [ ] Research npm packages for stale build detection
-- [ ] Research existing Pi extensions for reload/rebuild
-- [ ] Research Node.js watch/rebuild tools
-- [ ] Check Wireit/alternatives usage in monorepo
-- [ ] Write research brief to research-wheel-reinvention.md
+- [x] Research jiti cache invalidation mechanisms
+- [x] Council review: Is pi-extension-reloader necessary?
+- [x] Write findings to research.md
+- [x] Update README with honest value proposition
 
 ## Files Changed
-- progress.md (this file)
+- packages/pi-extension-reloader/council-reviews.md (new)
+- packages/pi-extension-reloader/README.md (updated)
+- packages/pi-ask-user-glimpse/research.md (new)
 
 ## Notes
-Started research at 2026-05-24.
+Council consensus: Extension is essential for symlinked monorepos, very useful for webview extensions, marginal for pure TS extensions. The symlink case is the real differentiator because jiti's cache key uses resolved realpath, which breaks on worktree switches.
