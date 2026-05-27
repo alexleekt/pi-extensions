@@ -1,14 +1,22 @@
 {
-  "name": "@alexleekt/pi-worktrunk-signal",
-  "version": "0.3.0",
-  "description": "Signal where you are in the worktrunk forest — activity tracking and worktree switching",
-  "keywords": ["pi-package", "pi-extension", "pi", "worktrunk", "git-worktree"],
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/alexleekt/pi-extensions.git"
-  },
-  "pi": {
-    "extensions": ["./index.ts"]
-  }
+    "name": "@alexleekt/pi-worktrunk-signal",
+    "version": "0.3.0",
+    "description": "Signal where you are in the worktrunk forest — activity tracking and worktree switching",
+    "keywords": [
+        "pi-package",
+        "pi-extension",
+        "pi",
+        "worktrunk",
+        "git-worktree"
+    ],
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/alexleekt/pi-extensions.git"
+    },
+    "pi": {
+        "extensions": [
+            "./index.ts"
+        ]
+    }
 }
