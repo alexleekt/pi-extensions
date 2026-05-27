@@ -49,8 +49,10 @@ function resolveWebviewHtml(): string {
     console.log(`[pi-ask-user-glimpse] Loading webview from: ${distPath}`);
     try {
         const html = readFileSync(distPath, "utf-8");
-        const hasNewCode = html.includes('items-center justify-between');
-        console.log(`[pi-ask-user-glimpse] Webview has new code: ${hasNewCode}`);
+        const hasNewCode = html.includes("items-center justify-between");
+        console.log(
+            `[pi-ask-user-glimpse] Webview has new code: ${hasNewCode}`,
+        );
         return html;
     } catch {
         // Fallback for development: resolve from package root
@@ -210,7 +212,7 @@ export async function askUserHandler(
                 animationLevel: result.__animationLevel as string | undefined,
             });
         }
-    } catch (err) {
+    } catch (_err) {
         // Glimpse unavailable — fast-exit and warn once
         if (!_warnedGlimpseUnavailable) {
             _warnedGlimpseUnavailable = true;

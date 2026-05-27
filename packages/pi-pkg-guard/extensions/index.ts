@@ -18,17 +18,17 @@ const execAsync = promisify(exec);
 const require = createRequire(import.meta.url);
 const { version: EXTENSION_VERSION } = require("../package.json");
 
-import {
+import type {
+    ExtensionAPI,
+    ExtensionCommandContext,
     Theme,
-    type ExtensionAPI,
-    type ExtensionCommandContext,
 } from "@earendil-works/pi-coding-agent";
 import {
-    SelectList,
-    type SelectItem,
-    type TUI,
     type Component,
     getKeybindings,
+    type SelectItem,
+    SelectList,
+    type TUI,
     visibleWidth,
 } from "@earendil-works/pi-tui";
 
@@ -1071,7 +1071,10 @@ async function executeScan(
         await showResultPanel(
             ctx,
             "Scan Complete",
-            ["✓ All pi packages are registered.", "No unregistered packages found."],
+            [
+                "✓ All pi packages are registered.",
+                "No unregistered packages found.",
+            ],
             "info",
         );
         return;
@@ -1085,11 +1088,21 @@ async function executeScan(
     // For small batches (≤3), auto-register for speed. For larger batches, ask first.
     let packagesToRegister = status.unregistered;
     if (status.unregistered.length > 3) {
-        const bulkIndex = await showSelectMenu(ctx, `Register ${status.unregistered.length} packages?`, [
-            { label: "Register all", description: "Add all packages to pi settings at once" },
-            { label: "Choose which to register", description: "Review and pick individual packages" },
-            { label: "Cancel", description: "Do nothing and close" },
-        ]);
+        const bulkIndex = await showSelectMenu(
+            ctx,
+            `Register ${status.unregistered.length} packages?`,
+            [
+                {
+                    label: "Register all",
+                    description: "Add all packages to pi settings at once",
+                },
+                {
+                    label: "Choose which to register",
+                    description: "Review and pick individual packages",
+                },
+                { label: "Cancel", description: "Do nothing and close" },
+            ],
+        );
         if (bulkIndex === undefined || bulkIndex === 2) {
             await showResultPanel(
                 ctx,
@@ -1252,11 +1265,7 @@ async function executeBackup(ctx: ExtensionCommandContext): Promise<void> {
         await showResultPanel(
             ctx,
             "Backup Partial",
-            [
-                `✓ Local backup saved`,
-                `✗ Gist sync failed:`,
-                gistError || "",
-            ],
+            [`✓ Local backup saved`, `✗ Gist sync failed:`, gistError || ""],
             "warning",
         );
     } else if (localError) {
@@ -1451,11 +1460,21 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
         }
         selectedPackages = packagesToRestore;
     } else {
-        const bulkIndex = await showSelectMenu(ctx, `Restore ${packagesToRestore.length} packages?`, [
-            { label: "Restore all", description: "Register every package from the backup" },
-            { label: "Pick individually", description: "Review and choose which packages to restore" },
-            { label: "Cancel", description: "Do nothing and close" },
-        ]);
+        const bulkIndex = await showSelectMenu(
+            ctx,
+            `Restore ${packagesToRestore.length} packages?`,
+            [
+                {
+                    label: "Restore all",
+                    description: "Register every package from the backup",
+                },
+                {
+                    label: "Pick individually",
+                    description: "Review and choose which packages to restore",
+                },
+                { label: "Cancel", description: "Do nothing and close" },
+            ],
+        );
         if (bulkIndex === undefined || bulkIndex === 2) {
             await showResultPanel(
                 ctx,
@@ -1512,7 +1531,9 @@ async function executeRestore(ctx: ExtensionCommandContext): Promise<void> {
             "Restore Complete",
             [
                 `✓ Restored ${added} ${added === 1 ? "package" : "packages"} to settings:`,
-                ...addedPackages.map((p) => `  - npm:${normalizePackageName(p)}`),
+                ...addedPackages.map(
+                    (p) => `  - npm:${normalizePackageName(p)}`,
+                ),
                 "",
                 "Run this command to install:",
                 `  ${installCmd}`,
@@ -1558,7 +1579,7 @@ function renderBordered(
     const body = lines.map((l) => {
         const visible = visibleWidth(l);
         const trailing = Math.max(0, innerWidth - visible);
-        return theme.fg(color, "│") + " " + l + " ".repeat(trailing) + " " + theme.fg(color, "│");
+        return `${theme.fg(color, "│")} ${l}${" ".repeat(trailing)} ${theme.fg(color, "│")}`;
     });
     return [top, "", ...body, "", bottom];
 }
@@ -1605,7 +1626,10 @@ async function showSelectMenu(
                 render(width: number): string[] {
                     const innerWidth = Math.max(20, width - 6);
                     const titleLine = theme.bold(theme.fg("accent", title));
-                    const hint = theme.fg("dim", "↑↓ navigate  •  Enter select  •  Esc cancel");
+                    const hint = theme.fg(
+                        "dim",
+                        "↑↓ navigate  •  Enter select  •  Esc cancel",
+                    );
                     const listLines = selectList.render(innerWidth);
                     const content = [titleLine, "", hint, "", ...listLines];
                     return renderBordered(theme, "accent", content, innerWidth);
@@ -1644,85 +1668,81 @@ async function showMultiSelect(
         description: `0 of ${packages.length} selected`,
     });
 
-    return ctx.ui.custom<string[]>(
-        (tui, theme, _keybindings, done) => {
-            const selected = new Set<number>();
+    return ctx.ui.custom<string[]>((tui, theme, _keybindings, done) => {
+        const selected = new Set<number>();
 
-            const selectList = new SelectList(
-                selectItems,
-                Math.min(selectItems.length, 12),
-                {
-                    selectedPrefix: (text) => theme.fg("accent", text),
-                    selectedText: (text) => theme.fg("accent", text),
-                    description: (text) => theme.fg("muted", text),
-                    scrollInfo: (text) => theme.fg("muted", text),
-                    noMatch: (text) => theme.fg("muted", text),
-                },
-            );
+        const selectList = new SelectList(
+            selectItems,
+            Math.min(selectItems.length, 12),
+            {
+                selectedPrefix: (text) => theme.fg("accent", text),
+                selectedText: (text) => theme.fg("accent", text),
+                description: (text) => theme.fg("muted", text),
+                scrollInfo: (text) => theme.fg("muted", text),
+                noMatch: (text) => theme.fg("muted", text),
+            },
+        );
 
-            const updateLabels = () => {
-                for (let i = 0; i < packages.length; i++) {
-                    const prefix = selected.has(i) ? "☑" : "☐";
-                    selectItems[i].label = `${prefix} ${packages[i]}`;
-                }
-                const doneItem = selectItems[selectItems.length - 1];
-                doneItem.description = `${selected.size} of ${packages.length} selected`;
-                tui.requestRender();
-            };
+        const updateLabels = () => {
+            for (let i = 0; i < packages.length; i++) {
+                const prefix = selected.has(i) ? "☑" : "☐";
+                selectItems[i].label = `${prefix} ${packages[i]}`;
+            }
+            const doneItem = selectItems[selectItems.length - 1];
+            doneItem.description = `${selected.size} of ${packages.length} selected`;
+            tui.requestRender();
+        };
 
-            selectList.onSelect = (item) => {
-                if (item.value === "done") {
-                    const result = packages.filter((_, i) =>
-                        selected.has(i),
-                    );
-                    done(result);
+        selectList.onSelect = (item) => {
+            if (item.value === "done") {
+                const result = packages.filter((_, i) => selected.has(i));
+                done(result);
+                return;
+            }
+            const index = Number(item.value);
+            if (selected.has(index)) {
+                selected.delete(index);
+            } else {
+                selected.add(index);
+            }
+            updateLabels();
+        };
+
+        selectList.onCancel = () => done([]);
+
+        return {
+            render(width: number): string[] {
+                const innerWidth = Math.max(20, width - 6);
+                const titleLine = theme.bold(theme.fg("accent", title));
+                const hint = theme.fg(
+                    "dim",
+                    "Space/Enter to toggle  •  ↑↓ to navigate  •  Esc to cancel",
+                );
+                const listLines = selectList.render(innerWidth);
+                const content = [titleLine, "", hint, "", ...listLines];
+                return renderBordered(theme, "accent", content, innerWidth);
+            },
+            handleInput(data: string): void {
+                if (data === " ") {
+                    const current = selectList.getSelectedItem();
+                    if (current && current.value !== "done") {
+                        const index = Number(current.value);
+                        if (selected.has(index)) {
+                            selected.delete(index);
+                        } else {
+                            selected.add(index);
+                        }
+                        updateLabels();
+                    }
                     return;
                 }
-                const index = Number(item.value);
-                if (selected.has(index)) {
-                    selected.delete(index);
-                } else {
-                    selected.add(index);
-                }
-                updateLabels();
-            };
-
-            selectList.onCancel = () => done([]);
-
-            return {
-                render(width: number): string[] {
-                    const innerWidth = Math.max(20, width - 6);
-                    const titleLine = theme.bold(theme.fg("accent", title));
-                    const hint = theme.fg(
-                        "dim",
-                        "Space/Enter to toggle  •  ↑↓ to navigate  •  Esc to cancel",
-                    );
-                    const listLines = selectList.render(innerWidth);
-                    const content = [titleLine, "", hint, "", ...listLines];
-                    return renderBordered(theme, "accent", content, innerWidth);
-                },
-                handleInput(data: string): void {
-                    if (data === " ") {
-                        const current = selectList.getSelectedItem();
-                        if (current && current.value !== "done") {
-                            const index = Number(current.value);
-                            if (selected.has(index)) {
-                                selected.delete(index);
-                            } else {
-                                selected.add(index);
-                            }
-                            updateLabels();
-                        }
-                        return;
-                    }
-                    selectList.handleInput(data);
-                },
-                invalidate(): void {
-                    selectList.invalidate();
-                },
-            };
-        },
-    );
+                selectList.handleInput(data);
+            },
+            invalidate(): void {
+                selectList.invalidate();
+            },
+        };
+    });
 }
 
 /**
@@ -1736,36 +1756,30 @@ async function showResultPanel(
     type: "info" | "warning" | "error" = "info",
 ): Promise<void> {
     const color =
-        type === "error"
-            ? "error"
-            : type === "warning"
-              ? "warning"
-              : "accent";
+        type === "error" ? "error" : type === "warning" ? "warning" : "accent";
 
-    return ctx.ui.custom<void>(
-        (_tui, theme, _keybindings, done) => {
-            const kb = getKeybindings();
-            return {
-                render(width: number): string[] {
-                    const innerWidth = Math.max(20, width - 6);
-                    const titleLine = theme.bold(theme.fg(color, title));
-                    const content = lines.map((l) => "  " + l);
-                    const hint = theme.fg("dim", "Press Enter to continue");
-                    const body = [titleLine, "", ...content, "", hint];
-                    return renderBordered(theme, color, body, innerWidth);
-                },
-                handleInput(data: string): void {
-                    if (
-                        kb.matches(data, "tui.select.confirm") ||
-                        kb.matches(data, "tui.select.cancel")
-                    ) {
-                        done();
-                    }
-                },
-                invalidate(): void {},
-            };
-        },
-    );
+    return ctx.ui.custom<void>((_tui, theme, _keybindings, done) => {
+        const kb = getKeybindings();
+        return {
+            render(width: number): string[] {
+                const innerWidth = Math.max(20, width - 6);
+                const titleLine = theme.bold(theme.fg(color, title));
+                const content = lines.map((l) => `  ${l}`);
+                const hint = theme.fg("dim", "Press Enter to continue");
+                const body = [titleLine, "", ...content, "", hint];
+                return renderBordered(theme, color, body, innerWidth);
+            },
+            handleInput(data: string): void {
+                if (
+                    kb.matches(data, "tui.select.confirm") ||
+                    kb.matches(data, "tui.select.cancel")
+                ) {
+                    done();
+                }
+            },
+            invalidate(): void {},
+        };
+    });
 }
 
 /**
@@ -1829,7 +1843,8 @@ async function executeGistConfig(
             if (!config.gistId) {
                 items.push({
                     label: `${items.length + 1}. Create Gist`,
-                    description: "Create a new public GitHub Gist for cloud backup",
+                    description:
+                        "Create a new public GitHub Gist for cloud backup",
                     action: async () => {
                         ctx.ui.setWorkingMessage("Creating new gist...");
                         const result = await createGist();
@@ -1909,7 +1924,8 @@ async function executeGistConfig(
                 });
                 items.push({
                     label: `${items.length + 1}. Disconnect`,
-                    description: "Remove Gist link from Package Guard (keeps Gist on GitHub)",
+                    description:
+                        "Remove Gist link from Package Guard (keeps Gist on GitHub)",
                     action: async () => {
                         if (!config.gistId) {
                             ctx.ui.notify("No gist configured", "warning");
@@ -1998,7 +2014,8 @@ async function executeConfig(ctx: ExtensionCommandContext): Promise<void> {
             if (ghInstalled) {
                 items.push({
                     label: `${items.length + 1}. Gist...`,
-                    description: "Configure GitHub Gist for cloud-synced backups",
+                    description:
+                        "Configure GitHub Gist for cloud-synced backups",
                     action: async () => {
                         await executeGistConfig(ctx, config);
                     },
@@ -2139,7 +2156,10 @@ export default function piPkgGuardExtension(pi: ExtensionAPI) {
                                 ? theme.fg("warning", unregisteredSummary)
                                 : theme.fg("success", "✓");
                             const sep = theme.fg("muted", " │ ");
-                            const backup = theme.fg("muted", `💾 ${pathDisplay}`);
+                            const backup = theme.fg(
+                                "muted",
+                                `💾 ${pathDisplay}`,
+                            );
                             const gist = theme.fg(
                                 "muted",
                                 `│ ${gistDisplay} ${syncDisplay}`,
@@ -2159,23 +2179,27 @@ export default function piPkgGuardExtension(pi: ExtensionAPI) {
                     return [
                         {
                             label: `1. ${scanLabel}`,
-                            description: "Find and register unregistered npm packages",
+                            description:
+                                "Find and register unregistered npm packages",
                             action: () =>
                                 executeScan(ctx, { offerReload: true }),
                         },
                         {
                             label: "2. Backup",
-                            description: "Save package list to local file + optional GitHub Gist",
+                            description:
+                                "Save package list to local file + optional GitHub Gist",
                             action: () => executeBackup(ctx),
                         },
                         {
                             label: "3. Restore",
-                            description: "Register packages from a previous backup",
+                            description:
+                                "Register packages from a previous backup",
                             action: () => executeRestore(ctx),
                         },
                         {
                             label: "4. Config",
-                            description: "Backup path, Gist sync, and other settings",
+                            description:
+                                "Backup path, Gist sync, and other settings",
                             action: () => executeConfig(ctx),
                         },
                         {

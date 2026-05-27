@@ -180,20 +180,30 @@ function sendContinue(
     ctx: ExtensionContext,
 ): void {
     if (needsEscalation.has(sessionId)) {
-        trySend(pi, ctx, () => pi.sendUserMessage(pickNudge()), "send visible continue");
+        trySend(
+            pi,
+            ctx,
+            () => pi.sendUserMessage(pickNudge()),
+            "send visible continue",
+        );
         return;
     }
-    trySend(pi, ctx, () => {
-        pi.sendMessage(
-            {
-                customType: CONTINUE_CUSTOM_TYPE,
-                content: "",
-                display: false,
-                details: {},
-            },
-            { triggerTurn: true },
-        );
-    }, "send invisible continue");
+    trySend(
+        pi,
+        ctx,
+        () => {
+            pi.sendMessage(
+                {
+                    customType: CONTINUE_CUSTOM_TYPE,
+                    content: "",
+                    display: false,
+                    details: {},
+                },
+                { triggerTurn: true },
+            );
+        },
+        "send invisible continue",
+    );
 }
 
 async function runContinueCommand(
@@ -208,7 +218,9 @@ async function runContinueCommand(
         case "status": {
             const idle = ctx.isIdle();
             const hasPending = ctx.hasPendingMessages();
-            const escalated = needsEscalation.has(ctx.sessionManager.getSessionId());
+            const escalated = needsEscalation.has(
+                ctx.sessionManager.getSessionId(),
+            );
             notifySafely(
                 ctx,
                 [
@@ -438,11 +450,11 @@ export default function bumpExtension(pi: ExtensionAPI) {
                 // reducing matchesKey() calls by 80% per keystroke.
                 const editorText = ctx.ui.getEditorText().trim();
                 const isDebug = debugSessions.has(sessionId);
-                const keysToCheck = isDebug
-                    ? DEBUG_KEYS
-                    : [Key.enter];
+                const keysToCheck = isDebug ? DEBUG_KEYS : [Key.enter];
 
-                const keyId = keysToCheck.find((keyId) => matchesKey(data, keyId));
+                const keyId = keysToCheck.find((keyId) =>
+                    matchesKey(data, keyId),
+                );
                 if (!keyId) return;
 
                 // Enter with text in editor is a normal submit, not a continue.
@@ -463,12 +475,17 @@ export default function bumpExtension(pi: ExtensionAPI) {
                     lastKeyTime = 0;
 
                     const isEnter = keyId === Key.enter;
-                    const shouldSend = isEnter && ctx.isIdle() && !ctx.hasPendingMessages();
+                    const shouldSend =
+                        isEnter && ctx.isIdle() && !ctx.hasPendingMessages();
                     if (shouldSend) {
                         sendContinue(pi, sessionId, needsEscalation, ctx);
                     }
                     if (isDebug) {
-                        notifySafely(ctx, `Double-tap: ${keyId} (${duration}ms)`, "info");
+                        notifySafely(
+                            ctx,
+                            `Double-tap: ${keyId} (${duration}ms)`,
+                            "info",
+                        );
                     }
                     return shouldSend ? { consume: true } : undefined;
                 }

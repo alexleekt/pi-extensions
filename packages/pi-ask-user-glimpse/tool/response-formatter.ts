@@ -86,7 +86,8 @@ function responseToText(response: AskResponse): string {
     const selections = response.selections ?? [];
     if (selections.length > 0) lines.push(selections.join(", "));
     if (response.comment) lines.push(`Comment: ${response.comment}`);
-    if (response.additionalComments) lines.push(`Additional Comments: ${response.additionalComments}`);
+    if (response.additionalComments)
+        lines.push(`Additional Comments: ${response.additionalComments}`);
     return lines.join("\n\n") || "No response";
 }
 

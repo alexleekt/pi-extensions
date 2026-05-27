@@ -39,9 +39,8 @@ jobs:
                           packages/pi-ask-user-glimpse/index.ts \
                           packages/pi-ask-user-glimpse/tool \
                           packages/pi-ask-user-glimpse/shared \
-                          packages/pi-ask-user-glimpse/fallback \
-                          packages/pi-ask-user-glimpse/types \
-                          packages/pi-ask-user-glimpse/scripts
+                          packages/pi-ask-user-glimpse/constants \
+                          packages/pi-ask-user-glimpse/types
                   else
                       npx @biomejs/biome check packages/${{ matrix.package }}
                   fi

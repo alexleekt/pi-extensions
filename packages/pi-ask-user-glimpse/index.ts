@@ -3,8 +3,8 @@
  */
 
 import {
-    isCustomEntry,
     type CustomJournalEntry,
+    isCustomEntry,
 } from "@alexleekt/pi-shared/types";
 
 import { StringEnum, Type } from "@earendil-works/pi-ai";
@@ -157,7 +157,11 @@ async function runAskUserWithTheme(
 /** Extract plain text from a Pi journal assistant entry. */
 function extractTextFromAssistantEntry(entry: unknown): string {
     if (!entry || typeof entry !== "object") return "";
-    const content = ((entry as Record<string, unknown>).message as Record<string, unknown> | undefined)?.content;
+    const content = (
+        (entry as Record<string, unknown>).message as
+            | Record<string, unknown>
+            | undefined
+    )?.content;
     return extractTextFromContent(content);
 }
 
@@ -270,9 +274,14 @@ function buildDebugParams(mode: string): AskUserParams | null {
         case "single-select":
             return {
                 question: "Test: Single Select",
-                context: "Pick one option (with optional freeform and comment). This tests radio-style selection, recommended badges, search filtering, and keyboard navigation.",
+                context:
+                    "Pick one option (with optional freeform and comment). This tests radio-style selection, recommended badges, search filtering, and keyboard navigation.",
                 options: [
-                    { title: "Option A", description: "Description for A", recommended: true },
+                    {
+                        title: "Option A",
+                        description: "Description for A",
+                        recommended: true,
+                    },
                     { title: "Option B", description: "Description for B" },
                     { title: "Option C", description: "Description for C" },
                 ],
@@ -285,7 +294,11 @@ function buildDebugParams(mode: string): AskUserParams | null {
                 context:
                     "Pick multiple options (with optional freeform and comment). This tests checkbox-style selection, select-all/none links, and submit-gating.",
                 options: [
-                    { title: "Feature X", description: "Enable feature X", recommended: true },
+                    {
+                        title: "Feature X",
+                        description: "Enable feature X",
+                        recommended: true,
+                    },
                     { title: "Feature Y", description: "Enable feature Y" },
                     { title: "Feature Z", description: "Enable feature Z" },
                 ],
@@ -296,13 +309,15 @@ function buildDebugParams(mode: string): AskUserParams | null {
         case "freeform":
             return {
                 question: "Test: Freeform",
-                context: "Type any answer you like. This tests the textarea, character counter, and platform-aware keyboard shortcuts.",
+                context:
+                    "Type any answer you like. This tests the textarea, character counter, and platform-aware keyboard shortcuts.",
                 allowFreeform: true,
             };
         case "questionnaire":
             return {
                 question: "Test: Questionnaire",
-                context: "Answer multiple structured questions. This tests the card layout, progress bar, required-field badges, and per-question character counters.",
+                context:
+                    "Answer multiple structured questions. This tests the card layout, progress bar, required-field badges, and per-question character counters.",
                 questions: [
                     {
                         title: "Database",
@@ -320,7 +335,11 @@ function buildDebugParams(mode: string): AskUserParams | null {
                         title: "Architecture",
                         description: "Preferred style?",
                         options: [
-                            { title: "Monolith", description: "Simple", recommended: true },
+                            {
+                                title: "Monolith",
+                                description: "Simple",
+                                recommended: true,
+                            },
                             { title: "Microservices", description: "Scalable" },
                         ],
                         allowMultiple: true,
@@ -404,38 +423,67 @@ function buildDebugParams(mode: string): AskUserParams | null {
                         title: "Architecture",
                         description: "Which architecture style should we use?",
                         options: [
-                            { title: "Monolith", description: "Simple, single deployable", recommended: true },
-                            { title: "Microservices", description: "Scalable, complex" },
-                            { title: "Serverless", description: "Event-driven, pay-per-use" }
-                        ]
+                            {
+                                title: "Monolith",
+                                description: "Simple, single deployable",
+                                recommended: true,
+                            },
+                            {
+                                title: "Microservices",
+                                description: "Scalable, complex",
+                            },
+                            {
+                                title: "Serverless",
+                                description: "Event-driven, pay-per-use",
+                            },
+                        ],
                     },
                     {
                         title: "Features",
                         description: "Select all features to implement:",
                         options: [
-                            { title: "Authentication", description: "OAuth + JWT" },
+                            {
+                                title: "Authentication",
+                                description: "OAuth + JWT",
+                            },
                             { title: "Caching", description: "Redis layer" },
-                            { title: "Rate Limiting", description: "Token bucket" },
-                            { title: "Observability", description: "Metrics + logs" }
+                            {
+                                title: "Rate Limiting",
+                                description: "Token bucket",
+                            },
+                            {
+                                title: "Observability",
+                                description: "Metrics + logs",
+                            },
                         ],
-                        allowMultiple: true
+                        allowMultiple: true,
                     },
                     {
                         title: "Deployment Target",
                         description: "Where should we deploy?",
                         options: [
-                            { title: "Vercel", description: "Edge, serverless-first" },
-                            { title: "AWS", description: "Full control, scalable" },
-                            { title: "Self-hosted", description: "Own the infrastructure" }
-                        ]
+                            {
+                                title: "Vercel",
+                                description: "Edge, serverless-first",
+                            },
+                            {
+                                title: "AWS",
+                                description: "Full control, scalable",
+                            },
+                            {
+                                title: "Self-hosted",
+                                description: "Own the infrastructure",
+                            },
+                        ],
                     },
                     {
                         title: "Notes",
-                        description: "Any additional requirements or constraints?"
-                    }
+                        description:
+                            "Any additional requirements or constraints?",
+                    },
                 ],
                 allowComment: true,
-                allowSkip: true
+                allowSkip: true,
             };
         default:
             return null;
@@ -649,8 +697,7 @@ export default function (pi: ExtensionAPI) {
 
     // ── Manual style toggle ──
     pi.registerCommand("ask-style", {
-        description:
-            "Cycle ask_user style: Plain Text → YOLO → Plain Text",
+        description: "Cycle ask_user style: Plain Text → YOLO → Plain Text",
         handler: async (_args, ctx) => {
             const styleMode = getStyleMode(ctx.sessionManager.getEntries());
 
@@ -753,12 +800,13 @@ export default function (pi: ExtensionAPI) {
             _pi?.sendMessage(
                 {
                     customType: "ask-debug-result",
-                    content: [{ type: "text", text: `[debug] ${mode} → ${text}` }],
+                    content: [
+                        { type: "text", text: `[debug] ${mode} → ${text}` },
+                    ],
                     display: true,
                 },
                 { triggerTurn: false },
             );
         },
     });
-
 }
