@@ -1,52 +1,52 @@
 {
-  "name": "@alexleekt/pi-heading",
-  "version": "0.1.2",
-  "description": "Know where you are at a glance. One-line session heading widget for the Pi agent.",
-  "type": "module",
-  "main": "index.ts",
-  "scripts": {
-    "typecheck": "tsc --noEmit",
-    "check": "tsc --noEmit && bun test",
-    "test": "bun test"
-  },
-  "pi": {
-    "extensions": [
-      "./index.ts"
-    ]
-  },
-  "dependencies": {
-    "@alexleekt/pi-shared": "^0.1.0"
-  },
-  "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*"
-  },
-  "files": [
-    "index.ts",
-    "config.json",
-    "state",
-    "ui",
-    "llm",
-    "prompts",
-    "tools",
-    "README.md",
-    "CHANGELOG.md",
-    "LICENSE"
-  ],
-  "keywords": [
-    "pi-package",
-    "pi-extension",
-    "pi",
-    "heading",
-    "session-summary"
-  ],
-  "license": "MIT",
-  "author": "Alex Lee",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/alexleekt/pi-extensions.git"
-  },
-  "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-heading#readme",
-  "bugs": {
-    "url": "https://github.com/alexleekt/pi-extensions/issues"
-  }
+    "name": "@alexleekt/pi-heading",
+    "version": "0.1.2",
+    "description": "Know where you are at a glance. One-line session heading widget for the Pi agent.",
+    "type": "module",
+    "main": "index.ts",
+    "scripts": {
+        "typecheck": "tsc --noEmit",
+        "check": "tsc --noEmit && bun test",
+        "test": "bun test"
+    },
+    "pi": {
+        "extensions": [
+            "./index.ts"
+        ]
+    },
+    "dependencies": {
+        "@alexleekt/pi-shared": "^0.1.0"
+    },
+    "peerDependencies": {
+        "@earendil-works/pi-coding-agent": "*"
+    },
+    "files": [
+        "index.ts",
+        "config.json",
+        "state",
+        "ui",
+        "llm",
+        "prompts",
+        "tools",
+        "README.md",
+        "CHANGELOG.md",
+        "LICENSE"
+    ],
+    "keywords": [
+        "pi-package",
+        "pi-extension",
+        "pi",
+        "heading",
+        "session-summary"
+    ],
+    "license": "MIT",
+    "author": "Alex Lee",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/alexleekt/pi-extensions.git"
+    },
+    "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-heading#readme",
+    "bugs": {
+        "url": "https://github.com/alexleekt/pi-extensions/issues"
+    }
 }
