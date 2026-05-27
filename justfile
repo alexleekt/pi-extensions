@@ -9,21 +9,33 @@ fmt:
 
 # Lint all packages (extension code only; webview has its own build toolchain)
 lint:
-    npx @biomejs/biome check packages/pi-shared/session.ts \
-        packages/pi-bump packages/pi-pkg-guard \
+    npx @biomejs/biome check \
+        packages/pi-bump \
+        packages/pi-pkg-guard \
+        packages/pi-heading \
+        packages/pi-herdr-tab-sync \
         packages/pi-worktrunk-signal \
         packages/pi-ask-user-glimpse/index.ts \
         packages/pi-ask-user-glimpse/tool \
         packages/pi-ask-user-glimpse/shared \
-        packages/pi-ask-user-glimpse/fallback \
-        packages/pi-ask-user-glimpse/types \
-        packages/pi-ask-user-glimpse/scripts
+        packages/pi-ask-user-glimpse/constants \
+        packages/pi-ask-user-glimpse/types
 
-# Type-check all packages
+# Type-check all packages (fail fast)
 typecheck:
-    for pkg in packages/*/; do \
-        echo "Type-checking $pkg..."; \
-        (cd "$pkg" && if npm run typecheck 2>/dev/null; then :; else npm run check; fi); \
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for pkg in packages/*/; do
+        echo "Type-checking $pkg..."
+        cd "$pkg"
+        if npm run 2>&1 | grep -q "typecheck"; then
+            npm run typecheck
+        elif npm run 2>&1 | grep -q "check"; then
+            npm run check
+        else
+            echo "  no typecheck script — skipping"
+        fi
+        cd - >/dev/null
     done
 
 # Publish a package (usage: just publish pi-bump)

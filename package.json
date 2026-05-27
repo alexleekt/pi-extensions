@@ -6,6 +6,10 @@
     "workspaces": [
         "packages/*"
     ],
+    "scripts": {
+        "check": "just lint && just typecheck",
+        "fix": "npx @biomejs/biome check --write ."
+    },
     "devDependencies": {
         "@biomejs/biome": "^2.4.15",
         "typescript": "^5.9.3"
