@@ -1,0 +1,23 @@
+# Agnix configuration for @alexleekt/pi-extensions monorepo
+# https://github.com/agnix/agnix
+
+tools = ["claude-code"]
+
+exclude = [
+  "**/node_modules/**",
+  "**/council-review-report.md",
+  "**/scout-pi-commands-report.md",
+  "**/council-reviews.md",
+  "**/TESTING.md",
+]
+
+[[overrides]]
+paths = [
+  "packages/pi-pkg-guard/AGENT.md",
+  "packages/pi-heading/AGENT.md",
+  "packages/pi-event-horizon-provider/AGENTS.md",
+  "packages/pi-event-horizon-provider/CONTEXT.md",
+]
+disabled_rules = ["XP-003"]
+
+
