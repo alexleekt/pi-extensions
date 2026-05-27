@@ -2,6 +2,12 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [0.5.1] — 2026-05-27
+
+### Changed
+
+- Documentation refresh: add `pi-event-horizon-provider` context and ADR references to internal docs
+
 ## [0.5.0] — 2026-05-24
 
 ### Added

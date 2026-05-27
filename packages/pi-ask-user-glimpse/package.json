@@ -1,132 +1,132 @@
 {
-    "name": "@alexleekt/pi-ask-user-glimpse",
-    "version": "0.5.0",
-    "description": "Ask better questions. Get better answers. Rich native WebView dialogs for the Pi agent.",
-    "type": "module",
-    "keywords": [
-        "pi-package",
-        "pi-extension",
-        "pi",
-        "glimpseui",
-        "ask_user",
-        "interactive"
-    ],
-    "author": "Alex Lee <alex@alexleekt.com>",
-    "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/alexleekt/pi-extensions.git"
+  "name": "@alexleekt/pi-ask-user-glimpse",
+  "version": "0.5.1",
+  "description": "Ask better questions. Get better answers. Rich native WebView dialogs for the Pi agent.",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi",
+    "glimpseui",
+    "ask_user",
+    "interactive"
+  ],
+  "author": "Alex Lee <alex@alexleekt.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexleekt/pi-extensions.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alexleekt/pi-extensions/issues"
+  },
+  "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-ask-user-glimpse#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "files": [
+    "index.ts",
+    "constants",
+    "tool",
+    "shared",
+    "types",
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "wireit",
+    "build:css": "wireit",
+    "build:webview": "wireit",
+    "typecheck": "tsc --noEmit",
+    "check": "npm pack --dry-run",
+    "prepack": "npm run build",
+    "dev:webview": "npx vite --config ./webview/vite.config.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "validate": "test -f dist/index.html && grep -q 'ASK_USER_PAYLOAD' dist/index.html && echo \"✓ dist/index.html ready\" || echo \"✗ Run npm run build first\"",
+    "validate:gui": "echo \"validate:gui requires manual testing with pi extension load\""
+  },
+  "wireit": {
+    "build": {
+      "dependencies": [
+        "build:css",
+        "build:webview"
+      ]
     },
-    "bugs": {
-        "url": "https://github.com/alexleekt/pi-extensions/issues"
+    "build:css": {
+      "command": "npx tailwindcss -c ./webview/tailwind.config.js -i ./webview/src/index.css -o ./webview/src/index.generated.css --content './webview/index.html,./webview/src/**/*.{js,ts,jsx,tsx}'",
+      "files": [
+        "./webview/src/**/*.css",
+        "./webview/src/**/*.{ts,tsx,js,jsx}",
+        "./webview/tailwind.config.js",
+        "./webview/postcss.config.js",
+        "./webview/index.html"
+      ],
+      "output": [
+        "./webview/src/index.generated.css"
+      ]
     },
-    "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-ask-user-glimpse#readme",
-    "publishConfig": {
-        "access": "public"
-    },
-    "pi": {
-        "extensions": [
-            "./index.ts"
-        ]
-    },
-    "files": [
-        "index.ts",
-        "constants",
-        "tool",
-        "shared",
-        "types",
-        "dist",
-        "README.md",
-        "CHANGELOG.md",
-        "CONTRIBUTING.md",
-        "LICENSE"
-    ],
-    "scripts": {
-        "build": "wireit",
-        "build:css": "wireit",
-        "build:webview": "wireit",
-        "typecheck": "tsc --noEmit",
-        "check": "npm pack --dry-run",
-        "prepack": "npm run build",
-        "dev:webview": "npx vite --config ./webview/vite.config.ts",
-        "test": "vitest run",
-        "test:watch": "vitest",
-        "test:coverage": "vitest run --coverage",
-        "test:e2e": "playwright test",
-        "test:e2e:ui": "playwright test --ui",
-        "validate": "test -f dist/index.html && grep -q 'ASK_USER_PAYLOAD' dist/index.html && echo \"✓ dist/index.html ready\" || echo \"✗ Run npm run build first\"",
-        "validate:gui": "echo \"validate:gui requires manual testing with pi extension load\""
-    },
-    "wireit": {
-        "build": {
-            "dependencies": [
-                "build:css",
-                "build:webview"
-            ]
-        },
-        "build:css": {
-            "command": "npx tailwindcss -c ./webview/tailwind.config.js -i ./webview/src/index.css -o ./webview/src/index.generated.css --content './webview/index.html,./webview/src/**/*.{js,ts,jsx,tsx}'",
-            "files": [
-                "./webview/src/**/*.css",
-                "./webview/src/**/*.{ts,tsx,js,jsx}",
-                "./webview/tailwind.config.js",
-                "./webview/postcss.config.js",
-                "./webview/index.html"
-            ],
-            "output": [
-                "./webview/src/index.generated.css"
-            ]
-        },
-        "build:webview": {
-            "command": "npx vite build --config ./webview/vite.config.ts",
-            "files": [
-                "./webview/src/**/*.{ts,tsx}",
-                "./webview/index.html",
-                "./webview/vite.config.ts",
-                "./webview/tsconfig.json",
-                "./webview/postcss.config.js",
-                "./webview/src/index.generated.css"
-            ],
-            "output": [
-                "./dist/index.html"
-            ],
-            "dependencies": [
-                "build:css"
-            ]
-        }
-    },
-    "dependencies": {
-        "@alexleekt/pi-shared": "^0.1.0",
-        "glimpseui": "^0.8.1"
-    },
-    "devDependencies": {
-        "@playwright/test": "^1.60.0",
-        "@testing-library/jest-dom": "^6.9.1",
-        "@testing-library/react": "^16.3.2",
-        "@types/react": "^18.3.0",
-        "@types/react-dom": "^18.3.0",
-        "@vitejs/plugin-react": "^4.3.0",
-        "@vitest/coverage-v8": "^4.1.7",
-        "autoprefixer": "^10.4.20",
-        "jsdom": "^29.1.1",
-        "marked": "^15.0.12",
-        "mermaid": "^11.15.0",
-        "playwright": "^1.60.0",
-        "postcss": "^8.4.47",
-        "react": "^18.3.1",
-        "react-dom": "^18.3.1",
-        "tailwindcss": "^3.4.14",
-        "typescript": "^5.6.0",
-        "vite": "^5.4.0",
-        "vite-plugin-singlefile": "^2.0.0",
-        "vitest": "^4.1.7",
-        "wireit": "^0.14.12"
-    },
-    "peerDependencies": {
-        "@earendil-works/pi-ai": "*",
-        "@earendil-works/pi-coding-agent": "*"
-    },
-    "engines": {
-        "node": ">=18.0.0"
+    "build:webview": {
+      "command": "npx vite build --config ./webview/vite.config.ts",
+      "files": [
+        "./webview/src/**/*.{ts,tsx}",
+        "./webview/index.html",
+        "./webview/vite.config.ts",
+        "./webview/tsconfig.json",
+        "./webview/postcss.config.js",
+        "./webview/src/index.generated.css"
+      ],
+      "output": [
+        "./dist/index.html"
+      ],
+      "dependencies": [
+        "build:css"
+      ]
     }
+  },
+  "dependencies": {
+    "@alexleekt/pi-shared": "^0.1.0",
+    "glimpseui": "^0.8.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "autoprefixer": "^10.4.20",
+    "jsdom": "^29.1.1",
+    "marked": "^15.0.12",
+    "mermaid": "^11.15.0",
+    "playwright": "^1.60.0",
+    "postcss": "^8.4.47",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "vite-plugin-singlefile": "^2.0.0",
+    "vitest": "^4.1.7",
+    "wireit": "^0.14.12"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }

@@ -1,55 +1,55 @@
 {
-    "name": "@alexleekt/pi-pkg-guard",
-    "version": "0.13.0",
-    "description": "Don't let orphaned packages clutter your agent. Guard against unregistered pi packages.",
-    "type": "module",
-    "license": "MIT",
-    "author": "Alex Lee <657215+alexleekt@users.noreply.github.com>",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/alexleekt/pi-extensions.git"
-    },
-    "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-pkg-guard#readme",
-    "bugs": {
-        "url": "https://github.com/alexleekt/pi-extensions/issues"
-    },
-    "keywords": [
-        "pi-package",
-        "pi-extension",
-        "pi",
-        "package-manager",
-        "guardrails",
-        "npm",
-        "extensions"
-    ],
-    "files": [
-        "extensions/",
-        "README.md",
-        "LICENSE"
-    ],
-    "scripts": {
-        "typecheck": "tsc --noEmit",
-        "check": "tsc --noEmit",
-        "test": "tsx --test test/**/*.test.ts"
-    },
-    "devDependencies": {
-        "@types/node": "^20.0.0",
-        "tsx": "^4.21.0",
-        "typescript": "^5.0.0"
-    },
-    "publishConfig": {
-        "access": "public"
-    },
-    "pi": {
-        "extensions": [
-            "./extensions/index.ts"
-        ]
-    },
-    "peerDependencies": {
-        "@earendil-works/pi-coding-agent": "*",
-        "@earendil-works/pi-tui": "*"
-    },
-    "engines": {
-        "node": ">=18.0.0"
-    }
+  "name": "@alexleekt/pi-pkg-guard",
+  "version": "0.13.1",
+  "description": "Don't let orphaned packages clutter your agent. Guard against unregistered pi packages.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Alex Lee <657215+alexleekt@users.noreply.github.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexleekt/pi-extensions.git"
+  },
+  "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-pkg-guard#readme",
+  "bugs": {
+    "url": "https://github.com/alexleekt/pi-extensions/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi",
+    "package-manager",
+    "guardrails",
+    "npm",
+    "extensions"
+  ],
+  "files": [
+    "extensions/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/**/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
