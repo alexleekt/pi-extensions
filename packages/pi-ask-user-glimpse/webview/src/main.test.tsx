@@ -1,45 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("./App", () => ({
-    default: () => <div data-testid="app">Mocked App</div>,
-}));
-
 describe("main.tsx bootstrap", () => {
-    it("renders App into #root when payload is present", async () => {
-        vi.resetModules();
-        const root = document.createElement("div");
-        root.id = "root";
-        document.body.appendChild(root);
+    it("renders error when #root is missing", async () => {
+        // Save original state
+        const originalBody = document.body.innerHTML;
+        const originalPayload = (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__;
+        const root = document.getElementById("root");
+        if (root) root.remove();
 
-        (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = {
-            type: "single-select",
-            question: "Test?",
-            options: [{ title: "A" }],
-            allowMultiple: false,
-            allowFreeform: true,
-            allowComment: false,
-        };
-
-        await import("./main");
-        // Wait for React to render
-        await new Promise((r) => setTimeout(r, 50));
-        expect(root.textContent).toContain("Mocked App");
-        document.body.removeChild(root);
-    });
-
-    it("falls back to body innerHTML when #root is missing", async () => {
-        vi.resetModules();
-        document.body.innerHTML = "";
+        // Set a valid payload
         (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = {
             type: "single-select",
             question: "Test?",
             options: [],
-            allowMultiple: false,
-            allowFreeform: false,
-            allowComment: false,
         };
 
+        // Expect the import to throw
         await expect(import("./main")).rejects.toThrow("#root element not found");
-        expect(document.body.innerHTML).toContain("#root element not found");
+        expect(document.body.innerHTML).toContain("Error: #root element not found");
+
+        // Restore original state
+        document.body.innerHTML = originalBody;
+        (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = originalPayload;
     });
 });

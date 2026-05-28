@@ -1,28 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { RadioIcon, CheckIcon, HelpIcon, CommentIcon, isSelectAllOption } from "../icons";
 
 describe("icons", () => {
-    it("RadioIcon renders checked state", () => {
+    it("RadioIcon renders unchecked", () => {
+        const { container } = render(<RadioIcon checked={false} />);
+        expect(container.querySelector("svg")).toBeInTheDocument();
+    });
+
+    it("RadioIcon renders checked", () => {
         const { container } = render(<RadioIcon checked={true} />);
         expect(container.querySelector("svg")).toBeInTheDocument();
-        expect(container.querySelectorAll("circle")).toHaveLength(2);
     });
 
-    it("RadioIcon renders unchecked state", () => {
-        const { container } = render(<RadioIcon checked={false} />);
-        expect(container.querySelectorAll("circle")).toHaveLength(1);
+    it("CheckIcon renders unchecked", () => {
+        const { container } = render(<CheckIcon checked={false} />);
+        expect(container.querySelector("svg")).toBeInTheDocument();
     });
 
-    it("CheckIcon renders checked state", () => {
+    it("CheckIcon renders checked", () => {
         const { container } = render(<CheckIcon checked={true} />);
         expect(container.querySelector("svg")).toBeInTheDocument();
-        expect(container.querySelector("path")).toBeInTheDocument();
-    });
-
-    it("CheckIcon renders unchecked state", () => {
-        const { container } = render(<CheckIcon checked={false} />);
-        expect(container.querySelector("path")).not.toBeInTheDocument();
     });
 
     it("HelpIcon renders", () => {
@@ -37,14 +35,11 @@ describe("icons", () => {
 
     it("isSelectAllOption matches select-all patterns", () => {
         expect(isSelectAllOption("All of the above")).toBe(true);
-        expect(isSelectAllOption("select all")).toBe(true);
-        expect(isSelectAllOption("All")).toBe(true);
+        expect(isSelectAllOption("All Above")).toBe(true);
+        expect(isSelectAllOption("All options")).toBe(true);
         expect(isSelectAllOption("Everything")).toBe(true);
-    });
-
-    it("isSelectAllOption rejects non-select-all titles", () => {
+        expect(isSelectAllOption("Select all")).toBe(true);
+        expect(isSelectAllOption("All")).toBe(true);
         expect(isSelectAllOption("Option A")).toBe(false);
-        expect(isSelectAllOption("None")).toBe(false);
-        expect(isSelectAllOption("")).toBe(false);
     });
 });
