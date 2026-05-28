@@ -38,18 +38,4 @@ export function highlightMatch(text: string, query: string): string {
     return result;
 }
 
-/**
- * Render option title/description text for display.
- *
- * - When no query is provided, renders markdown inline so that bold,
- *   italic, code, and other simple markdown syntax is displayed correctly.
- * - When a query is provided, falls back to HTML-escaped plain text with
- *   search-term highlighting so that highlight markup does not interfere
- *   with markdown parsing.
- */
-export function renderOptionText(text: string, query?: string): string {
-    if (query) {
-        return highlightMatch(text, query);
-    }
-    return renderMarkdownInline(text);
-}
+

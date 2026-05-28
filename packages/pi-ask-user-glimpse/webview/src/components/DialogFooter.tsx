@@ -40,7 +40,8 @@ export default function DialogFooter({
                 <div className="flex shrink-0 items-center gap-2">
                     <button
                         onClick={onCancel ?? sendCancelled}
-                        className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+                        disabled={isSubmitting}
+                        className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50 disabled:opacity-40"
                     >
                         Cancel
                     </button>

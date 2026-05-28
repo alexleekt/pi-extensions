@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { useBaseDialog } from "../hooks/useBaseDialog";
-import { sendCancelled, sendToGlimpse } from "../util/glimpse";
+import { sendToGlimpse } from "../util/glimpse";
 import CancelConfirmModal from "./CancelConfirmModal";
 import QuestionCard from "./QuestionCard";
 
@@ -79,7 +79,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         isAnswered(answers[q.title]),
     ).length;
 
-    const { isSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel } = useBaseDialog({
+    const { isSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel, handleDiscard } = useBaseDialog({
         payload,
         isDirty,
         onSubmit: handleSubmit,
@@ -147,10 +147,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
             <CancelConfirmModal
                 isOpen={showCancelConfirm}
                 onStay={() => setShowCancelConfirm(false)}
-                onDiscard={() => {
-                    setShowCancelConfirm(false);
-                    sendCancelled();
-                }}
+                onDiscard={handleDiscard}
             />
         </div>
     );

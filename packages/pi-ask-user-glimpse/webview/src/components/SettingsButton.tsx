@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AnimationLevel, ThemeMode } from "../../../shared/ask-user";
 import { useSettings } from "../util/settings";
 
@@ -61,10 +61,13 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
         { value: "all", label: "All" },
     ];
 
-    const allOptions: FlatOption[] = [
-        ...themeOptions.map((o) => ({ type: "theme" as const, value: o.value, label: o.label })),
-        ...animationOptions.map((o) => ({ type: "animation" as const, value: o.value, label: o.label })),
-    ];
+    const allOptions = useMemo<FlatOption[]>(
+        () => [
+            ...themeOptions.map((o) => ({ type: "theme" as const, value: o.value, label: o.label })),
+            ...animationOptions.map((o) => ({ type: "animation" as const, value: o.value, label: o.label })),
+        ],
+        [],
+    );
 
     const closeAndReturnFocus = useCallback(() => {
         setOpen(false);

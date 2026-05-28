@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AskUserPayload } from "../../shared/ask-user";
 import ContextPanel from "./components/ContextPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -75,10 +75,18 @@ export default function App() {
         };
     }, [isDragging]);
 
-    const componentPayload = { ...payload, context: undefined } as AskUserPayload;
+    const componentPayload = useMemo(
+        () => ({ ...payload, context: undefined }) as AskUserPayload,
+        [payload],
+    );
+
+    const footerContextValue = useMemo(
+        () => ({ setFooter: setFooterNode }),
+        [setFooterNode],
+    );
 
     return (
-        <FooterContext.Provider value={{ setFooter: setFooterNode }}>
+        <FooterContext.Provider value={footerContextValue}>
             <div className="flex h-screen flex-col overflow-hidden">
                 {/* Top area: context + dialog side by side */}
                 <div className="flex flex-1 overflow-hidden">

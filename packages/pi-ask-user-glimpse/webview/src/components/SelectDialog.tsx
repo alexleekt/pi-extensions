@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FREEFORM_OPTION_TITLE, type AskUserPayload } from "../../../shared/ask-user";
 import { useBaseDialog } from "../hooks/useBaseDialog";
-import { sendCancelled, sendToGlimpse } from "../util/glimpse";
+import { sendToGlimpse } from "../util/glimpse";
 import CancelConfirmModal from "./CancelConfirmModal";
 import { CheckIcon, CommentIcon, RadioIcon, isSelectAllOption } from "./icons";
 import MarkdownPreview from "./MarkdownPreview";
@@ -133,7 +133,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         ? selected !== null || comment.trim() !== ""
         : selectedSet.size > 0 || comment.trim() !== "";
 
-    const { isSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel, handleSubmit: baseHandleSubmit } = useBaseDialog({
+    const { isSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel, handleDiscard, handleSubmit: baseHandleSubmit } = useBaseDialog({
         payload,
         isDirty,
         onSubmit: handleSubmit,
@@ -410,10 +410,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
             <CancelConfirmModal
                 isOpen={showCancelConfirm}
                 onStay={() => setShowCancelConfirm(false)}
-                onDiscard={() => {
-                    setShowCancelConfirm(false);
-                    sendCancelled();
-                }}
+                onDiscard={handleDiscard}
             />
         </div>
     );

@@ -11,9 +11,7 @@ vi.mock("../../util/glimpse", () => ({
     sendCancelled: () => mockSendCancelled(),
 }));
 
-vi.mock("../../util/html", () => ({
-    renderOptionText: (text: string) => text,
-}));
+
 
 function buildPayload(mode: "single" | "multi", overrides = {}) {
     return {
