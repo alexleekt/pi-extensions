@@ -14,6 +14,7 @@ export default function CancelConfirmModal({
     onDiscard,
 }: CancelConfirmModalProps) {
     const stayRef = useRef<HTMLButtonElement>(null);
+    const discardRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -35,6 +36,19 @@ export default function CancelConfirmModal({
                 e.stopPropagation();
                 // Block submit while modal is open
                 return;
+            }
+            if (e.key === "Tab") {
+                const focusable = [stayRef.current, discardRef.current].filter(Boolean);
+                const current = document.activeElement;
+                const idx = focusable.findIndex((el) => el === current);
+                if (e.shiftKey) {
+                    const prev = idx <= 0 ? focusable.length - 1 : idx - 1;
+                    focusable[prev]?.focus();
+                } else {
+                    const next = idx === focusable.length - 1 ? 0 : idx + 1;
+                    focusable[next]?.focus();
+                }
+                e.preventDefault();
             }
         };
         window.addEventListener("keydown", handler, { capture: true });
@@ -75,6 +89,7 @@ export default function CancelConfirmModal({
                         Stay
                     </button>
                     <button
+                        ref={discardRef}
                         onClick={onDiscard}
                         className="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
                     >

@@ -98,6 +98,18 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                 closeAndReturnFocus();
                 return;
             }
+            if (e.key === "Tab") {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                setFocusedIndex((prev) => {
+                    const next = e.shiftKey
+                        ? Math.max(prev - 1, 0)
+                        : Math.min(prev + 1, allOptions.length - 1);
+                    optionRefs.current[next]?.focus();
+                    return next;
+                });
+                return;
+            }
             if (e.key === "ArrowDown") {
                 e.preventDefault();
                 e.stopImmediatePropagation();
