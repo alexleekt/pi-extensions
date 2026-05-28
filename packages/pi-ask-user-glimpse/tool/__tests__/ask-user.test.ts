@@ -163,4 +163,94 @@ describe("askUserHandler", () => {
         const windowOptions = lastCall[1] as Record<string, unknown>;
         expect(windowOptions.followCursor).toBe(true);
     });
+
+    it("selects multi-select payload type when allowMultiple is true", async () => {
+        mockPrompt.mockResolvedValue({ kind: "selection", selections: ["A"] });
+
+        await askUserHandler(
+            { question: "Test?", options: ["A", "B"], allowMultiple: true },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const html = lastCall[0] as string;
+        expect(html).toContain('"type":"multi-select"');
+    });
+
+    it("auto-splits long question into question and context", async () => {
+        mockPrompt.mockResolvedValue({ kind: "freeform", text: "My answer" });
+
+        const longQuestion = "What is your opinion on this very important topic that requires a detailed response? Please provide a comprehensive answer with examples and references.";
+
+        await askUserHandler(
+            { question: longQuestion },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const html = lastCall[0] as string;
+        expect(html).toContain('"question":"What is your opinion on this very important topic that requires a detailed response?"');
+        expect(html).toContain('"context":"Please provide a comprehensive answer with examples and references."');
+    });
+
+    it("includes options in error response when prompt throws", async () => {
+        mockPrompt.mockRejectedValue(new Error("Glimpse not available"));
+
+        const result = await askUserHandler(
+            { question: "Test?", options: ["A", "B"] },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        expect(result.details.options).toEqual(["A", "B"]);
+    });
+
+    it("verifies signal abort returns early without calling prompt", async () => {
+        const controller = new AbortController();
+        controller.abort();
+        const signal = controller.signal;
+
+        const result = await askUserHandler(
+            { question: "Test?" },
+            signal,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        expect(getText(result)).toBe("Cancelled");
+        expect(result.details.cancelled).toBe(true);
+        expect(mockPrompt).not.toHaveBeenCalled();
+    });
+
+    it("verifies prompt error returns no UI available message", async () => {
+        mockPrompt.mockRejectedValue(new Error("Glimpse not available"));
+
+        const result = await askUserHandler(
+            { question: "Test?" },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        expect(getText(result)).toBe(
+            "No UI available for ask_user dialog. Please ask the user directly in free-form text.",
+        );
+        expect((result.details as Record<string, unknown>).error).toBe("No UI available");
+    });
+
+    it("verifies followCursor is passed through window options", async () => {
+        mockPrompt.mockResolvedValue({ kind: "freeform", text: "My answer" });
+
+        await askUserHandler(
+            { question: "Test?", followCursor: true },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const windowOptions = lastCall[1] as Record<string, unknown>;
+        expect(windowOptions.followCursor).toBe(true);
+        expect(windowOptions.width).toBe(1200);
+        expect(windowOptions.height).toBe(900);
+    });
 });
