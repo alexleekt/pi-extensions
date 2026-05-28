@@ -199,7 +199,7 @@ export async function askUserHandler(
             windowOptions.followCursor = true;
         }
 
-        result = (await prompt(html, windowOptions)) as Record<
+        result = (await prompt(html, { ...windowOptions, timeout: 120000 })) as Record<
             string,
             unknown
         > | null;

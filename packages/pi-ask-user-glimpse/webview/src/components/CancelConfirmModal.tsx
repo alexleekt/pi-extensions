@@ -21,6 +21,26 @@ export default function CancelConfirmModal({
         }
     }, [isOpen]);
 
+    /** Trap keyboard events while modal is open so they don't bubble to the dialog
+     *  (e.g., Escape calling sendCancelled behind the modal, or Cmd+Enter submitting). */
+    useEffect(() => {
+        if (!isOpen) return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                e.stopPropagation();
+                onStay();
+                return;
+            }
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                e.stopPropagation();
+                // Block submit while modal is open
+                return;
+            }
+        };
+        window.addEventListener("keydown", handler, { capture: true });
+        return () => window.removeEventListener("keydown", handler, { capture: true });
+    }, [isOpen, onStay]);
+
     if (!isOpen) return null;
 
     return (

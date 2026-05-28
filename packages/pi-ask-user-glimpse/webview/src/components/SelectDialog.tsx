@@ -48,7 +48,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         comment,
         showComment,
         activeIndex,
-        isSubmitting,
+        isSubmitting: false,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
         selectAllOption,
