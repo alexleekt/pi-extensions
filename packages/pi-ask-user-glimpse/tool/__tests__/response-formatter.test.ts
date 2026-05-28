@@ -37,6 +37,21 @@ describe("formatResponse", () => {
 
             expect(textContent(result)).toBe("No response");
         });
+
+        it("includes comment in freeform response when provided", () => {
+            const result = formatResponse(
+                question,
+                options,
+                { kind: "freeform", text: "My answer", comment: "My comment" },
+                false,
+            );
+
+            expect(result.details?.response?.kind).toBe("freeform");
+            expect(result.details?.response?.text).toBe("My answer");
+            expect(result.details?.response?.comment).toBe("My comment");
+            expect(textContent(result)).toContain("My answer");
+            expect(textContent(result)).toContain("Comment: My comment");
+        });
     });
 
     describe("selection", () => {

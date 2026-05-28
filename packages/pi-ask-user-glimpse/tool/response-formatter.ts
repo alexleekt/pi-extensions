@@ -38,6 +38,7 @@ function buildResponse(
         return {
             kind,
             text: String(result.text ?? "").trim(),
+            comment: pickString(result.comment),
         };
     }
 
