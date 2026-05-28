@@ -1,21 +1,18 @@
 # Progress
 
 ## Status
-Completed
+In Progress
 
 ## Tasks
-- ✅ App.tsx unit tests (11 tests covering all payload types, context panel, FooterContext, error states, and payload stripping)
-- ✅ ContextPanel test mock fix (marked.parse mock now correctly extracts heading from multi-line markdown)
-- ✅ useBaseDialog hook tests (10 tests covering handleSubmit, error handling, hasSent ref guard, handleCancel, handleDiscard)
-- ✅ DialogFooter expanded tests (aria-live region, Cancel button disabled during submit, Submit button disabled during submit)
+- [x] Write unit tests for glimpse.ts
+- [x] Write unit tests for settings.tsx
 
 ## Files Changed
-- webview/src/App.test.tsx (new)
-- webview/src/components/__tests__/ContextPanel.test.tsx (mock fix)
-- webview/src/hooks/__tests__/useBaseDialog.test.tsx (new)
-- webview/src/components/__tests__/DialogFooter.test.tsx (expanded)
+- webview/src/util/__tests__/glimpse.test.ts (created)
+- webview/src/util/__tests__/settings.test.tsx (created)
 
 ## Notes
-All 237 unit tests pass, 31 e2e tests pass, typecheck clean, build succeeds.
-App.tsx coverage: 0% → 100% (with mocked child components).
-useBaseDialog coverage: 68.75% → ~100% (with mocked child components).
+- glimpse.ts coverage: 71.42% → 100%
+- settings.tsx coverage: 65.3% → 100% (setTheme and setAnimationLevel handlers now covered)
+- 8 new tests covering useSettings hook, SettingsProvider, theme changes, animation level changes, and error-throwing outside provider
+- All 249 unit tests pass
