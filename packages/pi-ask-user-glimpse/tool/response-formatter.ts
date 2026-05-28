@@ -23,7 +23,7 @@ export interface AskToolDetails {
 }
 
 function pickString(raw: unknown): string | undefined {
-    return raw ? String(raw) : undefined;
+    return raw !== undefined && raw !== null ? String(raw) : undefined;
 }
 
 function normalizeKind(raw: unknown): AskResponse["kind"] {
@@ -83,6 +83,12 @@ function responseToText(response: AskResponse): string {
 
     if (response.kind === "freeform") {
         if (response.text?.trim()) lines.push(response.text.trim());
+    } else if (response.kind === "questionnaire") {
+        const details = response.questionnaireDetails ?? [];
+        for (const d of details) {
+            lines.push(`${d.question}: ${d.answer}`);
+            if (d.comment) lines.push(`  Comment: ${d.comment}`);
+        }
     } else {
         const selections = response.selections ?? [];
         if (selections.length > 0) lines.push(selections.join(", "));

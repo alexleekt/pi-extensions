@@ -14,6 +14,8 @@ interface UseDialogKeysOptions {
     onCloseComment?: () => void;
     /** If true, Cmd+Enter is allowed even when focused in an input/textarea. */
     allowSubmitInInput?: boolean;
+    /** If true, keyboard submit is disabled (e.g. nothing selected). */
+    submitDisabled?: boolean;
 }
 
 /**
@@ -29,6 +31,7 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
         isCommentOpen = false,
         onCloseComment,
         allowSubmitInInput = true,
+        submitDisabled = false,
     } = options;
 
     const stateRef = useRef({
@@ -38,6 +41,7 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
         onSubmit,
         onCloseComment,
         allowSubmitInInput,
+        submitDisabled,
     });
 
     stateRef.current = {
@@ -47,6 +51,7 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
         onSubmit,
         onCloseComment,
         allowSubmitInInput,
+        submitDisabled,
     };
 
     /** Synchronous lock prevents double-submit between event loop ticks. */
@@ -60,7 +65,7 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
         if (submittingLock.current) return;
         submittingLock.current = true;
         const s = stateRef.current;
-        if (s.isSubmitting) return;
+        if (s.isSubmitting || s.submitDisabled) return;
         s.onSubmit();
     }, []);
 

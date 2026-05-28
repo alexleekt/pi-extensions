@@ -16,7 +16,6 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
     const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
     const [comments, setComments] = useState<Record<string, string>>({});
     const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
-    const questionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
     const stateRef = useRef({
         answers: {} as Record<string, AnswerValue>,
@@ -69,7 +68,9 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
     }, []);
 
     const isDirty =
-        Object.keys(answers).length > 0 ||
+        Object.values(answers).some((a) =>
+            Array.isArray(a) ? a.length > 0 : String(a).trim().length > 0,
+        ) ||
         Object.values(comments).some((c) => c.trim() !== "");
 
     const answeredCount = questions.filter((q) => {
@@ -120,12 +121,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
             <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-4">
                     {questions.map((q) => (
-                        <div
-                            key={q.title}
-                            ref={(el) => {
-                                questionRefs.current.set(q.title, el);
-                            }}
-                        >
+                        <div key={q.title}>
                             <QuestionCard
                                 question={q}
                                 answer={answers[q.title]}

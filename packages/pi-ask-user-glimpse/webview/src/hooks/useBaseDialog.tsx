@@ -46,7 +46,11 @@ export function useBaseDialog({
     const handleSubmit = useCallback(() => {
         if (isSubmitting) return;
         setIsSubmitting(true);
-        onSubmit();
+        try {
+            onSubmit();
+        } catch {
+            setIsSubmitting(false);
+        }
     }, [isSubmitting, onSubmit]);
 
     useDialogKeys({
@@ -55,6 +59,7 @@ export function useBaseDialog({
         isSubmitting,
         isCommentOpen,
         onCloseComment,
+        submitDisabled,
     });
 
     /* Render footer via portal so it spans full window width beneath both panels. */

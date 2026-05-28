@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { modKey } from "../util/platform";
 
 interface ShortcutsModalProps {
@@ -6,7 +7,6 @@ interface ShortcutsModalProps {
 
 const SHORTCUTS = [
     { keys: ["1", "…", "9"], action: "Select or toggle option" },
-    { keys: ["0"], action: "Focus additional comments" },
     { keys: ["↑", "↓"], action: "Navigate options" },
     { keys: ["Enter"], action: "Select / Submit" },
     { keys: [`${modKey()}+Enter`], action: "Submit answer" },
@@ -16,11 +16,22 @@ const SHORTCUTS = [
 ];
 
 export default function ShortcutsModal({ onClose }: ShortcutsModalProps) {
+    const gotItRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        gotItRef.current?.focus();
+    }, []);
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="shortcuts-title"
+        >
             <div className="w-full max-w-sm rounded-xl border border-border bg-card p-4 shadow-xl">
                 <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">Keyboard Shortcuts</h2>
+                    <h2 id="shortcuts-title" className="text-lg font-semibold">Keyboard Shortcuts</h2>
                     <button
                         onClick={onClose}
                         className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

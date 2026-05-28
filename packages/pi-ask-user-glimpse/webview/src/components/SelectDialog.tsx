@@ -118,13 +118,19 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                 sendToGlimpse(result);
             }
         } else {
-            if (s.selectedSet.has(FREEFORM_OPTION_TITLE)) {
-                const result: Record<string, unknown> = { kind: "freeform", text: "" };
+            const hasFreeform = s.selectedSet.has(FREEFORM_OPTION_TITLE);
+            const hasSelection = s.selectedSet.size > 0;
+            if (hasFreeform) {
+                // If freeform is selected alongside other options, send all selections
+                const selections = Array.from(s.selectedSet);
+                const result: Record<string, unknown> = {
+                    kind: "selection",
+                    selections,
+                };
                 if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
                 sendToGlimpse(result);
                 return;
             }
-            const hasSelection = s.selectedSet.size > 0;
             if (!hasSelection && s.allowFreeform) {
                 const result: Record<string, unknown> = { kind: "freeform", text: "" };
                 if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
@@ -152,6 +158,11 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         onCloseComment: () => setShowComment(false),
         submitDisabled: !hasFreeform && (isSingle ? selected === null : selectedSet.size === 0),
     });
+
+    // Sync isSubmitting into stateRef so handleSubmit guard works
+    useEffect(() => {
+        stateRef.current.isSubmitting = isSubmitting;
+    }, [isSubmitting]);
 
     useEffect(() => {
         const id = requestAnimationFrame(() => {
@@ -253,6 +264,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                         setSelected(FREEFORM_OPTION_TITLE);
                     } else if (s.activeIndex >= 0 && s.activeIndex < s.options.length) {
                         const opt = s.options[s.activeIndex];
+                        stateRef.current.selected = opt.title;
                         setSelected(opt.title);
                         baseHandleSubmit();
                     } else if (s.allowFreeform && s.activeIndex === s.options.length) {
@@ -282,17 +294,23 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
     return (
         <div className="flex h-full flex-col">
             <div className="flex-1 overflow-y-auto p-4">
-                {!isSingle && selectedSet.size > 0 && (
+                {!isSingle && (
                     <div className="mb-2 flex items-center gap-2">
                         <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                             {selectedSet.size} selected
                         </div>
-                        <button
-                            onClick={() => setSelectedSet(new Set())}
-                            className="text-xs text-muted-foreground underline transition-colors hover:text-foreground"
-                        >
-                            Clear all
-                        </button>
+                        {/* Live region for screen readers to announce selection changes */}
+                        <div aria-live="polite" aria-atomic="true" className="sr-only">
+                            {selectedSet.size} option{selectedSet.size === 1 ? "" : "s"} selected
+                        </div>
+                        {selectedSet.size > 0 && (
+                            <button
+                                onClick={() => setSelectedSet(new Set())}
+                                className="text-xs text-muted-foreground underline transition-colors hover:text-foreground"
+                            >
+                                Clear all
+                            </button>
+                        )}
                     </div>
                 )}
                 {!isSingle && payload.options.length > 1 && (

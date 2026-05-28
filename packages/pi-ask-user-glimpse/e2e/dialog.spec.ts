@@ -19,9 +19,10 @@ function buildPayload(type: string, overrides = {}) {
 }
 
 function injectPayload(html: string, payload: unknown) {
+    const mockGlimpse = `window.glimpse = { send: () => {} };`;
     return html.replace(
         "<script",
-        `<script>window.__ASK_USER_PAYLOAD__ = ${JSON.stringify(payload)};</script><script`,
+        `<script>${mockGlimpse} window.__ASK_USER_PAYLOAD__ = ${JSON.stringify(payload)};</script><script`,
     );
 }
 
@@ -196,15 +197,15 @@ test.describe("multi-select dialog", () => {
     });
 
     test("Cancel triggers confirm when dirty from selection", async ({ page }) => {
-        await page.locator("[role='checkbox']").first().click();
+        await page.locator("[role='option']").first().click();
 
         await page.getByRole("button", { name: "Cancel" }).click();
         await expect(page.getByRole("heading", { name: "Unsaved changes" })).toBeVisible();
     });
 
     test("submits with selections", async ({ page }) => {
-        await page.locator("[role='checkbox']").first().click();
-        await page.locator("[role='checkbox']").nth(1).click();
+        await page.locator("[role='option']").first().click();
+        await page.locator("[role='option']").nth(1).click();
 
         await page.getByRole("button", { name: "Submit" }).click();
         await expect(page.getByText("Submitting…")).toBeVisible();

@@ -34,12 +34,8 @@ const OptionCard = forwardRef<HTMLDivElement, OptionCardProps>(
         ref,
     ) => {
         const isSelectAll = isSelectAllOption(title);
-        const role = isSelectAll ? "radio" : mode === "single" ? "option" : "checkbox";
-        const ariaState = isSelectAll
-            ? { "aria-selected": isSelected }
-            : mode === "single"
-              ? { "aria-selected": isSelected }
-              : { "aria-checked": isSelected };
+        const role = "option";
+        const ariaState = { "aria-selected": isSelected };
 
         const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
             if (e.key === "Enter" || e.key === " ") {

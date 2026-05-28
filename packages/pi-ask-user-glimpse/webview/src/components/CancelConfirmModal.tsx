@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 interface CancelConfirmModalProps {
     isOpen: boolean;
     onStay: () => void;
@@ -11,6 +13,14 @@ export default function CancelConfirmModal({
     onStay,
     onDiscard,
 }: CancelConfirmModalProps) {
+    const stayRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            stayRef.current?.focus();
+        }
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     return (
@@ -20,6 +30,7 @@ export default function CancelConfirmModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="cancel-confirm-title"
+            aria-describedby="cancel-confirm-desc"
         >
             <div
                 className="mx-4 w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg"
@@ -31,12 +42,13 @@ export default function CancelConfirmModal({
                 >
                     Unsaved changes
                 </h2>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p id="cancel-confirm-desc" className="mt-2 text-sm text-muted-foreground">
                     You have unsaved changes. If you cancel now, your progress
                     will be lost.
                 </p>
                 <div className="mt-6 flex items-center justify-end gap-2">
                     <button
+                        ref={stayRef}
                         onClick={onStay}
                         className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
                     >

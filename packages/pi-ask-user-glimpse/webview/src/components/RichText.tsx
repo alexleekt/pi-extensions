@@ -1,4 +1,5 @@
 import { renderMarkdownInline } from "../util/markdown";
+import { highlightMatch } from "../util/html";
 
 interface RichTextProps {
     /** Raw text to render as inline markdown. */
@@ -17,13 +18,13 @@ interface RichTextProps {
  * Use this for any agent-generated display text that should support
  * markdown formatting (bold, italic, code, links, etc.).
  *
- * When `query` is provided, falls back to plain-text highlighting
- * instead of markdown rendering so that highlight markup does not
+ * When `query` is provided, highlights matching text with `<mark>` tags
+ * instead of rendering markdown so that highlight markup does not
  * interfere with markdown parsing.
  */
 export default function RichText({ text, className, query, as: Tag = "span" }: RichTextProps) {
     const html = query
-        ? text // highlightMatch would go here if needed; for now, render markdown
+        ? highlightMatch(text, query)
         : renderMarkdownInline(text);
 
     return (

@@ -29,6 +29,10 @@ export default function DialogFooter({
 }: DialogFooterProps) {
     return (
         <div className="shrink-0 border-t border-border p-4">
+            {/* Live region for screen readers to announce submission state */}
+            <div aria-live="assertive" aria-atomic="true" className="sr-only">
+                {isSubmitting ? "Submitting answer" : ""}
+            </div>
             {children}
             {/* Single row: hints left (flexible), buttons right (compact) */}
             <div className="flex items-center gap-3">
