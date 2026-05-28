@@ -92,4 +92,18 @@ describe("Freeform", () => {
         expect(mockSendCancelled).toHaveBeenCalledTimes(1);
         expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
     });
+
+    it("renders markdown preview when toggled", () => {
+        renderWithFooter(buildPayload());
+
+        const mainTextarea = screen.getByPlaceholderText("Type your answer…");
+        fireEvent.change(mainTextarea, {
+            target: { value: "Hello world" },
+        });
+
+        const previewToggle = screen.getByRole("button", { name: "Preview markdown" });
+        fireEvent.click(previewToggle);
+
+        expect(screen.getByText("Hello world")).toBeInTheDocument();
+    });
 });
