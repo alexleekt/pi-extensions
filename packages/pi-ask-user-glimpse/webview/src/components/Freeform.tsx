@@ -34,15 +34,15 @@ export default function Freeform({
 
     return (
         <div className="flex h-full flex-col">
-            <div className="flex-1 p-4">
+            <div className="flex flex-1 flex-col gap-2 p-4 overflow-hidden">
                 <textarea
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Type your answer…"
                     maxLength={MAX_FREEFORM_LENGTH}
-                    className="h-full w-full resize-none rounded-md border border-input bg-background p-3 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+                    className="flex-1 w-full resize-none rounded-md border border-input bg-background p-3 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
                 />
-                <MarkdownPreview text={text} className="mt-2" />
+                <MarkdownPreview text={text} />
             </div>
 
             <CancelConfirmModal
