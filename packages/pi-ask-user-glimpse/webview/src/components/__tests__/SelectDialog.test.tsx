@@ -451,5 +451,22 @@ describe("SelectDialog", () => {
             const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
             expect(sent.kind).toBe("freeform");
         });
+
+        it("Clear all button clears selections in multi-select", () => {
+            renderWithFooter("multi", buildPayload("multi"));
+            fireEvent.click(screen.getByText("Select all"));
+            expect(screen.getByText("2 selected")).toBeInTheDocument();
+            fireEvent.click(screen.getByText("Clear all"));
+            expect(screen.queryByText("2 selected")).not.toBeInTheDocument();
+        });
+    });
+
+    it("Stay button dismisses cancel confirm modal", () => {
+        renderWithFooter("single", buildPayload("single"));
+        fireEvent.click(screen.getByText("Option A"));
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Stay" }));
+        expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
     });
 });
