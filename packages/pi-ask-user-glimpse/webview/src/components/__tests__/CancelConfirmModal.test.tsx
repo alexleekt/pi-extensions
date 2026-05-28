@@ -94,4 +94,47 @@ describe("CancelConfirmModal", () => {
         expect(dialog).toHaveAttribute("aria-labelledby", "cancel-confirm-title");
         expect(dialog).toHaveAttribute("aria-describedby", "cancel-confirm-desc");
     });
+
+    it("focuses Stay button when modal opens", () => {
+        render(
+            <CancelConfirmModal
+                isOpen={true}
+                onStay={vi.fn()}
+                onDiscard={vi.fn()}
+            />,
+        );
+        const stayButton = screen.getByText("Stay");
+        expect(document.activeElement).toBe(stayButton);
+    });
+
+    it("Tab key cycles focus from Stay button to Discard button", () => {
+        render(
+            <CancelConfirmModal
+                isOpen={true}
+                onStay={vi.fn()}
+                onDiscard={vi.fn()}
+            />,
+        );
+        const stayButton = screen.getByText("Stay");
+        const discardButton = screen.getByText("Discard");
+        expect(document.activeElement).toBe(stayButton);
+        fireEvent.keyDown(document, { key: "Tab" });
+        expect(document.activeElement).toBe(discardButton);
+    });
+
+    it("Shift+Tab cycles focus from Discard button back to Stay button", () => {
+        render(
+            <CancelConfirmModal
+                isOpen={true}
+                onStay={vi.fn()}
+                onDiscard={vi.fn()}
+            />,
+        );
+        const stayButton = screen.getByText("Stay");
+        const discardButton = screen.getByText("Discard");
+        discardButton.focus();
+        expect(document.activeElement).toBe(discardButton);
+        fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+        expect(document.activeElement).toBe(stayButton);
+    });
 });
