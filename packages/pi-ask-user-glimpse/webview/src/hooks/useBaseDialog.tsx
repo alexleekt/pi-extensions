@@ -41,14 +41,14 @@ export function useBaseDialog({
     const hasSent = useRef(false);
 
     const handleCancel = useCallback(() => {
-        if (hasSent.current) return;
+        if (hasSent.current || isSubmitting) return;
         if (isDirty) {
             setShowCancelConfirm(true);
             return;
         }
         hasSent.current = true;
         sendCancelled();
-    }, [isDirty]);
+    }, [isDirty, isSubmitting]);
 
     const handleDiscard = useCallback(() => {
         if (hasSent.current) return;

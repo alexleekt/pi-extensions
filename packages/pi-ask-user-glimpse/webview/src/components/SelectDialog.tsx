@@ -342,38 +342,37 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                             )}
                         </div>
                     )}
+                    {hasFreeform && (
+                        <button
+                            ref={freeformRef}
+                            tabIndex={activeIndex === payload.options.length ? 0 : -1}
+                            onClick={handleFreeform}
+                            role="option"
+                            aria-selected={isSingle ? selected === FREEFORM_OPTION_TITLE : selectedSet.has(FREEFORM_OPTION_TITLE)}
+                            className={`mt-4 flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm transition-colors ${
+                                (isSingle ? selected === FREEFORM_OPTION_TITLE : selectedSet.has(FREEFORM_OPTION_TITLE))
+                                    ? "border-primary bg-primary/5"
+                                    : "border-dashed border-border text-muted-foreground hover:bg-accent"
+                            } ${activeIndex === payload.options.length ? "ring-2 ring-ring" : ""}`}
+                        >
+                            {isSingle ? (
+                                <RadioIcon checked={selected === FREEFORM_OPTION_TITLE} />
+                            ) : (
+                                <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
+                                    selectedSet.has(FREEFORM_OPTION_TITLE)
+                                        ? "bg-primary text-primary-foreground"
+                                        : "border border-border"
+                                }`}>
+                                    {selectedSet.has(FREEFORM_OPTION_TITLE) && <CheckIcon checked={true} />}
+                                </div>
+                            )}
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                                -
+                            </span>
+                            <span className="font-medium">{FREEFORM_OPTION_TITLE}</span>
+                        </button>
+                    )}
                 </div>
-
-                {hasFreeform && (
-                    <button
-                        ref={freeformRef}
-                        tabIndex={activeIndex === payload.options.length ? 0 : -1}
-                        onClick={handleFreeform}
-                        role="option"
-                        aria-selected={isSingle ? selected === FREEFORM_OPTION_TITLE : selectedSet.has(FREEFORM_OPTION_TITLE)}
-                        className={`mt-4 flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm transition-colors ${
-                            (isSingle ? selected === FREEFORM_OPTION_TITLE : selectedSet.has(FREEFORM_OPTION_TITLE))
-                                ? "border-primary bg-primary/5"
-                                : "border-dashed border-border text-muted-foreground hover:bg-accent"
-                        } ${activeIndex === payload.options.length ? "ring-2 ring-ring" : ""}`}
-                    >
-                        {isSingle ? (
-                            <RadioIcon checked={selected === FREEFORM_OPTION_TITLE} />
-                        ) : (
-                            <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-                                selectedSet.has(FREEFORM_OPTION_TITLE)
-                                    ? "bg-primary text-primary-foreground"
-                                    : "border border-border"
-                            }`}>
-                                {selectedSet.has(FREEFORM_OPTION_TITLE) && <CheckIcon checked={true} />}
-                            </div>
-                        )}
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-                            -
-                        </span>
-                        <span className="font-medium">{FREEFORM_OPTION_TITLE}</span>
-                    </button>
-                )}
             </div>
 
             <div className="shrink-0 border-t border-border px-4 py-3">
