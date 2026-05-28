@@ -632,4 +632,29 @@ describe("SelectDialog", () => {
         fireEvent.click(screen.getByRole("button", { name: "Stay" }));
         expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
     });
+
+    it("clicking select-all again re-selects all regular options", () => {
+        renderWithFooter("multi", buildPayload("multi", {
+            options: [
+                { title: "All of the above" },
+                { title: "Option A" },
+                { title: "Option B" },
+            ],
+        }));
+        fireEvent.click(screen.getByText("All of the above"));
+        expect(screen.getByText("2 selected")).toBeInTheDocument();
+        fireEvent.click(screen.getByText("Option A"));
+        expect(screen.getByText("1 selected")).toBeInTheDocument();
+        fireEvent.click(screen.getByText("All of the above"));
+        expect(screen.getByText("2 selected")).toBeInTheDocument();
+    });
+
+    it("Escape closes per-option comment textarea", () => {
+        renderWithFooter("single", buildPayload("single"));
+        fireEvent.click(screen.getByText("Option A"));
+        fireEvent.click(screen.getByText("Add comment"));
+        expect(screen.getByPlaceholderText("Optional comment…")).toBeInTheDocument();
+        fireEvent.keyDown(window, { key: "Escape" });
+        expect(screen.queryByPlaceholderText("Optional comment…")).not.toBeInTheDocument();
+    });
 });
