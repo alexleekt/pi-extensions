@@ -1,108 +1,104 @@
-# @alexleekt/pi-worktrunk-signal
+# pi-worktrunk-signal
 
-[![npm](https://img.shields.io/npm/v/@alexleekt/pi-worktrunk-signal)](https://www.npmjs.com/package/@alexleekt/pi-worktrunk-signal)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+Signal where you are in the worktrunk forest — activity tracking and worktree switching for [Pi](https://pi.dev) inside [herdr](https://herdr.dev).
 
-> Signal where you are in the worktrunk forest.
+## What it does
 
-A [Pi](https://pi.dev) extension that brings worktree context to your terminal-native coding harness.
+- **Worktree switching** — create or switch worktrees with `/wt-switch-create`, relaunching Pi in a herdr-managed workspace
+- **Interactive worktree list** — browse, switch, and create worktrees with `/wt-list`
+- **Lifecycle commands** — merge, remove, and commit from within Pi
+- **Subagent spawning** — spawn Pi subagents in isolated worktrees via the `spawn_worktree_agent` tool
+- **Status bridge** — optional `bridge.ts` daemon syncs herdr agent status to worktrunk markers
 
-## Features
+## Commands
 
-| Feature | What it does |
-|---|---|
-| **Activity Tracking** | Automatically sets 🤖/💬 markers in `wt list` when Pi is working or idle |
-| **`/wt-switch-create`** | Create or re-enter a worktrunk worktree and relaunch Pi in it |
-| **`/wt-list`** | Interactive worktree list — switch or create from a styled overlay |
-| **`spawn_worktree_agent`** | Spawn a Pi subagent in an isolated worktree |
+| Command | Usage | Description |
+|---------|-------|-------------|
+| `/wt-list` | `/wt-list` | Interactive worktree list with overlay — select to switch or create new |
+| `/wt-switch-create` | `/wt-switch-create <branch> [<repo>] [-- <task>]` | Create or re-enter a worktree, then create a herdr workspace and relaunch Pi |
+| `/wt-merge` | `/wt-merge <target>` | Merge the current worktree into the target branch |
+| `/wt-remove` | `/wt-remove [<branch>]` | Remove a worktree (defaults to current branch) |
+| `/wt-commit` | `/wt-commit` | Generate an LLM commit message via `wt step commit` and commit |
 
-## Install
+### `/wt-switch-create` examples
+
+```
+/wt-switch-create feature-auth -- "Refactor auth to JWT"
+/wt-switch-create fix-bug other-repo -- "Fix the login bug"
+```
+
+The `--no-focus` flag is used so the current pane isn't stolen — you can switch to the new workspace when ready.
+
+## Tools
+
+### `spawn_worktree_agent`
+
+Spawns a Pi subagent in an isolated worktree. Creates a herdr-managed pane so the subagent is visible in the UI.
+
+```json
+{
+  "branch": "refactor-auth",
+  "task": "Refactor auth to JWT",
+  "repo": "my-repo"
+}
+```
+
+The tool:
+1. Creates the worktree with `wt switch --create --no-cd --no-hooks`
+2. Resolves the actual worktree path (handles custom templates)
+3. In herdr: splits a new pane and runs Pi there
+4. Falls back to a headless subprocess for non-herdr multiplexers
+
+**After spawning, coordinate with the subagent:**
+
+```bash
+herdr wait agent-status <new-pane-id> --status done --timeout 300000
+herdr pane read <new-pane-id> --source recent --lines 100
+```
+
+## State Bridge
+
+`bridge.ts` is an optional background daemon that syncs herdr agent status to worktrunk markers.
+
+### What it does
+
+- Polls herdr every 5 seconds via Unix socket
+- Reads `agent_status` per pane (`working`, `idle`, `blocked`, `done`)
+- Writes markers to `worktrunk.state.<branch>.marker`:
+  - `working` → `🤖`
+  - `idle`/`done` → `💬`
+  - `blocked` → `⏸️`
+- Clears markers when a branch has no active panes
+
+### Running it
+
+```bash
+node bridge.ts
+```
+
+Or run it in a dedicated herdr pane:
+
+```bash
+herdr pane split --direction down --no-focus
+herdr pane run <new-pane> "node bridge.ts"
+```
+
+## Requirements
+
+- [herdr](https://herdr.dev) (for workspace/pane integration)
+- [worktrunk](https://worktrunk.dev) (for worktree management)
+- `@ogulcancelik/pi-herdr` (optional, for the structured `herdr` tool)
+
+## Installation
 
 ```bash
 pi install npm:@alexleekt/pi-worktrunk-signal
 ```
 
-Or symlink for local development:
+For local development, symlink the source directory:
 
 ```bash
-ln -s $(pwd) ~/.pi/agent/extensions/pi-worktrunk-signal
+ln -s ~/git/pi-extensions/packages/pi-worktrunk-signal ~/.pi/agent/extensions/pi-worktrunk-signal
 ```
 
 Then `/reload` inside Pi.
-
-## Usage
-
-### Activity Tracking
-
-Just use Pi normally. The extension listens to `turn_start`/`turn_end` and writes markers via git config:
-
-```bash
-$ wt list
-@ main             ^⇡                         ⇡1      .                    33323bc1  1d    Initial commit
-+ feature-api      ↑ 🤖              ↑1               ../repo.feature-api  70343f03  1d    Add REST API endpoints
-+ review-ui      ? ↑ 💬              ↑1               ../repo.review-ui    a585d6ed  1d    Add dashboard component
-```
-
-Markers are cleared when the Pi session ends (or use `wt config state marker clear` if stale).
-
-### `/wt-list`
-
-Opens a box-style overlay anchored near the bottom-left (close to the input box):
-
-```
-╭────────────────────────────────────────╮
-│ Worktrees                              │
-│ ↑↓ select • Enter switch • Esc cancel  │
-│                                        │
-│ ▶ [+] Create new worktree              │
-│   main  💬              ~/repo         │
-│   feature-api  🤖       ~/repo.feature │
-│   review-ui  💬         ~/repo.review  │
-╰────────────────────────────────────────╯
-```
-
-- **↑↓** to navigate, **Enter** to select, **Esc** to cancel
-- Select **`[+]`** to create a new worktree — you'll be prompted for a branch name
-- Existing worktrees switch immediately via your detected multiplexer
-
-### `/wt-switch-create`
-
-For advanced creation with repo/task arguments:
-
-```
-/wt-switch-create my-feature
-/wt-switch-create my-feature -- "Fix the auth bug"
-```
-
-Work in a different repo (supports custom `worktree-path` templates):
-
-```
-/wt-switch-create my-feature other-repo
-```
-
-When a terminal multiplexer is detected (tmux, Zellij, or herdr), Pi sends a relaunch command so the new session starts in the worktree. Without a multiplexer, the extension prints the path for manual `cd`.
-
-**Path resolution:** The extension queries `git worktree list --porcelain` to find the actual worktree path, so it works regardless of your `worktree-path` template (sibling layout, `.worktrees/`, or any custom config).
-
-### `spawn_worktree_agent` Tool
-
-The LLM can spawn a subagent in an isolated worktree:
-
-```json
-{
-  "branch": "refactor-auth",
-  "task": "Refactor the auth module to use JWT instead of sessions"
-}
-```
-
-The tool creates the worktree, spawns a headless `pi --mode json -p --no-session` process, and returns the output.
-
-## Requirements
-
-- [worktrunk](https://worktrunk.dev) (`wt` CLI) installed and in `$PATH`
-- Git repository with worktrunk configured
-- Optional: tmux, Zellij, or herdr for seamless relaunch
-
-## License
-
-MIT
