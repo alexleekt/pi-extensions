@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FREEFORM_OPTION_TITLE, type AskUserPayload } from "../../../shared/ask-user";
 import { useDialogKeys } from "../hooks/useDialogKeys";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
-import { renderOptionText } from "../util/html";
 import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
 import { useFooterPortal } from "./FooterContext";
 import GlobalKeyboardHint from "./GlobalKeyboardHint";
 import { CheckIcon, CommentIcon, isSelectAllOption } from "./icons";
+import OptionCard from "./OptionCard";
+import RichText from "./RichText";
 
 interface MultiSelectProps {
     payload: AskUserPayload;
@@ -318,73 +319,23 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                     aria-multiselectable="true"
                 >
                     {payload.options.length > 0 ? (
-                        payload.options.map((opt, idx) => {
-                            const isSelected = selected.has(opt.title);
-                            const isSelectAll = isSelectAllOption(opt.title);
-                            const titleHtml = renderOptionText(opt.title);
-                            const descHtml = opt.description
-                                ? renderOptionText(opt.description)
-                                : null;
-                            return (
-                                <button
-                                    ref={(el) => {
-                                        optionRefs.current[idx] = el;
-                                    }}
-                                    key={opt.title}
-                                    tabIndex={activeIndex === idx ? 0 : -1}
-                                    onClick={() => toggle(opt.title)}
-                                    role="option"
-                                    aria-selected={isSelected}
-                                    className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
-                                        isSelected
-                                            ? "border-primary bg-primary/5"
-                                            : "border-border bg-card hover:bg-accent"
-                                    } ${activeIndex === idx ? "ring-2 ring-ring" : ""}`}
-                                >
-                                    {isSelectAll ? (
-                                        <RadioIcon checked={isSelected} />
-                                    ) : (
-                                        <div
-                                            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-                                                isSelected
-                                                    ? "bg-primary text-primary-foreground"
-                                                    : "border border-border"
-                                            }`}
-                                        >
-                                            {isSelected && (
-                                                <CheckIcon checked={true} />
-                                            )}
-                                        </div>
-                                    )}
-                                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-                                        {idx + 1}
-                                    </span>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className="font-medium"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: titleHtml,
-                                                }}
-                                            />
-                                            {opt.recommended && (
-                                                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                                    Recommended
-                                                </span>
-                                            )}
-                                        </div>
-                                        {descHtml && (
-                                            <div
-                                                className="mt-0.5 text-sm text-muted-foreground border-l-2 border-muted-foreground/30 pl-2.5"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: descHtml,
-                                                }}
-                                            />
-                                        )}
-                                    </div>
-                                </button>
-                            );
-                        })
+                        payload.options.map((opt, idx) => (
+                            <OptionCard
+                                ref={(el) => {
+                                    optionRefs.current[idx] = el;
+                                }}
+                                key={opt.title}
+                                title={opt.title}
+                                description={opt.description}
+                                index={idx}
+                                isSelected={selected.has(opt.title)}
+                                isActive={activeIndex === idx}
+                                mode="multi"
+                                onClick={() => toggle(opt.title)}
+                                recommended={opt.recommended}
+                                tabIndex={activeIndex === idx ? 0 : -1}
+                            />
+                        ))
                     ) : (
                         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
                             No options available.

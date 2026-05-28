@@ -195,15 +195,15 @@ test.describe("multi-select dialog", () => {
     });
 
     test("Cancel triggers confirm when dirty from selection", async ({ page }) => {
-        await page.locator("button[role='option']").first().click();
+        await page.locator("button[role='checkbox']").first().click();
 
         await page.getByRole("button", { name: "Cancel" }).click();
         await expect(page.getByRole("heading", { name: "Unsaved changes" })).toBeVisible();
     });
 
     test("submits with selections", async ({ page }) => {
-        await page.locator("button[role='option']").first().click();
-        await page.locator("button[role='option']").nth(1).click();
+        await page.locator("button[role='checkbox']").first().click();
+        await page.locator("button[role='checkbox']").nth(1).click();
 
         await page.getByRole("button", { name: "Submit" }).click();
         await expect(page.getByText("Submitting…")).toBeVisible();

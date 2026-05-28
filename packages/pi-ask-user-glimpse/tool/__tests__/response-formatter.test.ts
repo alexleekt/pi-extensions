@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatResponse } from "../response-formatter";
+import { formatResponse } from "../response-formatter.js";
+
+function textContent(result: ReturnType<typeof formatResponse>): string {
+    const c = result.content[0];
+    return c.type === "text" ? c.text : "";
+}
 
 describe("formatResponse", () => {
     const question = "Test question?";
@@ -19,7 +24,7 @@ describe("formatResponse", () => {
 
             expect(result.details?.response?.kind).toBe("freeform");
             expect(result.details?.response?.text).toBe("My answer");
-            expect(result.content[0].text).toBe("My answer");
+            expect(textContent(result)).toBe("My answer");
         });
 
         it("returns 'No response' when freeform text is empty", () => {
@@ -30,7 +35,7 @@ describe("formatResponse", () => {
                 false,
             );
 
-            expect(result.content[0].text).toBe("No response");
+            expect(textContent(result)).toBe("No response");
         });
     });
 
@@ -50,8 +55,8 @@ describe("formatResponse", () => {
             expect(result.details?.response?.kind).toBe("selection");
             expect(result.details?.response?.selections).toEqual(["Option A"]);
             expect(result.details?.response?.comment).toBe("My comment");
-            expect(result.content[0].text).toContain("Option A");
-            expect(result.content[0].text).toContain("Comment: My comment");
+            expect(textContent(result)).toContain("Option A");
+            expect(textContent(result)).toContain("Comment: My comment");
         });
 
         it("does not include comment when not provided", () => {
@@ -103,7 +108,7 @@ describe("formatResponse", () => {
 
             expect(result.details?.cancelled).toBe(true);
             expect(result.details?.response).toBeNull();
-            expect(result.content[0].text).toBe("Cancelled");
+            expect(textContent(result)).toBe("Cancelled");
         });
     });
 });

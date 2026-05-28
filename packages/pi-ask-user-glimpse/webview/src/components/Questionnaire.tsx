@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { useDialogKeys } from "../hooks/useDialogKeys";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
-import { renderOptionText } from "../util/html";
 import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
 import { useFooterPortal } from "./FooterContext";
 import GlobalKeyboardHint from "./GlobalKeyboardHint";
-import { CheckIcon, CommentIcon, isSelectAllOption, RadioIcon } from "./icons";
+import { CheckIcon, CommentIcon, isSelectAllOption } from "./icons";
+import OptionCard from "./OptionCard";
+import RichText from "./RichText";
 
 interface QuestionnaireProps {
     payload: AskUserPayload;
@@ -291,9 +292,10 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                 className={`rounded-xl border p-4 bg-card ${isRequired && !isAnswered ? "border-destructive/50" : "border-border"}`}
                             >
                                 <div className="mb-1 flex items-center gap-2">
-                                    <span className="font-medium">
-                                        {q.title}
-                                    </span>
+                                    <RichText
+                                        text={q.title}
+                                        className="font-medium"
+                                    />
                                     {isRequired && !isAnswered && (
                                         <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
                                             Required
@@ -301,9 +303,10 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                     )}
                                 </div>
                                 {q.description && (
-                                    <div className="mb-3 text-sm text-muted-foreground">
-                                        {q.description}
-                                    </div>
+                                    <RichText
+                                        text={q.description}
+                                        className="mb-3 text-sm text-muted-foreground"
+                                    />
                                 )}
 
                                 {q.options && q.options.length > 0 ? (
@@ -319,22 +322,8 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                                         : [];
                                                   const isSelected =
                                                       arr.includes(opt.title);
-                                                  const isSelectAll =
-                                                      isSelectAllOption(
-                                                          opt.title,
-                                                      );
-                                                  const titleHtml =
-                                                      renderOptionText(
-                                                          opt.title,
-                                                      );
-                                                  const descHtml =
-                                                      opt.description
-                                                          ? renderOptionText(
-                                                                opt.description,
-                                                            )
-                                                          : null;
                                                   return (
-                                                      <button
+                                                      <OptionCard
                                                           ref={(el) => {
                                                               optionRefs.current.set(
                                                                   `${q.title}-${opt.title}`,
@@ -342,104 +331,38 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                                               );
                                                           }}
                                                           key={opt.title}
-                                                          tabIndex={
-                                                              optIdx === 0
-                                                                  ? 0
-                                                                  : -1
+                                                          title={opt.title}
+                                                          description={
+                                                              opt.description
                                                           }
-                                                          data-question={
-                                                              q.title
-                                                          }
-                                                          data-option={
-                                                              opt.title
-                                                          }
+                                                          index={optIdx}
+                                                          isSelected={isSelected}
+                                                          isActive={false}
+                                                          mode="multi"
                                                           onClick={() =>
                                                               toggleMultiAnswer(
                                                                   q.title,
                                                                   opt.title,
                                                               )
                                                           }
-                                                          role={
-                                                              isSelectAll
-                                                                  ? "radio"
-                                                                  : "checkbox"
+                                                          recommended={
+                                                              opt.recommended
                                                           }
-                                                          aria-checked={
-                                                              isSelected
+                                                          tabIndex={
+                                                              optIdx === 0
+                                                                  ? 0
+                                                                  : -1
                                                           }
-                                                          className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
-                                                              isSelected
-                                                                  ? "border-primary bg-primary/5"
-                                                                  : "border-border hover:bg-accent"
-                                                          }`}
-                                                      >
-                                                          {isSelectAll ? (
-                                                              <RadioIcon
-                                                                  checked={
-                                                                      isSelected
-                                                                  }
-                                                              />
-                                                          ) : (
-                                                              <div
-                                                                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-                                                                      isSelected
-                                                                          ? "bg-primary text-primary-foreground"
-                                                                          : "border border-border"
-                                                                  }`}
-                                                              >
-                                                                  {isSelected && (
-                                                                      <CheckIcon
-                                                                          checked={
-                                                                              true
-                                                                          }
-                                                                      />
-                                                                  )}
-                                                              </div>
-                                                          )}
-                                                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-                                                              {optIdx + 1}
-                                                          </span>
-                                                          <div className="min-w-0">
-                                                              <div className="flex items-center gap-2">
-                                                                  <div
-                                                                      className="font-medium"
-                                                                      dangerouslySetInnerHTML={{
-                                                                          __html: titleHtml,
-                                                                      }}
-                                                                  />
-                                                                  {opt.recommended && (
-                                                                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                                                      Recommended
-                                                                  </span>
-                                                                  )}
-                                                              </div>
-                                                              {descHtml && (
-                                                                  <div
-                                                                      className="mt-0.5 text-sm text-muted-foreground border-l-2 border-muted-foreground/30 pl-2.5"
-                                                                      dangerouslySetInnerHTML={{
-                                                                          __html: descHtml,
-                                                                      }}
-                                                                  />
-                                                              )}
-                                                          </div>
-                                                      </button>
+                                                          data-question={q.title}
+                                                          data-option={opt.title}
+                                                      />
                                                   );
                                               })
                                             : q.options.map((opt, optIdx) => {
                                                   const isSelected =
                                                       answer === opt.title;
-                                                  const titleHtml =
-                                                      renderOptionText(
-                                                          opt.title,
-                                                      );
-                                                  const descHtml =
-                                                      opt.description
-                                                          ? renderOptionText(
-                                                                opt.description,
-                                                            )
-                                                          : null;
                                                   return (
-                                                      <button
+                                                      <OptionCard
                                                           ref={(el) => {
                                                               optionRefs.current.set(
                                                                   `${q.title}-${opt.title}`,
@@ -447,65 +370,31 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                                               );
                                                           }}
                                                           key={opt.title}
-                                                          tabIndex={
-                                                              optIdx === 0
-                                                                  ? 0
-                                                                  : -1
+                                                          title={opt.title}
+                                                          description={
+                                                              opt.description
                                                           }
-                                                          data-question={
-                                                              q.title
-                                                          }
-                                                          data-option={
-                                                              opt.title
-                                                          }
+                                                          index={optIdx}
+                                                          isSelected={isSelected}
+                                                          isActive={false}
+                                                          mode="single"
                                                           onClick={() =>
                                                               setSingleAnswer(
                                                                   q.title,
                                                                   opt.title,
                                                               )
                                                           }
-                                                          role="radio"
-                                                          aria-checked={
-                                                              isSelected
+                                                          recommended={
+                                                              opt.recommended
                                                           }
-                                                          className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
-                                                              isSelected
-                                                                  ? "border-primary bg-primary/5"
-                                                                  : "border-border hover:bg-accent"
-                                                          }`}
-                                                      >
-                                                          <RadioIcon
-                                                              checked={
-                                                                  isSelected
-                                                              }
-                                                          />
-                                                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-                                                              {optIdx + 1}
-                                                          </span>
-                                                          <div className="min-w-0">
-                                                              <div className="flex items-center gap-2">
-                                                                  <div
-                                                                      className="font-medium"
-                                                                      dangerouslySetInnerHTML={{
-                                                                          __html: titleHtml,
-                                                                      }}
-                                                                  />
-                                                                  {opt.recommended && (
-                                                                      <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                                                      Recommended
-                                                                  </span>
-                                                                  )}
-                                                              </div>
-                                                              {descHtml && (
-                                                                  <div
-                                                                      className="mt-0.5 text-sm text-muted-foreground border-l-2 border-muted-foreground/30 pl-2.5"
-                                                                      dangerouslySetInnerHTML={{
-                                                                          __html: descHtml,
-                                                                      }}
-                                                                  />
-                                                              )}
-                                                          </div>
-                                                      </button>
+                                                          tabIndex={
+                                                              optIdx === 0
+                                                                  ? 0
+                                                                  : -1
+                                                          }
+                                                          data-question={q.title}
+                                                          data-option={opt.title}
+                                                      />
                                                   );
                                               })}
                                     </div>
