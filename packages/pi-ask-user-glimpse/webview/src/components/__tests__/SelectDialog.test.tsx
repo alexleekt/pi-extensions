@@ -354,6 +354,84 @@ describe("SelectDialog", () => {
             expect(screen.getByText("2 selected")).toBeInTheDocument();
         });
 
+        it("ArrowDown navigates to next option and updates activeIndex in multi-select", async () => {
+            renderWithFooter("multi", buildPayload("multi"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+        });
+
+        it("ArrowUp navigates to previous option and updates activeIndex in multi-select", async () => {
+            renderWithFooter("multi", buildPayload("multi"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowUp" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+        });
+
+        it("ArrowDown from last option stays at last when no freeform", async () => {
+            renderWithFooter("multi", buildPayload("multi", { allowFreeform: false }));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+        });
+
+        it("minus key toggles freeform option in multi-select mode", async () => {
+            renderWithFooter("multi", buildPayload("multi"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "-" });
+            await waitFor(() => {
+                const freeform = screen.getByText("My answer isn't listed above").closest("[role='option']") as HTMLElement;
+                expect(freeform).toHaveAttribute("aria-selected", "true");
+                expect(document.activeElement).toBe(freeform);
+            });
+        });
+
+        it("clicking an option syncs activeIndex to that option in multi-select", async () => {
+            renderWithFooter("multi", buildPayload("multi"));
+            fireEvent.click(screen.getByText("Option B"));
+            const optionB = screen.getByText("Option B").closest("[role='option']") as HTMLElement;
+            expect(optionB).toHaveClass("ring-2");
+            expect(optionB).toHaveAttribute("tabIndex", "0");
+        });
+
+        it("Space key toggles option in multi-select mode", async () => {
+            renderWithFooter("multi", buildPayload("multi"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            const optionA = screen.getByText("Option A").closest("[role='option']") as HTMLElement;
+            fireEvent.keyDown(optionA, { key: " " });
+            await waitFor(() => {
+                expect(optionA).toHaveAttribute("aria-selected", "true");
+            });
+            fireEvent.keyDown(optionA, { key: " " });
+            await waitFor(() => {
+                expect(optionA).toHaveAttribute("aria-selected", "false");
+            });
+        });
+
         it("renders empty options message with freeform", () => {
             renderWithFooter("single", buildPayload("single", { options: [] }));
             expect(screen.getByText("No options available.")).toBeInTheDocument();
