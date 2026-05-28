@@ -1,15 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FREEFORM_OPTION_TITLE, type AskUserPayload } from "../../../shared/ask-user";
-import { useDialogKeys } from "../hooks/useDialogKeys";
-import { sendCancelled, sendToGlimpse } from "../util/glimpse";
+import { useBaseDialog } from "../hooks/useBaseDialog";
+import { sendToGlimpse } from "../util/glimpse";
 import CancelConfirmModal from "./CancelConfirmModal";
-import DialogFooter from "./DialogFooter";
-import { useFooterPortal } from "./FooterContext";
-import GlobalKeyboardHint from "./GlobalKeyboardHint";
 import { CheckIcon, CommentIcon, isSelectAllOption } from "./icons";
 import MarkdownPreview from "./MarkdownPreview";
 import OptionCard from "./OptionCard";
-import RichText from "./RichText";
 
 interface MultiSelectProps {
     payload: AskUserPayload;
@@ -20,9 +16,7 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
     const [comment, setComment] = useState("");
     const [showComment, setShowComment] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-    const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
     const freeformRef = useRef<HTMLButtonElement | null>(null);
 
     const hasFreeform = payload.allowFreeform;
@@ -48,7 +42,7 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         comment,
         showComment,
         activeIndex,
-        isSubmitting,
+        isSubmitting: false,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
         selectAllOption,
@@ -83,7 +77,6 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
     const handleSubmit = useCallback(() => {
         const s = stateRef.current;
         if (s.isSubmitting) return;
-        setIsSubmitting(true);
 
         if (s.selected.has(FREEFORM_OPTION_TITLE)) {
             const result: Record<string, unknown> = {
@@ -116,41 +109,16 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         sendToGlimpse(result);
     }, []);
 
-    const isDirty =
-        selected.size > 0 ||
-        comment.trim() !== "";
+    const isDirty = selected.size > 0 || comment.trim() !== "";
 
-    const handleCancel = useCallback(() => {
-        if (isDirty) {
-            setShowCancelConfirm(true);
-            return;
-        }
-        sendCancelled();
-    }, [isDirty]);
-
-    useDialogKeys({
+    const { isSubmitting, setIsSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel } = useBaseDialog({
+        payload,
+        isDirty,
         onSubmit: handleSubmit,
-        onCancel: handleCancel,
-        isSubmitting,
         isCommentOpen: showComment,
         onCloseComment: () => setShowComment(false),
+        submitDisabled: !hasFreeform && selected.size === 0,
     });
-
-    /* Render footer via portal so it spans full window width beneath both panels. */
-    const footer = useMemo(
-        () => (
-            <DialogFooter
-                isSubmitting={isSubmitting}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-                hint={<GlobalKeyboardHint payload={payload} />}
-                submitDisabled={!hasFreeform && selected.size === 0}
-            />
-        ),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [isSubmitting, handleSubmit, handleCancel, payload, hasFreeform, selected.size],
-    );
-    useFooterPortal(footer);
 
     useEffect(() => {
         const id = requestAnimationFrame(() => {

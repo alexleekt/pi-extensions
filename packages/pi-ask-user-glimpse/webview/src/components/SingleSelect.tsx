@@ -1,15 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FREEFORM_OPTION_TITLE, type AskUserPayload } from "../../../shared/ask-user";
-import { useDialogKeys } from "../hooks/useDialogKeys";
-import { sendCancelled, sendToGlimpse } from "../util/glimpse";
+import { useBaseDialog } from "../hooks/useBaseDialog";
+import { sendToGlimpse } from "../util/glimpse";
 import CancelConfirmModal from "./CancelConfirmModal";
-import DialogFooter from "./DialogFooter";
-import { useFooterPortal } from "./FooterContext";
-import GlobalKeyboardHint from "./GlobalKeyboardHint";
 import { CommentIcon, RadioIcon } from "./icons";
 import MarkdownPreview from "./MarkdownPreview";
 import OptionCard from "./OptionCard";
-import RichText from "./RichText";
 
 interface SingleSelectProps {
     payload: AskUserPayload;
@@ -20,9 +16,7 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
     const [comment, setComment] = useState("");
     const [showComment, setShowComment] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-    const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
     const freeformRef = useRef<HTMLButtonElement | null>(null);
 
     const hasFreeform = payload.allowFreeform;
@@ -42,7 +36,7 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
         comment,
         showComment,
         activeIndex,
-        isSubmitting,
+        isSubmitting: false,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
     };
@@ -80,17 +74,15 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
         const s = stateRef.current;
         if (s.isSubmitting) return;
         setIsSubmitting(true);
-
-        if (s.selected === FREEFORM_OPTION_TITLE) {
-            sendFreeformResult();
-            return;
-        }
-
         const fallbackSelection =
             s.activeIndex >= 0 && s.activeIndex < s.options.length
                 ? s.options[s.activeIndex].title
                 : null;
         const selection = s.selected ?? fallbackSelection;
+        if (s.selected === FREEFORM_OPTION_TITLE) {
+            sendFreeformResult();
+            return;
+        }
         if (s.allowFreeform && selection === null) {
             sendFreeformResult();
         } else {
@@ -98,41 +90,16 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
         }
     }, [sendResult, sendFreeformResult]);
 
-    const isDirty =
-        selected !== null ||
-        comment.trim() !== "";
+    const isDirty = selected !== null || comment.trim() !== "";
 
-    const handleCancel = useCallback(() => {
-        if (isDirty) {
-            setShowCancelConfirm(true);
-            return;
-        }
-        sendCancelled();
-    }, [isDirty]);
-
-    useDialogKeys({
+    const { isSubmitting, setIsSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel } = useBaseDialog({
+        payload,
+        isDirty,
         onSubmit: handleSubmit,
-        onCancel: handleCancel,
-        isSubmitting,
         isCommentOpen: showComment,
         onCloseComment: () => setShowComment(false),
+        submitDisabled: !hasFreeform && selected === null,
     });
-
-    /* Render footer via portal so it spans full window width beneath both panels. */
-    const footer = useMemo(
-        () => (
-            <DialogFooter
-                isSubmitting={isSubmitting}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-                hint={<GlobalKeyboardHint payload={payload} />}
-                submitDisabled={!hasFreeform && selected === null}
-            />
-        ),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [isSubmitting, handleSubmit, handleCancel, payload, hasFreeform, selected],
-    );
-    useFooterPortal(footer);
 
     useEffect(() => {
         const id = requestAnimationFrame(() => {
