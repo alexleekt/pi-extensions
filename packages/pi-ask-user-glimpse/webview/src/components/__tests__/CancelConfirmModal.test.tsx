@@ -137,4 +137,30 @@ describe("CancelConfirmModal", () => {
         fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
         expect(document.activeElement).toBe(stayButton);
     });
+
+    it("Escape key calls onStay and stops propagation", () => {
+        const onStay = vi.fn();
+        render(
+            <CancelConfirmModal
+                isOpen={true}
+                onStay={onStay}
+                onDiscard={vi.fn()}
+            />,
+        );
+        fireEvent.keyDown(window, { key: "Escape" });
+        expect(onStay).toHaveBeenCalledTimes(1);
+    });
+
+    it("Cmd+Enter stops propagation without calling onStay", () => {
+        const onStay = vi.fn();
+        render(
+            <CancelConfirmModal
+                isOpen={true}
+                onStay={onStay}
+                onDiscard={vi.fn()}
+            />,
+        );
+        fireEvent.keyDown(window, { key: "Enter", metaKey: true });
+        expect(onStay).not.toHaveBeenCalled();
+    });
 });
