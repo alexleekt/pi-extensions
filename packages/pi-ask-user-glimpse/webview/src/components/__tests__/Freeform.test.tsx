@@ -106,4 +106,19 @@ describe("Freeform", () => {
 
         expect(document.getElementById("markdown-preview")).toBeInTheDocument();
     });
+
+    it("Stay button dismisses cancel confirm modal", () => {
+        renderWithFooter(buildPayload());
+
+        const mainTextarea = screen.getByPlaceholderText("Type your answer…");
+        fireEvent.change(mainTextarea, {
+            target: { value: "Dirty text" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Stay" }));
+        expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
+    });
 });

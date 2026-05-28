@@ -253,4 +253,20 @@ describe("askUserHandler", () => {
         expect(windowOptions.width).toBe(1200);
         expect(windowOptions.height).toBe(900);
     });
+
+    it("truncates title from long question with only stopwords", async () => {
+        mockPrompt.mockResolvedValue({ kind: "freeform", text: "My answer" });
+
+        await askUserHandler(
+            { question: "The and of a in to is it that for on with as" },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const windowOptions = lastCall[1] as Record<string, unknown>;
+        const title = windowOptions.title as string;
+        expect(title).toContain("The");
+        expect(title.length).toBeLessThanOrEqual(60);
+    });
 });
