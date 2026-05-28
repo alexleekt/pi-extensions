@@ -150,6 +150,8 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
             <button
                 ref={triggerRef}
                 onClick={() => setOpen((s) => !s)}
+                aria-expanded={open}
+                aria-haspopup="menu"
                 className={buttonClassName ?? "rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"}
                 title="Settings"
             >
@@ -162,7 +164,7 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                         data-overlay="true"
                         onClick={() => setOpen(false)}
                     />
-                    <div className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border bg-popover p-2 shadow-lg">
+                    <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border bg-popover p-2 shadow-lg">
                         <div className="mb-2 px-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Theme
                         </div>
@@ -175,6 +177,8 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                                         optionRefs.current[flatIdx] = el;
                                     }}
                                     key={opt.value}
+                                    role="menuitemradio"
+                                    aria-checked={selected}
                                     tabIndex={focusedIndex === flatIdx ? 0 : -1}
                                     onClick={() => setTheme(opt.value)}
                                     className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
@@ -201,6 +205,8 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                                         optionRefs.current[flatIdx] = el;
                                     }}
                                     key={opt.value}
+                                    role="menuitemradio"
+                                    aria-checked={selected}
                                     tabIndex={focusedIndex === flatIdx ? 0 : -1}
                                     onClick={() => setAnimationLevel(opt.value)}
                                     className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
