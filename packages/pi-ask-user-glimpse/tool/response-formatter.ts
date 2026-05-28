@@ -37,7 +37,11 @@ function buildResponse(
     kind: AskResponse["kind"],
 ): AskResponse {
     if (kind === "freeform") {
-        return { kind, text: String(result.text ?? "").trim() };
+        return {
+            kind,
+            text: String(result.text ?? "").trim(),
+            additionalComments: pickString(result.additionalComments),
+        };
     }
 
     if (kind === "questionnaire") {
@@ -79,15 +83,19 @@ function buildResponse(
 }
 
 function responseToText(response: AskResponse): string {
-    if (response.kind === "freeform") {
-        return response.text?.trim() || "No response";
-    }
     const lines: string[] = [];
-    const selections = response.selections ?? [];
-    if (selections.length > 0) lines.push(selections.join(", "));
+
+    if (response.kind === "freeform") {
+        if (response.text?.trim()) lines.push(response.text.trim());
+    } else {
+        const selections = response.selections ?? [];
+        if (selections.length > 0) lines.push(selections.join(", "));
+    }
+
     if (response.comment) lines.push(`Comment: ${response.comment}`);
     if (response.additionalComments)
         lines.push(`Additional Comments: ${response.additionalComments}`);
+
     return lines.join("\n\n") || "No response";
 }
 

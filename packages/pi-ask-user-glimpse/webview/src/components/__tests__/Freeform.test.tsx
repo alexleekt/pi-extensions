@@ -1,0 +1,153 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import Freeform from "../Freeform";
+import { WithFooterProvider } from "../../test-helpers";
+
+const mockSendToGlimpse = vi.fn();
+const mockSendCancelled = vi.fn();
+
+vi.mock("../../util/glimpse", () => ({
+    sendToGlimpse: (...args: unknown[]) => mockSendToGlimpse(...args),
+    sendCancelled: () => mockSendCancelled(),
+}));
+
+function buildPayload(overrides = {}) {
+    return {
+        type: "freeform" as const,
+        question: "Test question?",
+        options: [],
+        allowComment: false,
+        allowFreeform: true,
+        allowMultiple: false,
+        ...overrides,
+    };
+}
+
+function renderWithFooter(payload: ReturnType<typeof buildPayload>) {
+    return render(
+        <WithFooterProvider>
+            <Freeform payload={payload} />
+        </WithFooterProvider>,
+    );
+}
+
+describe("Freeform", () => {
+    beforeEach(() => {
+        mockSendToGlimpse.mockClear();
+        mockSendCancelled.mockClear();
+    });
+
+    it("renders textarea and additional comments", () => {
+        renderWithFooter(buildPayload());
+        expect(
+            screen.getByPlaceholderText("Type your answer…"),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Additional Comments")).toBeInTheDocument();
+    });
+
+    it("submits text and additional comments", async () => {
+        renderWithFooter(buildPayload());
+
+        const mainTextarea = screen.getByPlaceholderText("Type your answer…");
+        fireEvent.change(mainTextarea, {
+            target: { value: "My main answer" },
+        });
+
+        const commentsTextarea = screen.getByPlaceholderText(
+            "Optional additional comments…",
+        );
+        fireEvent.change(commentsTextarea, {
+            target: { value: "My extra thoughts" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+        await waitFor(() => {
+            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
+        });
+
+        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
+        expect(sent.kind).toBe("freeform");
+        expect(sent.text).toBe("My main answer");
+        expect(sent.additionalComments).toBe("My extra thoughts");
+    });
+
+    it("submits only additional comments when main text is empty", async () => {
+        renderWithFooter(buildPayload());
+
+        const commentsTextarea = screen.getByPlaceholderText(
+            "Optional additional comments…",
+        );
+        fireEvent.change(commentsTextarea, {
+            target: { value: "Only extra thoughts" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+        await waitFor(() => {
+            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
+        });
+
+        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
+        expect(sent.kind).toBe("freeform");
+        expect(sent.text).toBe("");
+        expect(sent.additionalComments).toBe("Only extra thoughts");
+    });
+
+    it("does not include additionalComments when empty", async () => {
+        renderWithFooter(buildPayload());
+
+        const mainTextarea = screen.getByPlaceholderText("Type your answer…");
+        fireEvent.change(mainTextarea, {
+            target: { value: "Main answer only" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+        await waitFor(() => {
+            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
+        });
+
+        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
+        expect(sent.additionalComments).toBeUndefined();
+    });
+
+    it("shows cancel confirm when dirty from main text", () => {
+        renderWithFooter(buildPayload());
+
+        const mainTextarea = screen.getByPlaceholderText("Type your answer…");
+        fireEvent.change(mainTextarea, {
+            target: { value: "Dirty text" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+        expect(mockSendCancelled).not.toHaveBeenCalled();
+    });
+
+    it("shows cancel confirm when dirty from additional comments alone", () => {
+        renderWithFooter(buildPayload());
+
+        const commentsTextarea = screen.getByPlaceholderText(
+            "Optional additional comments…",
+        );
+        fireEvent.change(commentsTextarea, {
+            target: { value: "Dirty comment" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+        expect(mockSendCancelled).not.toHaveBeenCalled();
+    });
+
+    it("does not show cancel confirm when clean", () => {
+        renderWithFooter(buildPayload());
+
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+        expect(mockSendCancelled).toHaveBeenCalledTimes(1);
+        expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
+    });
+});
