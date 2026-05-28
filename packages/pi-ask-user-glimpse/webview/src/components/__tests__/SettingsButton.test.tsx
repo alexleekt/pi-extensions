@@ -60,16 +60,18 @@ describe("SettingsButton", () => {
         expect(screen.getByText("Animations")).toBeInTheDocument();
     });
 
-    it("closes dropdown on Escape", () => {
+    it("closes dropdown on Escape and returns focus to trigger", () => {
         render(
             <SettingsProvider>
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
+        const trigger = screen.getByTitle("Settings");
+        fireEvent.click(trigger);
         expect(screen.getByText("Theme")).toBeInTheDocument();
         fireEvent.keyDown(window, { key: "Escape" });
         expect(screen.queryByText("Theme")).not.toBeInTheDocument();
+        expect(trigger).toHaveFocus();
     });
 
     it("theme selection updates dropdown", () => {
@@ -184,6 +186,56 @@ describe("SettingsButton", () => {
 
         fireEvent.keyDown(window, { key: " " });
         expect(mockState.setTheme).toHaveBeenCalledWith("dark");
+    });
+
+    it("Tab cycles forward through options in dropdown", () => {
+        render(
+            <SettingsProvider>
+                <SettingsButton />
+            </SettingsProvider>,
+        );
+        fireEvent.click(screen.getByTitle("Settings"));
+        const options = screen.getAllByRole("menuitemradio");
+        // Initially focused on "System" (index 2)
+        expect(options[2]).toHaveAttribute("tabIndex", "0");
+
+        fireEvent.keyDown(window, { key: "Tab" });
+        expect(options[3]).toHaveAttribute("tabIndex", "0");
+        expect(options[2]).toHaveAttribute("tabIndex", "-1");
+    });
+
+    it("Shift+Tab cycles backward through options in dropdown", () => {
+        render(
+            <SettingsProvider>
+                <SettingsButton />
+            </SettingsProvider>,
+        );
+        fireEvent.click(screen.getByTitle("Settings"));
+        const options = screen.getAllByRole("menuitemradio");
+        // Initially focused on "System" (index 2)
+        expect(options[2]).toHaveAttribute("tabIndex", "0");
+
+        fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+        expect(options[1]).toHaveAttribute("tabIndex", "0");
+        expect(options[2]).toHaveAttribute("tabIndex", "-1");
+    });
+
+    it("Enter selects animation option in dropdown", () => {
+        render(
+            <SettingsProvider>
+                <SettingsButton />
+            </SettingsProvider>,
+        );
+        fireEvent.click(screen.getByTitle("Settings"));
+        const options = screen.getAllByRole("menuitemradio");
+
+        // Navigate to "Minimal" animation (index 4)
+        fireEvent.keyDown(window, { key: "ArrowDown" });
+        fireEvent.keyDown(window, { key: "ArrowDown" });
+        expect(options[4]).toHaveAttribute("tabIndex", "0");
+
+        fireEvent.keyDown(window, { key: "Enter" });
+        expect(mockState.setAnimationLevel).toHaveBeenCalledWith("minimal");
     });
 
     it("dropdown closes when clicking outside", () => {
