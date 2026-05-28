@@ -174,4 +174,54 @@ describe("Questionnaire", () => {
         expect(mockSendCancelled).toHaveBeenCalledTimes(1);
         expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
     });
+
+    it("shows cancel confirm when dirty from comments alone", () => {
+        renderWithFooter(buildPayload());
+
+        fireEvent.click(screen.getByText("Q1-A"));
+        fireEvent.click(screen.getAllByText("Add comment")[0]);
+        const commentTextarea = screen.getByPlaceholderText("Optional comment…");
+        fireEvent.change(commentTextarea, {
+            target: { value: "Just a comment" },
+        });
+        fireEvent.click(screen.getByText("Q1-A")); // deselect
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    });
+
+    it("Stay button dismisses cancel confirm modal", () => {
+        renderWithFooter(buildPayload());
+
+        fireEvent.click(screen.getByText("Q1-A"));
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Stay" }));
+        expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
+    });
+
+    it("multi-select deselect removes option from answer", () => {
+        renderWithFooter(buildPayload());
+
+        fireEvent.click(screen.getByText("Q2-A"));
+        fireEvent.click(screen.getByText("Q2-B"));
+
+        const q2A = screen.getByText("Q2-A").closest("[role='option']") as HTMLElement;
+        expect(q2A).toHaveAttribute("aria-selected", "true");
+
+        fireEvent.click(screen.getByText("Q2-A"));
+        expect(q2A).toHaveAttribute("aria-selected", "false");
+    });
+
+    it("Escape closes per-question comment textarea", () => {
+        renderWithFooter(buildPayload());
+
+        fireEvent.click(screen.getByText("Q1-A"));
+        fireEvent.click(screen.getAllByText("Add comment")[0]);
+        expect(screen.getByPlaceholderText("Optional comment…")).toBeInTheDocument();
+
+        fireEvent.keyDown(window, { key: "Escape" });
+        expect(screen.queryByPlaceholderText("Optional comment…")).not.toBeInTheDocument();
+    });
 });
