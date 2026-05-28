@@ -97,12 +97,14 @@
     },
     "dependencies": {
         "@alexleekt/pi-shared": "^0.1.0",
+        "dompurify": "^3.4.7",
         "glimpseui": "^0.8.1"
     },
     "devDependencies": {
         "@playwright/test": "^1.60.0",
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^16.3.2",
+        "@types/dompurify": "^3.0.5",
         "@types/react": "^18.3.0",
         "@types/react-dom": "^18.3.0",
         "@vitejs/plugin-react": "^4.3.0",

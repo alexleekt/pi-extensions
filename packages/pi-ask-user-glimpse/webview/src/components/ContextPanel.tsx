@@ -35,7 +35,10 @@ function initMermaid(theme: "light" | "dark") {
     try {
         mermaid.initialize({
             startOnLoad: false,
-            securityLevel: "loose",
+            // securityLevel: "strict" prevents mermaid node labels from
+            // rendering raw HTML inside SVG, closing the sanitizer bypass
+            // vector that "loose" opens. The default is "strict".
+            securityLevel: "strict",
             theme: theme === "dark" ? "dark" : "default",
         });
     } catch {
@@ -145,6 +148,7 @@ function HtmlContext({
         <iframe
             ref={iframeRef}
             sandbox="allow-scripts"
+            csp="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'"
             srcDoc={srcdoc}
             className="flex-1 w-full border-0 min-h-0"
             title="HTML context"

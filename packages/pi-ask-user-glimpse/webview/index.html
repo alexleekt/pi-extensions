@@ -3,6 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      CSP for GlimpseUI WKWebView (loadHTMLString with baseURL: nil).
+      script-src 'unsafe-inline' is required because the native host injects
+      the bridge script inline. connect-src 'none' because the dialog has no
+      network access. style-src 'unsafe-inline' is required because Vite inlines
+      the bundled CSS as <style> tags.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none';"
+    />
     <title>Ask User</title>
     <script>
       window.__ASK_USER_PAYLOAD__ = /*ASK_USER_PAYLOAD*/;
