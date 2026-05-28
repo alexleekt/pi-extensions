@@ -197,4 +197,22 @@ describe("ContextPanel", () => {
         const innerHTML = markdownDiv?.innerHTML ?? "";
         expect(innerHTML.trim()).toBe("<p></p>");
     });
+
+    it("logs warning when mermaid render fails", async () => {
+        const { default: mermaid } = await import("mermaid");
+        const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+        (mermaid.run as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Mermaid error"));
+
+        const { container } = render(
+            <ContextPanel context="```mermaid\ngraph TD\nA-->B\n```" contextFormat="markdown" />,
+        );
+        const markdownDiv = container.querySelector(".markdown-body");
+        expect(markdownDiv).toBeInTheDocument();
+
+        // Wait for rAF and mermaid.run to execute
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        expect(consoleSpy).toHaveBeenCalledWith("[mermaid] render error:", expect.any(Error));
+        consoleSpy.mockRestore();
+    });
 });
