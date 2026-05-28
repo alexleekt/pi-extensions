@@ -51,6 +51,22 @@ export default function QuestionCard({
         if (!question.options || question.options.length === 0) return;
         const maxIndex = question.options.length - 1;
 
+        if (e.key >= "1" && e.key <= "9") {
+            const idx = parseInt(e.key, 10) - 1;
+            if (idx >= 0 && idx <= maxIndex) {
+                e.preventDefault();
+                setActiveIndex(idx);
+                optionRefs.current[idx]?.focus();
+                const opt = question.options[idx];
+                if (question.allowMultiple) {
+                    onToggleMulti(opt.title);
+                } else {
+                    onSelect(opt.title);
+                }
+            }
+            return;
+        }
+
         if (e.key === "ArrowDown") {
             e.preventDefault();
             setActiveIndex((prev) => {
