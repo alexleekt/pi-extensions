@@ -1,0 +1,231 @@
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import QuestionCard from "../QuestionCard";
+
+const mockOptions = [
+    { title: "Option A", description: "Description A" },
+    { title: "Option B", description: "Description B" },
+    { title: "Option C" },
+];
+
+describe("QuestionCard", () => {
+    it("renders question title and options", () => {
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+            />,
+        );
+        expect(screen.getByText("Question 1")).toBeInTheDocument();
+        expect(screen.getByText("Option A")).toBeInTheDocument();
+        expect(screen.getByText("Option B")).toBeInTheDocument();
+        expect(screen.getByText("Option C")).toBeInTheDocument();
+    });
+
+    it("renders description when available", () => {
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+            />,
+        );
+        expect(screen.getByText("Description A")).toBeInTheDocument();
+        expect(screen.getByText("Description B")).toBeInTheDocument();
+    });
+
+    it("calls onSelect when option is clicked in single mode", () => {
+        const onSelect = vi.fn();
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions }}
+                answer={undefined}
+                onSelect={onSelect}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+            />,
+        );
+        fireEvent.click(screen.getByText("Option A"));
+        expect(onSelect).toHaveBeenCalledWith("Option A");
+    });
+
+    it("calls onToggleMulti when option is clicked in multi mode", () => {
+        const onToggleMulti = vi.fn();
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={onToggleMulti}
+                onSetText={vi.fn()}
+            />,
+        );
+        fireEvent.click(screen.getByText("Option A"));
+        expect(onToggleMulti).toHaveBeenCalledWith("Option A");
+    });
+
+    it("shows selected state for selected option", () => {
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions }}
+                answer="Option A"
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+            />,
+        );
+        const options = screen.getAllByRole("option");
+        expect(options[0]).toHaveAttribute("aria-selected", "true");
+        expect(options[1]).toHaveAttribute("aria-selected", "false");
+    });
+
+    it("shows selected state for multi-selected options", () => {
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                answer={["Option A", "Option B"]}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+            />,
+        );
+        const options = screen.getAllByRole("option");
+        expect(options[0]).toHaveAttribute("aria-selected", "true");
+        expect(options[1]).toHaveAttribute("aria-selected", "true");
+        expect(options[2]).toHaveAttribute("aria-selected", "false");
+    });
+
+    it("shows Recommended badge for recommended option", () => {
+        render(
+            <QuestionCard
+                question={{
+                    title: "Question 1",
+                    options: [{ title: "Option A", description: "Desc", recommended: true }],
+                }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+            />,
+        );
+        expect(screen.getByText("Recommended")).toBeInTheDocument();
+    });
+
+    it("renders Add comment button", () => {
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+                onToggleComment={vi.fn()}
+                onCommentChange={vi.fn()}
+            />,
+        );
+        expect(screen.getByText("Add comment")).toBeInTheDocument();
+    });
+
+    it("calls onToggleComment when Add comment is clicked", () => {
+        const onToggleComment = vi.fn();
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+                onToggleComment={onToggleComment}
+                onCommentChange={vi.fn()}
+            />,
+        );
+        fireEvent.click(screen.getAllByText("Add comment")[0]);
+        expect(onToggleComment).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows textarea when showComment is true", () => {
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+                showComment={true}
+                comment="My comment"
+                onToggleComment={vi.fn()}
+                onCommentChange={vi.fn()}
+            />,
+        );
+        const textarea = screen.getByPlaceholderText("Optional comment…");
+        expect(textarea).toBeInTheDocument();
+        expect(textarea).toHaveValue("My comment");
+    });
+
+    it("calls onCommentChange when comment is typed", () => {
+        const onCommentChange = vi.fn();
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+                showComment={true}
+                comment=""
+                onToggleComment={vi.fn()}
+                onCommentChange={onCommentChange}
+            />,
+        );
+        const textarea = screen.getByPlaceholderText("Optional comment…");
+        fireEvent.change(textarea, { target: { value: "New comment" } });
+        expect(onCommentChange).toHaveBeenCalledWith("New comment");
+    });
+
+    it("renders freeform textarea when no options", () => {
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: [] }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+            />,
+        );
+        expect(screen.getByPlaceholderText("Your answer…")).toBeInTheDocument();
+    });
+
+    it("renders Required badge for required questions", () => {
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+            />,
+        );
+        expect(screen.getByText("Required")).toBeInTheDocument();
+    });
+
+    it("calls onSetText when freeform text is typed", () => {
+        const onSetText = vi.fn();
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: [] }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={onSetText}
+            />,
+        );
+        const textarea = screen.getByPlaceholderText("Your answer…");
+        fireEvent.change(textarea, { target: { value: "Freeform answer" } });
+        expect(onSetText).toHaveBeenCalledWith("Freeform answer");
+    });
+});
