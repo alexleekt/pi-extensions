@@ -217,7 +217,7 @@ export default function ContextPanel({
                             >
                                 ❝
                             </span>
-                            <h2
+                            <div
                                 className="text-base font-semibold text-foreground leading-relaxed"
                                 dangerouslySetInnerHTML={{
                                     __html: renderMarkdownInline(question),
