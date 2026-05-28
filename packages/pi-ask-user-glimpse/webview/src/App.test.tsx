@@ -164,38 +164,84 @@ describe("App", () => {
         expect(dialogPayload.question).toBe("Test question?");
     });
 
-    it("resizer drag updates panel width", async () => {
+    it("resizer drag updates panel width via fireEvent", async () => {
         (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = createPayload("single-select");
         const { container } = await renderApp();
-        const resizer = container.querySelector('[role="separator"]') as HTMLElement;
+        const resizer = screen.getByRole("separator");
         expect(resizer).toBeInTheDocument();
 
         // Start drag
-        resizer.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+        fireEvent.mouseDown(resizer);
         // Move mouse
-        window.dispatchEvent(new MouseEvent("mousemove", { clientX: 500 }));
+        fireEvent.mouseMove(window, { clientX: 500 });
         // End drag
-        window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+        fireEvent.mouseUp(window);
     });
 
-    it("resizer double-click collapses panel", async () => {
+    it("resizer double-click collapses panel via fireEvent", async () => {
         (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = createPayload("single-select");
         const { container } = await renderApp();
-        const resizer = container.querySelector('[role="separator"]') as HTMLElement;
+        const resizer = screen.getByRole("separator");
         expect(resizer).toBeInTheDocument();
+        expect(resizer).toHaveAttribute("aria-valuenow", "60");
 
-        resizer.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+        fireEvent.doubleClick(resizer);
+        expect(resizer).toHaveAttribute("aria-valuenow", "0");
+        expect(resizer).toHaveAttribute("title", "Click to expand");
     });
 
-    it("resizer click when collapsed expands panel", async () => {
+    it("resizer click when collapsed expands panel via fireEvent", async () => {
         (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = createPayload("single-select");
         const { container } = await renderApp();
-        const resizer = container.querySelector('[role="separator"]') as HTMLElement;
+        const resizer = screen.getByRole("separator");
         expect(resizer).toBeInTheDocument();
 
         // First collapse via double-click
-        resizer.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+        fireEvent.doubleClick(resizer);
+        expect(resizer).toHaveAttribute("aria-valuenow", "0");
+        expect(resizer).toHaveAttribute("title", "Click to expand");
+
         // Then click to expand
-        resizer.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+        fireEvent.mouseDown(resizer);
+        expect(resizer).toHaveAttribute("aria-valuenow", "60");
+        expect(resizer).toHaveAttribute("title", "Drag to resize · Double-click to collapse");
+    });
+
+    it("renders error message with correct border and background classes", async () => {
+        (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = null;
+        const { default: App } = await import("./App");
+        const { container } = render(<App />);
+        const errorBox = container.querySelector(".border-destructive");
+        expect(errorBox).toBeInTheDocument();
+        expect(errorBox).toHaveClass("bg-destructive/10");
+        expect(errorBox).toHaveClass("text-destructive");
+        expect(errorBox).toHaveClass("rounded-lg");
+        expect(screen.getByText(/Missing or invalid ask_user payload/i)).toBeInTheDocument();
+    });
+
+    it("renders resizer with correct ARIA attributes", async () => {
+        (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = createPayload("single-select");
+        await renderApp();
+        const resizer = screen.getByRole("separator");
+        expect(resizer).toHaveAttribute("aria-valuemin", "25");
+        expect(resizer).toHaveAttribute("aria-valuemax", "80");
+        expect(resizer).toHaveAttribute("aria-orientation", "vertical");
+        expect(resizer).toHaveAttribute("aria-label", "Resize panels");
+    });
+
+    it("double-click when collapsed expands panel", async () => {
+        (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = createPayload("single-select");
+        const { container } = await renderApp();
+        const resizer = screen.getByRole("separator");
+
+        // Collapse
+        fireEvent.doubleClick(resizer);
+        expect(resizer).toHaveAttribute("aria-valuenow", "0");
+        expect(resizer).toHaveAttribute("title", "Click to expand");
+
+        // Double-click again to expand
+        fireEvent.doubleClick(resizer);
+        expect(resizer).toHaveAttribute("aria-valuenow", "60");
+        expect(resizer).toHaveAttribute("title", "Drag to resize · Double-click to collapse");
     });
 });
