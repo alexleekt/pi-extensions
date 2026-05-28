@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, KeyboardEvent } from "react";
 import { CheckIcon, RadioIcon, isSelectAllOption } from "./icons";
 import RichText from "./RichText";
 
@@ -16,7 +16,7 @@ interface OptionCardProps {
     "data-option"?: string;
 }
 
-const OptionCard = forwardRef<HTMLButtonElement, OptionCardProps>(
+const OptionCard = forwardRef<HTMLDivElement, OptionCardProps>(
     (
         {
             title,
@@ -41,16 +41,24 @@ const OptionCard = forwardRef<HTMLButtonElement, OptionCardProps>(
               ? { "aria-selected": isSelected }
               : { "aria-checked": isSelected };
 
+        const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+            }
+        };
+
         return (
-            <button
+            <div
                 ref={ref}
                 tabIndex={tabIndex}
                 onClick={onClick}
+                onKeyDown={handleKeyDown}
                 role={role}
                 {...ariaState}
                 data-question={dataQuestion}
                 data-option={dataOption}
-                className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
+                className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     isSelected
                         ? "border-primary bg-primary/5"
                         : "border-border bg-card hover:bg-accent"
@@ -98,7 +106,7 @@ const OptionCard = forwardRef<HTMLButtonElement, OptionCardProps>(
                         />
                     )}
                 </div>
-            </button>
+            </div>
         );
     },
 );

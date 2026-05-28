@@ -46,11 +46,11 @@ test.describe("single-select dialog", () => {
     });
 
     test("keyboard navigation with arrow keys", async ({ page }) => {
-        const firstOption = page.locator("button[role='option']").first();
+        const firstOption = page.locator("[role='option']").first();
         await expect(firstOption).toBeFocused();
 
         await page.keyboard.press("ArrowDown");
-        const secondOption = page.locator("button[role='option']").nth(1);
+        const secondOption = page.locator("[role='option']").nth(1);
         await expect(secondOption).toBeFocused();
 
         await page.keyboard.press("ArrowUp");
@@ -60,7 +60,7 @@ test.describe("single-select dialog", () => {
     test("number key selects option", async ({ page }) => {
         await page.click("body");
         await page.keyboard.press("1");
-        const firstOption = page.locator("button[role='option']").first();
+        const firstOption = page.locator("[role='option']").first();
         await expect(firstOption).toHaveAttribute("aria-selected", "true");
     });
 
@@ -92,13 +92,13 @@ test.describe("single-select dialog", () => {
         await page.click("body");
         await page.keyboard.press("-");
 
-        const freeformOption = page.locator("button[role='option']").filter({ hasText: "My answer isn't listed above" });
+        const freeformOption = page.locator("[role='option']").filter({ hasText: "My answer isn't listed above" });
         await expect(freeformOption).toHaveAttribute("aria-selected", "true");
         await expect(page.getByText("Submitting…")).not.toBeVisible();
     });
 
     test("Enter on freeform only selects, does not submit", async ({ page }) => {
-        const freeformOption = page.locator("button[role='option']").filter({ hasText: "My answer isn't listed above" });
+        const freeformOption = page.locator("[role='option']").filter({ hasText: "My answer isn't listed above" });
         await freeformOption.focus();
         await page.keyboard.press("Enter");
 
@@ -110,7 +110,7 @@ test.describe("single-select dialog", () => {
         await page.click("body");
         await page.keyboard.press("-");
 
-        const freeformOption = page.locator("button[role='option']").filter({ hasText: "My answer isn't listed above" });
+        const freeformOption = page.locator("[role='option']").filter({ hasText: "My answer isn't listed above" });
         await expect(freeformOption).toHaveAttribute("aria-selected", "true");
 
         await page.getByRole("button", { name: "Submit" }).click();
@@ -124,7 +124,7 @@ test.describe("single-select dialog", () => {
     });
 
     test("Cancel button triggers confirm when dirty from selection", async ({ page }) => {
-        const firstOption = page.locator("button[role='option']").first();
+        const firstOption = page.locator("[role='option']").first();
         await firstOption.click();
         await expect(firstOption).toHaveAttribute("aria-selected", "true");
 
@@ -133,7 +133,7 @@ test.describe("single-select dialog", () => {
     });
 
     test("Cancel triggers confirm when dirty from per-option comment", async ({ page }) => {
-        await page.locator("button[role='option']").first().click();
+        await page.locator("[role='option']").first().click();
         await page.getByText("Add comment").click();
         const commentTextarea = page.getByPlaceholder("Optional comment…");
         await commentTextarea.fill("Dirty comment");
@@ -172,7 +172,7 @@ test.describe("multi-select dialog", () => {
     });
 
     test("space toggles option selection", async ({ page }) => {
-        const firstOption = page.locator("button[role='option']").first();
+        const firstOption = page.locator("[role='option']").first();
         await firstOption.focus();
 
         await page.keyboard.press("Space");
@@ -183,7 +183,7 @@ test.describe("multi-select dialog", () => {
         await page.click("body");
         await page.keyboard.press("-");
 
-        const freeformOption = page.locator("button[role='option']").filter({ hasText: "My answer isn't listed above" });
+        const freeformOption = page.locator("[role='option']").filter({ hasText: "My answer isn't listed above" });
         await expect(freeformOption).toHaveAttribute("aria-selected", "true");
         await expect(page.getByText("Submitting…")).not.toBeVisible();
     });
@@ -195,15 +195,15 @@ test.describe("multi-select dialog", () => {
     });
 
     test("Cancel triggers confirm when dirty from selection", async ({ page }) => {
-        await page.locator("button[role='checkbox']").first().click();
+        await page.locator("[role='checkbox']").first().click();
 
         await page.getByRole("button", { name: "Cancel" }).click();
         await expect(page.getByRole("heading", { name: "Unsaved changes" })).toBeVisible();
     });
 
     test("submits with selections", async ({ page }) => {
-        await page.locator("button[role='checkbox']").first().click();
-        await page.locator("button[role='checkbox']").nth(1).click();
+        await page.locator("[role='checkbox']").first().click();
+        await page.locator("[role='checkbox']").nth(1).click();
 
         await page.getByRole("button", { name: "Submit" }).click();
         await expect(page.getByText("Submitting…")).toBeVisible();
