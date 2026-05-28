@@ -63,12 +63,14 @@ function makeMockPi() {
     } = {};
     const entries: any[] = [];
     const eventEmissions: { channel: string; data: unknown }[] = [];
+    const sendMessageCalls: any[] = [];
 
     return {
         handlers,
         commands,
         entries,
         eventEmissions,
+        sendMessageCalls,
         on: (event: string, handler: any) => {
             if (!handlers[event]) handlers[event] = [];
             handlers[event].push(handler);
@@ -83,6 +85,9 @@ function makeMockPi() {
             emit: (channel: string, data: unknown) => {
                 eventEmissions.push({ channel, data });
             },
+        },
+        sendMessage: async (message: any, options?: any) => {
+            sendMessageCalls.push({ message, options });
         },
     };
 }
@@ -233,7 +238,7 @@ describe("headingExtension", () => {
 
     // ── session_start ────────────────────────────────────────────
 
-    test("session_start replays achievement and renders it", async () => {
+    test("session_start replays goal even when achievement exists", async () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx({
             branch: [
@@ -250,7 +255,7 @@ describe("headingExtension", () => {
         });
         await pi.handlers.session_start[0]({}, ctx);
         expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
-        expect(ctx.workingMessageCalls[0]).toContain("Fixed it");
+        expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
     });
 
     test("session_start replays goal when no achievement", async () => {
@@ -285,13 +290,13 @@ describe("headingExtension", () => {
 
     // ── agent_end ────────────────────────────────────────────────
 
-    test("agent_end keeps working message visible with achievement", () => {
+    test("agent_end keeps working message visible with goal", () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose", achievement: "Fixed it" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.agent_end[0]({}, ctx);
         expect(ctx.workingVisibleCalls).toContain(true);
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("Fixed it"))).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("Fix compose"))).toBe(true);
     });
 
     test("agent_end keeps working message visible with goal when no achievement", () => {
@@ -416,21 +421,21 @@ describe("headingExtension", () => {
 
     // ── turn_end ───────────────────────────────────────────────
 
-    test("turn_end shows achievement prefix on final turn", async () => {
+    test("turn_end sends achievement to chat on final turn", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         const msg = { content: "I fixed the bug" };
         // Final turn: no tool results
         pi.handlers.turn_end[0]({ message: msg, toolResults: [] }, ctx);
-        // Initial achievement prefix render using existing goal
-        expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
-        expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
+        // No working message change at turn end
+        expect(ctx.workingMessageCalls.length).toBe(0);
         await new Promise((r) => setTimeout(r, 50));
-        // Should have the achievement summarization result too
-        expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
-        ).toBe(true);
+        // Achievement should be sent as a chat message
+        expect(pi.sendMessageCalls.length).toBe(1);
+        expect(pi.sendMessageCalls[0].message.content).toContain("Docker setup");
+        expect(pi.sendMessageCalls[0].message.customType).toBe("heading-achievement");
+        expect(pi.sendMessageCalls[0].options.triggerTurn).toBe(false);
     });
 
     test("turn_end keeps working message for intermediate tool-call turns", () => {
@@ -481,7 +486,8 @@ describe("headingExtension", () => {
         const ctx = makeMockCtx();
         pi.handlers.turn_end[0]({ message: { content: "" } }, ctx);
         await new Promise((r) => setTimeout(r, 50));
-        // Should only have the initial prefix render, no achievement async
+        // No working message changes and no API call for empty text
+        expect(ctx.workingMessageCalls.length).toBe(0);
         expect(mockCompleteSimple.mock.calls.length).toBe(0);
     });
 
@@ -497,9 +503,9 @@ describe("headingExtension", () => {
         // 3. New user message bumps generation
         pi.handlers.before_agent_start[0]({ prompt: "second" }, ctx);
         await new Promise((r) => setTimeout(r, 100));
-        // The old achievement should not have rendered (gen mismatch)
-        // We expect at most 2 working message calls: first goal + second goal
-        expect(ctx.workingMessageCalls.length).toBeLessThanOrEqual(3);
+        // The old achievement should not have been sent to chat (gen mismatch)
+        // Only one sendMessage call from the non-stale turn_end if any
+        expect(pi.sendMessageCalls.length).toBe(0);
     });
 
     test("turn_end notifies on achievement error", async () => {
@@ -516,6 +522,8 @@ describe("headingExtension", () => {
                 n.msg.includes("Achievement summarize failed"),
             ),
         ).toBe(true);
+        // No chat message should be sent on error
+        expect(pi.sendMessageCalls.length).toBe(0);
     });
 
     // ── /heading command ─────────────────────────────────────────
