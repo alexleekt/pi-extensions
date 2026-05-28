@@ -130,12 +130,12 @@ async function runPrompt(
         /\{max_words\}/g,
         String(promptFile.maxWords),
     );
-    const example =
-        fileName === "topic"
-            ? "Rust memory leak"
-            : fileName === "achievement"
-              ? "Fixed JWT middleware in 3 files"
-              : "Fix the memory leak in the Rust service.";
+    const examples: Record<string, string> = {
+        topic: "Rust memory leak",
+        achievement: "Fixed JWT middleware in 3 files",
+        goal: "Fix the memory leak in the Rust service.",
+    };
+    const example = examples[fileName] ?? examples.goal;
     const systemPrompt = buildSystemPrompt(
         instructions,
         promptFile.maxWords,

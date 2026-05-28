@@ -297,6 +297,8 @@ describe("headingExtension", () => {
         pi.handlers.agent_end[0]({}, ctx);
         expect(ctx.workingVisibleCalls).toContain(true);
         expect(ctx.workingMessageCalls.some((m) => m?.includes("Fix compose"))).toBe(true);
+        // Event bus should match the working message (goal mode, not idle)
+        expect(pi.eventEmissions.some((e) => e.channel === "heading:state" && (e.data as any).mode === "goal")).toBe(true);
     });
 
     test("agent_end keeps working message visible with goal when no achievement", () => {
@@ -306,13 +308,16 @@ describe("headingExtension", () => {
         pi.handlers.agent_end[0]({}, ctx);
         expect(ctx.workingVisibleCalls).toContain(true);
         expect(ctx.workingMessageCalls.some((m) => m?.includes("Fix compose"))).toBe(true);
+        expect(pi.eventEmissions.some((e) => e.channel === "heading:state" && (e.data as any).mode === "goal")).toBe(true);
     });
 
-    test("agent_end does nothing when hasUI is false", () => {
+    test("agent_end clears everything when no state", () => {
         headingExtension(pi as any);
-        const ctx = makeMockCtx({ hasUI: false });
+        const ctx = makeMockCtx({ leafId: "leaf-no-state" });
         pi.handlers.agent_end[0]({}, ctx);
-        expect(ctx.workingMessageCalls.length).toBe(0);
+        expect(ctx.workingVisibleCalls).toContain(true);
+        expect(ctx.workingMessageCalls.some((m) => m === undefined)).toBe(true);
+        expect(pi.eventEmissions.some((e) => e.channel === "heading:state" && (e.data as any).mode === "idle")).toBe(true);
     });
 
     // ── session_shutdown ───────────────────────────────────────

@@ -106,4 +106,40 @@ describe("DialogFooter", () => {
         const cancelButton = screen.getByText("Cancel");
         expect(cancelButton).toBeInTheDocument();
     });
+
+    it("has aria-live region with assertive role when submitting", () => {
+        render(
+            <DialogFooter
+                isSubmitting={true}
+                onSubmit={() => {}}
+                onCancel={() => {}}
+            />,
+        );
+        const liveRegion = screen.getByText("Submitting answer");
+        expect(liveRegion).toHaveClass("sr-only");
+        expect(liveRegion).toHaveAttribute("aria-live", "assertive");
+        expect(liveRegion).toHaveAttribute("aria-atomic", "true");
+    });
+
+    it("disables Cancel button when isSubmitting is true", () => {
+        render(
+            <DialogFooter
+                isSubmitting={true}
+                onSubmit={() => {}}
+                onCancel={() => {}}
+            />,
+        );
+        expect(screen.getByText("Cancel")).toBeDisabled();
+    });
+
+    it("disables Submit button when isSubmitting is true", () => {
+        render(
+            <DialogFooter
+                isSubmitting={true}
+                onSubmit={() => {}}
+                onCancel={() => {}}
+            />,
+        );
+        expect(screen.getByText("Submitting…")).toBeDisabled();
+    });
 });

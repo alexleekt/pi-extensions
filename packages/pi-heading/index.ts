@@ -82,8 +82,8 @@ function makeDebugEntry(
         fullGoalPrompt: result.fullGoalPrompt,
         topicResponse: result.topic,
         goalResponse: result.goal,
-        rawTopic: result.topic,
-        rawGoal: result.goal,
+        rawTopic: "",
+        rawGoal: "",
         stableTopic: stableTopic ?? existing?.topic ?? "",
         finalGoal: result.goal || (existing?.goal ?? ""),
         topicStream: result.topicDebug,
@@ -114,7 +114,7 @@ function makeDebugEntryAchievement(
         achievementResponse: result.text,
         rawTopic: "",
         rawGoal: "",
-        rawAchievement: result.text,
+        rawAchievement: "",
         stableTopic: existing?.topic ?? "",
         finalGoal: existing?.goal ?? "",
         finalAchievement: result.text,
@@ -177,9 +177,12 @@ export default function (pi: ExtensionAPI) {
         const state = leafId ? getState(leafId) : undefined;
         if (state?.goal) {
             setHeadingMessage(ctx, state.goal, "goal");
+            exposeHeading(pi, state, "goal");
+        } else {
+            clearHeading(ctx);
+            clearExposure(pi);
         }
         ctx.ui.setWorkingVisible(true); // ensure working indicator stays visible
-        clearExposure(pi);
     });
 
     pi.on("session_shutdown", async (_event, ctx) => {

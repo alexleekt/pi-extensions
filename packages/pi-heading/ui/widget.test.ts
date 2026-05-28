@@ -23,10 +23,16 @@ describe("setHeadingMessage", () => {
         expect(ctx._workingMessages).toEqual(["Fix the bug"]);
     });
 
-    test("renders achievement", () => {
+    test("renders text in achievement mode", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Bug is fixed", "achievement");
         expect(ctx._workingMessages).toEqual(["Bug is fixed"]);
+    });
+
+    test("renders text in goal mode", () => {
+        const ctx = createMockCtx();
+        setHeadingMessage(ctx, "Fix the bug", "goal");
+        expect(ctx._workingMessages).toEqual(["Fix the bug"]);
     });
 
     test("renders working", () => {
