@@ -224,6 +224,81 @@ describe("SelectDialog", () => {
                 expect(document.activeElement).toBe(freeform);
             });
         });
+
+        it("ArrowUp from first option stays at first option", async () => {
+            renderWithFooter("single", buildPayload("single"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowUp" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+        });
+
+        it("Enter on freeform option does NOT submit (only selects)", async () => {
+            renderWithFooter("single", buildPayload("single"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                const freeform = screen.getByText("My answer isn't listed above").closest("[role='option']") as HTMLElement;
+                expect(document.activeElement).toBe(freeform);
+            });
+            fireEvent.keyDown(document.body, { key: "Enter" });
+            await waitFor(() => {
+                const freeform = screen.getByText("My answer isn't listed above").closest("[role='option']") as HTMLElement;
+                expect(freeform).toHaveAttribute("aria-selected", "true");
+            });
+            expect(mockSendToGlimpse).not.toHaveBeenCalled();
+        });
+
+        it("Enter fallback submits active option when no OptionCard is focused", async () => {
+            renderWithFooter("single", buildPayload("single"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+            (document.activeElement as HTMLElement)?.blur();
+            fireEvent.keyDown(document.body, { key: "Enter" });
+            await waitFor(() => {
+                expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
+            });
+            const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
+            expect(sent.kind).toBe("selection");
+            expect(sent.selections).toEqual(["Option B"]);
+        });
+
+        it("Enter fallback selects freeform when activeIndex is at freeform", async () => {
+            renderWithFooter("single", buildPayload("single"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                const freeform = screen.getByText("My answer isn't listed above").closest("[role='option']") as HTMLElement;
+                expect(document.activeElement).toBe(freeform);
+            });
+            (document.activeElement as HTMLElement)?.blur();
+            fireEvent.keyDown(document.body, { key: "Enter" });
+            await waitFor(() => {
+                const freeform = screen.getByText("My answer isn't listed above").closest("[role='option']") as HTMLElement;
+                expect(freeform).toHaveAttribute("aria-selected", "true");
+            });
+            expect(mockSendToGlimpse).not.toHaveBeenCalled();
+        });
     });
 
     describe("multi mode", () => {
@@ -392,6 +467,27 @@ describe("SelectDialog", () => {
             fireEvent.keyDown(document.body, { key: "ArrowDown" });
             await waitFor(() => {
                 expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+        });
+
+        it("ArrowDown from freeform option stays at freeform", async () => {
+            renderWithFooter("multi", buildPayload("multi"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                const freeform = screen.getByText("My answer isn't listed above").closest("[role='option']") as HTMLElement;
+                expect(document.activeElement).toBe(freeform);
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                const freeform = screen.getByText("My answer isn't listed above").closest("[role='option']") as HTMLElement;
+                expect(document.activeElement).toBe(freeform);
             });
         });
 
