@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { sendCancelled } from "../util/glimpse";
 import { useDialogKeys } from "./useDialogKeys";
@@ -35,23 +35,31 @@ export function useBaseDialog({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
+    /** Synchronous guard — prevents any double-send (submit or cancel) in the same event loop tick.
+     *  React state is batched and async; a ref is the only reliable guard for rapid events. */
+    const hasSent = useRef(false);
+
     const handleCancel = useCallback(() => {
+        if (hasSent.current) return;
         if (isDirty) {
             setShowCancelConfirm(true);
             return;
         }
+        hasSent.current = true;
         sendCancelled();
     }, [isDirty]);
 
     const handleSubmit = useCallback(() => {
-        if (isSubmitting) return;
+        if (hasSent.current) return;
+        hasSent.current = true;
         setIsSubmitting(true);
         try {
             onSubmit();
         } catch {
             setIsSubmitting(false);
+            hasSent.current = false;
         }
-    }, [isSubmitting, onSubmit]);
+    }, [onSubmit]);
 
     useDialogKeys({
         onSubmit: handleSubmit,
@@ -60,6 +68,7 @@ export function useBaseDialog({
         isCommentOpen,
         onCloseComment,
         submitDisabled,
+        showCancelConfirm,
     });
 
     /* Render footer via portal so it spans full window width beneath both panels. */

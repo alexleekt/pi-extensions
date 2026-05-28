@@ -48,15 +48,18 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         comment,
         showComment,
         activeIndex,
-        isSubmitting: false,
+        isSubmitting,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
         selectAllOption,
         mode,
     };
 
-    const toggle = useCallback((title: string) => {
+    const toggle = useCallback((title: string, index?: number) => {
         const s = stateRef.current;
+        if (index !== undefined) {
+            setActiveIndex(index);
+        }
         if (s.selectAllOption && title === s.selectAllOption.title) {
             const regular = s.options
                 .filter((opt) => !isSelectAllOption(opt.title))
@@ -91,7 +94,6 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
 
     const handleSubmit = useCallback(() => {
         const s = stateRef.current;
-        if (s.isSubmitting) return;
 
         if (s.mode === "single") {
             if (s.selected === FREEFORM_OPTION_TITLE) {
@@ -158,11 +160,6 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         onCloseComment: () => setShowComment(false),
         submitDisabled: !hasFreeform && (isSingle ? selected === null : selectedSet.size === 0),
     });
-
-    // Sync isSubmitting into stateRef so handleSubmit guard works
-    useEffect(() => {
-        stateRef.current.isSubmitting = isSubmitting;
-    }, [isSubmitting]);
 
     useEffect(() => {
         const id = requestAnimationFrame(() => {
@@ -243,16 +240,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                     }
                     return next;
                 });
-            } else if (e.key === " " || e.key === "Spacebar") {
-                if (s.mode === "multi") {
-                    e.preventDefault();
-                    if (s.activeIndex >= 0 && s.activeIndex < s.options.length)
-                        toggle(s.options[s.activeIndex].title);
-                    else if (s.allowFreeform && s.activeIndex === s.options.length)
-                        toggle(FREEFORM_OPTION_TITLE);
-                }
             } else if (e.key === "Enter") {
-                e.preventDefault();
                 if (s.mode === "single") {
                     const focusedEl = document.activeElement;
                     const freeformFocused =
@@ -261,30 +249,39 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                         (focusedEl === freeformRef.current ||
                             freeformRef.current?.contains(focusedEl));
                     if (freeformFocused) {
+                        e.preventDefault();
                         setSelected(FREEFORM_OPTION_TITLE);
-                    } else if (s.activeIndex >= 0 && s.activeIndex < s.options.length) {
+                        return;
+                    }
+                    // If an OptionCard is focused, submit its option
+                    const optionTitle =
+                        focusedEl instanceof HTMLElement
+                            ? focusedEl.getAttribute("data-option")
+                            : null;
+                    if (optionTitle) {
+                        e.preventDefault();
+                        stateRef.current.selected = optionTitle;
+                        setSelected(optionTitle);
+                        baseHandleSubmit();
+                        return;
+                    }
+                    // Fallback: submit the active option
+                    if (s.activeIndex >= 0 && s.activeIndex < s.options.length) {
+                        e.preventDefault();
                         const opt = s.options[s.activeIndex];
                         stateRef.current.selected = opt.title;
                         setSelected(opt.title);
                         baseHandleSubmit();
-                    } else if (s.allowFreeform && s.activeIndex === s.options.length) {
-                        setSelected(FREEFORM_OPTION_TITLE);
+                        return;
                     }
-                } else {
-                    const focusedEl = document.activeElement;
-                    const freeformFocused =
-                        s.allowFreeform &&
-                        focusedEl != null &&
-                        (focusedEl === freeformRef.current ||
-                            freeformRef.current?.contains(focusedEl));
-                    if (freeformFocused) {
-                        toggle(FREEFORM_OPTION_TITLE);
-                    } else if (s.activeIndex >= 0 && s.activeIndex < s.options.length) {
-                        toggle(s.options[s.activeIndex].title);
-                    } else if (s.allowFreeform && s.activeIndex === s.options.length) {
-                        toggle(FREEFORM_OPTION_TITLE);
+                    if (s.allowFreeform && s.activeIndex === s.options.length) {
+                        e.preventDefault();
+                        setSelected(FREEFORM_OPTION_TITLE);
+                        return;
                     }
                 }
+                // Multi-select: Enter/Space activation is handled by OptionCard itself
+                // to avoid double-toggle (OptionCard onKeyDown + window listener both fire).
             }
         };
         window.addEventListener("keydown", handleKeyDown);
@@ -350,9 +347,10 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                                 isSelected={isSingle ? selected === opt.title : selectedSet.has(opt.title)}
                                 isActive={activeIndex === idx}
                                 mode={mode}
-                                onClick={() => toggle(opt.title)}
+                                onClick={() => toggle(opt.title, idx)}
                                 recommended={opt.recommended}
                                 tabIndex={activeIndex === idx ? 0 : -1}
+                                data-option={opt.title}
                             />
                         ))
                     ) : (

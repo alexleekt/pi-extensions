@@ -16,6 +16,8 @@ interface UseDialogKeysOptions {
     allowSubmitInInput?: boolean;
     /** If true, keyboard submit is disabled (e.g. nothing selected). */
     submitDisabled?: boolean;
+    /** If true, a cancel-confirm modal is open — block all keyboard actions. */
+    showCancelConfirm?: boolean;
 }
 
 /**
@@ -32,6 +34,7 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
         onCloseComment,
         allowSubmitInInput = true,
         submitDisabled = false,
+        showCancelConfirm = false,
     } = options;
 
     const stateRef = useRef({
@@ -42,6 +45,7 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
         onCloseComment,
         allowSubmitInInput,
         submitDisabled,
+        showCancelConfirm,
     });
 
     stateRef.current = {
@@ -52,6 +56,7 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
         onCloseComment,
         allowSubmitInInput,
         submitDisabled,
+        showCancelConfirm,
     };
 
     /** Synchronous lock prevents double-submit between event loop ticks. */
@@ -65,7 +70,7 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
         if (submittingLock.current) return;
         submittingLock.current = true;
         const s = stateRef.current;
-        if (s.isSubmitting || s.submitDisabled) return;
+        if (s.isSubmitting || s.submitDisabled || s.showCancelConfirm) return;
         s.onSubmit();
     }, []);
 
@@ -78,6 +83,10 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
                 target instanceof HTMLTextAreaElement;
 
             if (e.key === "Escape") {
+                // If a cancel-confirm modal is open, let the modal handle Escape
+                if (s.showCancelConfirm) {
+                    return;
+                }
                 // If a textarea is focused, blur it first (don't cancel yet)
                 if (target instanceof HTMLTextAreaElement) {
                     e.preventDefault();
