@@ -22,7 +22,7 @@ interface RichTextProps {
  * instead of rendering markdown so that highlight markup does not
  * interfere with markdown parsing.
  */
-export default function RichText({ text, className, query, as: Tag = "span" }: RichTextProps) {
+export default function RichText({ text, className, query, as: Tag = "div" }: RichTextProps) {
     const html = query
         ? highlightMatch(text, query)
         : renderMarkdownInline(text);

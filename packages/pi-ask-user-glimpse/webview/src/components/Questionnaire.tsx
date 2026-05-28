@@ -124,7 +124,6 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                             <QuestionCard
                                 question={q}
                                 answer={answers[q.title]}
-                                index={0}
                                 onSelect={(title) => setSingleAnswer(q.title, title)}
                                 onToggleMulti={(title) => toggleMultiAnswer(q.title, title)}
                                 onSetText={(text) => setSingleAnswer(q.title, text)}

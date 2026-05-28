@@ -20,7 +20,6 @@ interface Question {
 interface QuestionCardProps {
     question: Question;
     answer: string | string[] | undefined;
-    index: number;
     onSelect: (title: string) => void;
     onToggleMulti: (title: string) => void;
     onSetText: (text: string) => void;
