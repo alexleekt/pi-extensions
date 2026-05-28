@@ -1,13 +1,16 @@
 # Progress
 
 ## Status
-In Progress
+Completed
 
 ## Tasks
-- ✅ ContextPanel unit tests (5 tests covering iframe srcdoc, empty context, sandbox, HTML and markdown rendering)
+- ✅ App.tsx unit tests (11 tests covering all payload types, context panel, FooterContext, error states, and payload stripping)
+- ✅ ContextPanel test mock fix (marked.parse mock now correctly extracts heading from multi-line markdown)
 
 ## Files Changed
-- webview/src/components/__tests__/ContextPanel.test.tsx
+- webview/src/App.test.tsx (new)
+- webview/src/components/__tests__/ContextPanel.test.tsx (mock fix)
 
 ## Notes
-All 5 ContextPanel tests pass. Mocked mermaid, marked, settings, pi-charts, and markdown utilities.
+All 224 unit tests pass, 31 e2e tests pass, typecheck clean, build succeeds.
+App.tsx coverage: 0% → 100% (with mocked child components).
