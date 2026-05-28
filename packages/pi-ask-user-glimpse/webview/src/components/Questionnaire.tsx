@@ -13,7 +13,7 @@ type AnswerValue = string | string[];
 
 function isAnswered(answer: AnswerValue | undefined): boolean {
     if (answer === undefined) return false;
-    if (Array.isArray(answer)) return answer.length > 0;
+    if (Array.isArray(answer)) return answer.some((a) => String(a).trim().length > 0);
     return String(answer).trim().length > 0;
 }
 
