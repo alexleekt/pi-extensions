@@ -63,7 +63,8 @@ export function useBaseDialog({
         setIsSubmitting(true);
         try {
             onSubmit();
-        } catch {
+        } catch (err) {
+            console.error("[pi-ask-user-glimpse] Submit failed:", err);
             setIsSubmitting(false);
             hasSent.current = false;
         }
