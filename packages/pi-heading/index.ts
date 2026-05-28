@@ -34,10 +34,8 @@ import {
     setState,
 } from "./state/store.js";
 import {
-    clearWidget,
-    isSpinnerRunning,
-    renderWidget,
-    stopSpinner,
+    clearHeading,
+    setHeadingMessage,
 } from "./ui/widget.js";
 
 let turnGeneration = 0;
@@ -160,38 +158,38 @@ export default function (pi: ExtensionAPI) {
         if (!ctx.hasUI) return;
         turnGeneration = 0;
         agentStartedForCurrentTurn = false;
-        ctx.ui.setWorkingVisible(true); // restore default in case previous session left it hidden
         const replayed = replayBranch(ctx);
-        if (replayed) {
-            if (replayed.achievement) {
-                renderWidget(ctx, replayed.achievement, "achievement");
-                exposeHeading(pi, replayed, "achievement");
-            } else if (replayed.goal) {
-                renderWidget(ctx, replayed.goal, "goal");
-                exposeHeading(pi, replayed, "goal");
-            } else {
-                clearWidget(ctx);
-                clearExposure(pi);
-            }
+        if (replayed?.achievement) {
+            setHeadingMessage(ctx, replayed.achievement, "achievement");
+            exposeHeading(pi, replayed, "achievement");
+        } else if (replayed?.goal) {
+            setHeadingMessage(ctx, replayed.goal, "goal");
+            exposeHeading(pi, replayed, "goal");
         } else {
-            clearWidget(ctx);
+            clearHeading(ctx);
             clearExposure(pi);
         }
     });
 
-    // ── Agent ended — restore Pi's default loader ──────────────────
+    // ── Agent ended — keep the working message visible ────────────
 
     pi.on("agent_end", (_event, ctx) => {
         if (!ctx.hasUI) return;
-        agentStartedForCurrentTurn = false; // prevent late summarize from spinning
-        stopSpinner(); // safety net against any dangling spinner
-        ctx.ui.setWorkingVisible(true); // restore Pi's loader for next agent run
+        agentStartedForCurrentTurn = false;
+        const leafId = ctx.sessionManager.getLeafId();
+        const state = leafId ? getState(leafId) : undefined;
+        if (state?.achievement) {
+            setHeadingMessage(ctx, state.achievement, "achievement");
+        } else if (state?.goal) {
+            setHeadingMessage(ctx, state.goal, "goal");
+        }
+        ctx.ui.setWorkingVisible(true); // ensure working indicator stays visible
         clearExposure(pi);
     });
 
     pi.on("session_shutdown", async (_event, ctx) => {
         if (!ctx.hasUI) return;
-        clearWidget(ctx);
+        clearHeading(ctx);
         ctx.ui.setWorkingVisible(true); // restore default for next session
         clearExposure(pi);
     });
@@ -241,20 +239,7 @@ export default function (pi: ExtensionAPI) {
                 }
 
                 const mode = agentStartedForCurrentTurn ? "working" : "goal";
-                // Defensive: don't let a late async render stop an active spinner
-                // (e.g. summarize completes during a subsequent tool-call turn).
-                if (mode !== "working" && isSpinnerRunning()) {
-                    logDebug(
-                        makeDebugEntryError(
-                            prompt,
-                            existing,
-                            "skipped-goal-render: spinner active",
-                            ctx.model?.id,
-                        ),
-                    );
-                    return;
-                }
-                renderWidget(ctx, result.goal, mode);
+                setHeadingMessage(ctx, result.goal, mode);
                 exposeHeading(pi, state, mode);
                 logDebug(
                     makeDebugEntry(
@@ -277,29 +262,28 @@ export default function (pi: ExtensionAPI) {
         })();
     });
 
-    // ── Agent started — flip to working indicator ──────────────────
+    // ── Agent started — set working message text ──────────────────
 
     pi.on("agent_start", (_event, ctx) => {
         if (!ctx.hasUI) return;
         agentStartedForCurrentTurn = true;
-        ctx.ui.setWorkingVisible(false); // suppress Pi's default loader — our widget spinner replaces it
 
         const leafId = ctx.sessionManager.getLeafId();
         const state = leafId ? getState(leafId) : undefined;
         if (state?.goal) {
-            renderWidget(ctx, state.goal, "working");
+            setHeadingMessage(ctx, state.goal, "working");
             exposeHeading(pi, state, "working");
         }
     });
 
-    // ── Turn started — restart spinner between tool-call turns ─────
+    // ── Turn started — refresh working message between tool-call turns ─
 
     pi.on("turn_start", (_event: TurnStartEvent, ctx) => {
         if (!ctx.hasUI) return;
         const leafId = ctx.sessionManager.getLeafId();
         const state = leafId ? getState(leafId) : undefined;
         if (state?.goal) {
-            renderWidget(ctx, state.goal, "working");
+            setHeadingMessage(ctx, state.goal, "working");
             exposeHeading(pi, state, "working");
         }
     });
@@ -315,34 +299,29 @@ export default function (pi: ExtensionAPI) {
         const hasToolResults =
             event.toolResults && event.toolResults.length > 0;
 
-        if (!hasToolResults) {
-            // Final turn: stop spinner and show completion prefix
-            stopSpinner();
-            if (existing?.goal) {
-                renderWidget(ctx, existing.goal, "achievement");
-                exposeHeading(pi, existing, "achievement");
-            }
-        }
-        // Intermediate turns: keep spinner running across the turn_end → turn_start gap
-
-        // Extract the assistant's final message text for this turn
         const assistantText = extractAgentText(event.message);
-        if (!assistantText.trim()) return;
 
         if (hasToolResults) {
-            // Intermediate turns carry tool requests, not accomplishments.
-            // Skip achievement summarization to avoid wasting LLM calls
-            // on transitional messages like "Let me search for that…"
-            logDebug(
-                makeDebugEntryError(
-                    assistantText.slice(0, 200),
-                    existing,
-                    "skipped-achievement: intermediate tool turn",
-                    ctx.model?.id,
-                ),
-            );
+            if (assistantText.trim()) {
+                logDebug(
+                    makeDebugEntryError(
+                        assistantText.slice(0, 200),
+                        existing,
+                        "skipped-achievement: intermediate tool turn",
+                        ctx.model?.id,
+                    ),
+                );
+            }
             return;
         }
+
+        // Final turn: show completion prefix immediately
+        if (existing?.goal) {
+            setHeadingMessage(ctx, existing.goal, "achievement");
+            exposeHeading(pi, existing, "achievement");
+        }
+
+        if (!assistantText.trim()) return;
 
         const myGeneration = turnGeneration;
 
@@ -391,20 +370,7 @@ export default function (pi: ExtensionAPI) {
                         persistState(pi, state);
                     }
                 }
-                // Defensive: don't overwrite an active spinner with an achievement
-                // from a previous turn that completed during a subsequent tool-call turn.
-                if (isSpinnerRunning()) {
-                    logDebug(
-                        makeDebugEntryError(
-                            assistantText,
-                            existing,
-                            "skipped-achievement-render: spinner active",
-                            ctx.model?.id,
-                        ),
-                    );
-                    return;
-                }
-                renderWidget(ctx, achievement, "achievement");
+                setHeadingMessage(ctx, achievement, "achievement");
                 exposeHeading(pi, state, "achievement");
                 logDebug(
                     makeDebugEntryAchievement(
@@ -456,7 +422,7 @@ export default function (pi: ExtensionAPI) {
                 setState(leafId, state);
                 persistState(pi, state);
             }
-            renderWidget(ctx, goal);
+            setHeadingMessage(ctx, goal);
             exposeHeading(pi, state, "goal");
             ctx.ui.notify(`Heading set: ${goal}`, "info");
         },

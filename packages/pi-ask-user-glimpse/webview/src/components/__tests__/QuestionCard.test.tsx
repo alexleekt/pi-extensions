@@ -228,4 +228,244 @@ describe("QuestionCard", () => {
         fireEvent.change(textarea, { target: { value: "Freeform answer" } });
         expect(onSetText).toHaveBeenCalledWith("Freeform answer");
     });
+
+    describe("keyboard navigation", () => {
+        beforeEach(() => {
+            Element.prototype.scrollIntoView = vi.fn();
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it("ArrowDown moves activeIndex to next option and updates tabIndex", () => {
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions }}
+                    answer={undefined}
+                    onSelect={vi.fn()}
+                    onToggleMulti={vi.fn()}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            const options = screen.getAllByRole("option");
+            expect(options[0]).toHaveAttribute("tabindex", "0");
+            expect(options[1]).toHaveAttribute("tabindex", "-1");
+
+            fireEvent.keyDown(listbox, { key: "ArrowDown" });
+            expect(options[0]).toHaveAttribute("tabindex", "-1");
+            expect(options[1]).toHaveAttribute("tabindex", "0");
+        });
+
+        it("ArrowUp moves activeIndex to previous option and updates tabIndex", () => {
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions }}
+                    answer={undefined}
+                    onSelect={vi.fn()}
+                    onToggleMulti={vi.fn()}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            const options = screen.getAllByRole("option");
+
+            // Move down to index 1 first
+            fireEvent.keyDown(listbox, { key: "ArrowDown" });
+            expect(options[1]).toHaveAttribute("tabindex", "0");
+
+            // Then move back up
+            fireEvent.keyDown(listbox, { key: "ArrowUp" });
+            expect(options[0]).toHaveAttribute("tabindex", "0");
+            expect(options[1]).toHaveAttribute("tabindex", "-1");
+        });
+
+        it("ArrowDown does not go past last option", () => {
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions }}
+                    answer={undefined}
+                    onSelect={vi.fn()}
+                    onToggleMulti={vi.fn()}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            const options = screen.getAllByRole("option");
+
+            fireEvent.keyDown(listbox, { key: "ArrowDown" });
+            fireEvent.keyDown(listbox, { key: "ArrowDown" });
+            expect(options[2]).toHaveAttribute("tabindex", "0");
+
+            fireEvent.keyDown(listbox, { key: "ArrowDown" });
+            expect(options[2]).toHaveAttribute("tabindex", "0");
+        });
+
+        it("ArrowUp does not go before first option", () => {
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions }}
+                    answer={undefined}
+                    onSelect={vi.fn()}
+                    onToggleMulti={vi.fn()}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            const options = screen.getAllByRole("option");
+
+            expect(options[0]).toHaveAttribute("tabindex", "0");
+            fireEvent.keyDown(listbox, { key: "ArrowUp" });
+            expect(options[0]).toHaveAttribute("tabindex", "0");
+        });
+
+        it("Enter key selects the active option in single-select mode", () => {
+            const onSelect = vi.fn();
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions }}
+                    answer={undefined}
+                    onSelect={onSelect}
+                    onToggleMulti={vi.fn()}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            // Move activeIndex to 1
+            fireEvent.keyDown(listbox, { key: "ArrowDown" });
+            fireEvent.keyDown(listbox, { key: "Enter" });
+            expect(onSelect).toHaveBeenCalledWith("Option B");
+        });
+
+        it("Space key selects the active option in single-select mode", () => {
+            const onSelect = vi.fn();
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions }}
+                    answer={undefined}
+                    onSelect={onSelect}
+                    onToggleMulti={vi.fn()}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            fireEvent.keyDown(listbox, { key: "ArrowDown" });
+            fireEvent.keyDown(listbox, { key: " " });
+            expect(onSelect).toHaveBeenCalledWith("Option B");
+        });
+
+        it("Enter key toggles the active option in multi-select mode", () => {
+            const onToggleMulti = vi.fn();
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                    answer={undefined}
+                    onSelect={vi.fn()}
+                    onToggleMulti={onToggleMulti}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            fireEvent.keyDown(listbox, { key: "ArrowDown" });
+            fireEvent.keyDown(listbox, { key: "Enter" });
+            expect(onToggleMulti).toHaveBeenCalledWith("Option B");
+        });
+
+        it("Space key toggles the active option in multi-select mode", () => {
+            const onToggleMulti = vi.fn();
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                    answer={undefined}
+                    onSelect={vi.fn()}
+                    onToggleMulti={onToggleMulti}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            fireEvent.keyDown(listbox, { key: "ArrowDown" });
+            fireEvent.keyDown(listbox, { key: " " });
+            expect(onToggleMulti).toHaveBeenCalledWith("Option B");
+        });
+
+        it("number key 1 selects the first option", () => {
+            const onSelect = vi.fn();
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions }}
+                    answer={undefined}
+                    onSelect={onSelect}
+                    onToggleMulti={vi.fn()}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            fireEvent.keyDown(listbox, { key: "1" });
+            expect(onSelect).toHaveBeenCalledWith("Option A");
+        });
+
+        it("number key 3 selects the third option", () => {
+            const onSelect = vi.fn();
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions }}
+                    answer={undefined}
+                    onSelect={onSelect}
+                    onToggleMulti={vi.fn()}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            fireEvent.keyDown(listbox, { key: "3" });
+            expect(onSelect).toHaveBeenCalledWith("Option C");
+        });
+
+        it("number key beyond option count does nothing", () => {
+            const onSelect = vi.fn();
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions }}
+                    answer={undefined}
+                    onSelect={onSelect}
+                    onToggleMulti={vi.fn()}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            fireEvent.keyDown(listbox, { key: "9" });
+            expect(onSelect).not.toHaveBeenCalled();
+        });
+
+        it("number key toggles in multi-select mode", () => {
+            const onToggleMulti = vi.fn();
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                    answer={undefined}
+                    onSelect={vi.fn()}
+                    onToggleMulti={onToggleMulti}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            fireEvent.keyDown(listbox, { key: "2" });
+            expect(onToggleMulti).toHaveBeenCalledWith("Option B");
+        });
+
+        it("does not handle keyboard events when no options", () => {
+            const onSelect = vi.fn();
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: [] }}
+                    answer={undefined}
+                    onSelect={onSelect}
+                    onToggleMulti={vi.fn()}
+                    onSetText={vi.fn()}
+                />,
+            );
+            // No listbox when no options
+            expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+        });
+    });
 });

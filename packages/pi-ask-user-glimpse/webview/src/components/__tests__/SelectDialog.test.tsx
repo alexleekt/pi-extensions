@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import SelectDialog from "../SelectDialog";
 import { WithFooterProvider } from "../../test-helpers";
-
 const mockSendToGlimpse = vi.fn();
 const mockSendCancelled = vi.fn();
 
@@ -142,6 +141,88 @@ describe("SelectDialog", () => {
         it("hides per-option comment section when allowComment is false", () => {
             renderWithFooter("single", buildPayload("single", { allowComment: false }));
             expect(screen.queryByText("Add comment")).not.toBeInTheDocument();
+        });
+
+        it("ArrowDown moves focus to next option", async () => {
+            renderWithFooter("single", buildPayload("single"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+        });
+
+        it("ArrowUp moves focus to previous option", async () => {
+            renderWithFooter("single", buildPayload("single"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowUp" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+        });
+
+        it("Enter on focused option submits it", async () => {
+            renderWithFooter("single", buildPayload("single"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "Enter" });
+            await waitFor(() => {
+                expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
+            });
+            const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
+            expect(sent.kind).toBe("selection");
+            expect(sent.selections).toEqual(["Option A"]);
+        });
+
+        it("number key 1 selects the first option", async () => {
+            renderWithFooter("single", buildPayload("single"));
+            fireEvent.keyDown(document.body, { key: "1" });
+            await waitFor(() => {
+                const optionA = screen.getByText("Option A").closest("[role='option']") as HTMLElement;
+                expect(optionA).toHaveAttribute("aria-selected", "true");
+            });
+        });
+
+        it("clicking an option syncs activeIndex to that option", async () => {
+            renderWithFooter("single", buildPayload("single"));
+            fireEvent.click(screen.getByText("Option B"));
+            const optionB = screen.getByText("Option B").closest("[role='option']") as HTMLElement;
+            expect(optionB).toHaveClass("ring-2");
+            expect(optionB).toHaveAttribute("tabIndex", "0");
+        });
+
+        it("minus key selects freeform option", async () => {
+            renderWithFooter("single", buildPayload("single"));
+            fireEvent.keyDown(document.body, { key: "-" });
+            await waitFor(() => {
+                const freeform = screen.getByText("My answer isn't listed above").closest("[role='option']") as HTMLElement;
+                expect(freeform).toHaveAttribute("aria-selected", "true");
+            });
+        });
+
+        it("ArrowDown navigates to freeform option after last regular option", async () => {
+            renderWithFooter("single", buildPayload("single"));
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option A");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                expect(document.activeElement).toHaveAttribute("data-option", "Option B");
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowDown" });
+            await waitFor(() => {
+                const freeform = screen.getByText("My answer isn't listed above").closest("[role='option']") as HTMLElement;
+                expect(document.activeElement).toBe(freeform);
+            });
         });
     });
 

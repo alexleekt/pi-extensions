@@ -14,7 +14,7 @@ import {
 } from "./state/debug.js";
 // Import real internal modules — we verify through their side effects
 import { setState } from "./state/store.js";
-import { isSpinnerRunning, renderWidget, stopSpinner } from "./ui/widget.js";
+import { clearHeading, setHeadingMessage } from "./ui/widget.js";
 
 // Mock the external LLM dependency so summarize() doesn't make real API calls
 const mockCompleteSimple = mock(() =>
@@ -112,13 +112,13 @@ function makeMockCtx(
 
     const notifyCalls: any[] = [];
     const workingVisibleCalls: boolean[] = [];
-    const widgetCalls: any[] = [];
+    const workingMessageCalls: (string | undefined)[] = [];
 
     return {
         hasUI,
         notifyCalls,
         workingVisibleCalls,
-        widgetCalls,
+        workingMessageCalls,
         sessionManager: {
             getLeafId: () => leafId,
             getBranch: () => branch,
@@ -135,8 +135,8 @@ function makeMockCtx(
             setWorkingVisible: (visible: boolean) => {
                 workingVisibleCalls.push(visible);
             },
-            setWidget: (key: string, lines: string[] | undefined) => {
-                widgetCalls.push({ key, lines });
+            setWorkingMessage: (msg?: string) => {
+                workingMessageCalls.push(msg);
             },
             theme: {
                 fg: (_style: string, text: string) => text,
@@ -186,8 +186,6 @@ describe("headingExtension", () => {
             } as any),
         );
 
-        // Reset module-level state
-        stopSpinner();
         setDebugEnabled(false);
         try {
             fs.unlinkSync(DEBUG_LOG);
@@ -251,9 +249,8 @@ describe("headingExtension", () => {
             ],
         });
         await pi.handlers.session_start[0]({}, ctx);
-        expect(ctx.widgetCalls.length).toBeGreaterThan(0);
-        expect(ctx.widgetCalls[0].key).toBe("pi-heading");
-        expect(ctx.widgetCalls[0].lines?.[0]).toContain("Fixed it");
+        expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
+        expect(ctx.workingMessageCalls[0]).toContain("Fixed it");
     });
 
     test("session_start replays goal when no achievement", async () => {
@@ -268,56 +265,58 @@ describe("headingExtension", () => {
             ],
         });
         await pi.handlers.session_start[0]({}, ctx);
-        expect(ctx.widgetCalls.length).toBeGreaterThan(0);
-        expect(ctx.widgetCalls[0].lines?.[0]).toContain("Fix compose");
+        expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
+        expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
     });
 
-    test("session_start clears widget when no replay", async () => {
+    test("session_start clears heading when no replay", async () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         await pi.handlers.session_start[0]({}, ctx);
-        // clearWidget calls setWidget with undefined
-        expect(ctx.widgetCalls.some((w) => w.lines === undefined)).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m === undefined)).toBe(true);
     });
 
     test("session_start does nothing when hasUI is false", async () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx({ hasUI: false });
         await pi.handlers.session_start[0]({}, ctx);
-        expect(ctx.widgetCalls.length).toBe(0);
-    });
-
-    test("session_start restores working visible", async () => {
-        headingExtension(pi as any);
-        const ctx = makeMockCtx();
-        await pi.handlers.session_start[0]({}, ctx);
-        expect(ctx.workingVisibleCalls).toContain(true);
+        expect(ctx.workingMessageCalls.length).toBe(0);
     });
 
     // ── agent_end ────────────────────────────────────────────────
 
-    test("agent_end stops spinner and restores working visible", () => {
+    test("agent_end keeps working message visible with achievement", () => {
+        setState("leaf-1", { topic: "Docker", goal: "Fix compose", achievement: "Fixed it" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.agent_end[0]({}, ctx);
-        expect(isSpinnerRunning()).toBe(false);
         expect(ctx.workingVisibleCalls).toContain(true);
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("Fixed it"))).toBe(true);
+    });
+
+    test("agent_end keeps working message visible with goal when no achievement", () => {
+        setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        pi.handlers.agent_end[0]({}, ctx);
+        expect(ctx.workingVisibleCalls).toContain(true);
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("Fix compose"))).toBe(true);
     });
 
     test("agent_end does nothing when hasUI is false", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx({ hasUI: false });
         pi.handlers.agent_end[0]({}, ctx);
-        // Should not throw; no visible side effects to check
+        expect(ctx.workingMessageCalls.length).toBe(0);
     });
 
     // ── session_shutdown ───────────────────────────────────────
 
-    test("session_shutdown clears widget and restores working visible", async () => {
+    test("session_shutdown clears heading and restores working visible", async () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         await pi.handlers.session_shutdown[0]({}, ctx);
-        expect(ctx.widgetCalls.some((w) => w.lines === undefined)).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m === undefined)).toBe(true);
         expect(ctx.workingVisibleCalls).toContain(true);
     });
 
@@ -328,22 +327,22 @@ describe("headingExtension", () => {
         const ctx = makeMockCtx();
         pi.handlers.before_agent_start[0]({ prompt: "help with docker" }, ctx);
         await new Promise((r) => setTimeout(r, 50));
-        expect(ctx.widgetCalls.length).toBeGreaterThan(0);
-        expect(ctx.widgetCalls[0].lines?.[0]).toContain("Docker setup");
+        expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
+        expect(ctx.workingMessageCalls[0]).toContain("Docker setup");
     });
 
     test("before_agent_start does nothing for empty prompt", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.before_agent_start[0]({ prompt: "  " }, ctx);
-        expect(ctx.widgetCalls.length).toBe(0);
+        expect(ctx.workingMessageCalls.length).toBe(0);
     });
 
     test("before_agent_start does nothing when hasUI is false", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx({ hasUI: false });
         pi.handlers.before_agent_start[0]({ prompt: "help" }, ctx);
-        expect(ctx.widgetCalls.length).toBe(0);
+        expect(ctx.workingMessageCalls.length).toBe(0);
     });
 
     test("before_agent_start skips stale generation renders", async () => {
@@ -355,21 +354,7 @@ describe("headingExtension", () => {
         pi.handlers.before_agent_start[0]({ prompt: "second" }, ctx);
         await new Promise((r) => setTimeout(r, 100));
         // Only the second call's result should render
-        expect(ctx.widgetCalls.length).toBe(1);
-    });
-
-    test("before_agent_start skips render when spinner is already running", async () => {
-        headingExtension(pi as any);
-        const ctx = makeMockCtx();
-        // Prime with existing state so agent_start would have started spinner
-        setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
-        pi.handlers.agent_start[0]({}, ctx);
-        expect(isSpinnerRunning()).toBe(true);
-        // Now fire before_agent_start — it should skip goal render
-        pi.handlers.before_agent_start[0]({ prompt: "help" }, ctx);
-        await new Promise((r) => setTimeout(r, 50));
-        // Should only have the agent_start widget call, not the summarize result
-        expect(ctx.widgetCalls.length).toBe(1);
+        expect(ctx.workingMessageCalls.length).toBe(1);
     });
 
     test("before_agent_start notifies on summarize error", async () => {
@@ -395,67 +380,66 @@ describe("headingExtension", () => {
 
     // ── agent_start ──────────────────────────────────────────────
 
-    test("agent_start renders working spinner and suppresses Pi loader", () => {
+    test("agent_start sets working message with goal", () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.agent_start[0]({}, ctx);
-        expect(isSpinnerRunning()).toBe(true);
-        expect(ctx.workingVisibleCalls).toContain(false);
-        expect(ctx.widgetCalls.length).toBeGreaterThan(0);
+        expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
+        expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
     });
 
     test("agent_start does nothing when hasUI is false", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx({ hasUI: false });
         pi.handlers.agent_start[0]({}, ctx);
-        expect(ctx.widgetCalls.length).toBe(0);
+        expect(ctx.workingMessageCalls.length).toBe(0);
     });
 
     // ── turn_start ─────────────────────────────────────────────
 
-    test("turn_start restarts spinner for tool-call turns", () => {
+    test("turn_start refreshes working message for tool-call turns", () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.turn_start[0]({}, ctx);
-        expect(isSpinnerRunning()).toBe(true);
+        expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
+        expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
     });
 
     test("turn_start does nothing when hasUI is false", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx({ hasUI: false });
         pi.handlers.turn_start[0]({}, ctx);
-        expect(ctx.widgetCalls.length).toBe(0);
+        expect(ctx.workingMessageCalls.length).toBe(0);
     });
 
     // ── turn_end ───────────────────────────────────────────────
 
-    test("turn_end stops spinner and shows achievement prefix on final turn", async () => {
+    test("turn_end shows achievement prefix on final turn", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         const msg = { content: "I fixed the bug" };
         // Final turn: no tool results
         pi.handlers.turn_end[0]({ message: msg, toolResults: [] }, ctx);
-        expect(isSpinnerRunning()).toBe(false);
-        // Initial achievement prefix render
-        expect(ctx.widgetCalls.length).toBeGreaterThan(0);
+        // Initial achievement prefix render using existing goal
+        expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
+        expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
         await new Promise((r) => setTimeout(r, 50));
         // Should have the achievement summarization result too
         expect(
-            ctx.widgetCalls.some((w) => w.lines?.[0]?.includes("Docker setup")),
+            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
         ).toBe(true);
     });
 
-    test("turn_end keeps spinner running for intermediate tool-call turns", () => {
+    test("turn_end keeps working message for intermediate tool-call turns", () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
-        // Prime with a running spinner (as if agent_start happened)
+        // Prime with agent_start
         pi.handlers.agent_start[0]({}, ctx);
-        expect(isSpinnerRunning()).toBe(true);
-        // Intermediate turn with tool results — spinner should stay running
+        // Intermediate turn with tool results — should not change working message
         pi.handlers.turn_end[0](
             {
                 message: { content: "Let me search" },
@@ -463,11 +447,8 @@ describe("headingExtension", () => {
             },
             ctx,
         );
-        expect(isSpinnerRunning()).toBe(true);
-        // Should not have rendered achievement prefix (✓)
-        expect(ctx.widgetCalls.some((w) => w.lines?.[0]?.startsWith("✓"))).toBe(
-            false,
-        );
+        // Working message should still be the goal text set by agent_start
+        expect(ctx.workingMessageCalls).toEqual(["Fix compose"]);
     });
 
     test("turn_end skips async summarize for intermediate tool-call turns", async () => {
@@ -491,7 +472,7 @@ describe("headingExtension", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx({ hasUI: false });
         pi.handlers.turn_end[0]({ message: { content: "" } }, ctx);
-        expect(ctx.widgetCalls.length).toBe(0);
+        expect(ctx.workingMessageCalls.length).toBe(0);
     });
 
     test("turn_end skips empty assistant text", async () => {
@@ -517,25 +498,8 @@ describe("headingExtension", () => {
         pi.handlers.before_agent_start[0]({ prompt: "second" }, ctx);
         await new Promise((r) => setTimeout(r, 100));
         // The old achievement should not have rendered (gen mismatch)
-        // We expect at most 2 widget calls: first goal + second goal
-        expect(ctx.widgetCalls.length).toBeLessThanOrEqual(3);
-    });
-
-    test("turn_end skips achievement render when spinner is active", async () => {
-        setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
-        headingExtension(pi as any);
-        const ctx = makeMockCtx();
-        pi.handlers.turn_end[0]({ message: { content: "done" } }, ctx);
-        // Manually start spinner before achievement async completes
-        renderWidget(ctx, "Fix compose", "working");
-        expect(isSpinnerRunning()).toBe(true);
-        await new Promise((r) => setTimeout(r, 50));
-        // Achievement async should have been skipped
-        expect(
-            ctx.notifyCalls.some((n) =>
-                n.msg?.includes("skipped-achievement-render"),
-            ),
-        ).toBe(false);
+        // We expect at most 2 working message calls: first goal + second goal
+        expect(ctx.workingMessageCalls.length).toBeLessThanOrEqual(3);
     });
 
     test("turn_end notifies on achievement error", async () => {
@@ -562,7 +526,7 @@ describe("headingExtension", () => {
         await pi.commands.heading.handler("", ctx);
         expect(pi.entries.length).toBeGreaterThan(0);
         expect(pi.entries[0].data.goal).toBe("Manual goal text");
-        expect(ctx.widgetCalls.length).toBeGreaterThan(0);
+        expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
         expect(ctx.notifyCalls.some((n) => n.msg.includes("Heading set"))).toBe(
             true,
         );
