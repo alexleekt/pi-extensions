@@ -242,5 +242,55 @@ describe("SelectDialog", () => {
             expect(mockSendCancelled).toHaveBeenCalledTimes(1);
             expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
         });
+
+        it("select all button selects all regular options", () => {
+            renderWithFooter("multi", buildPayload("multi"));
+
+            fireEvent.click(screen.getByText("Select all"));
+            expect(screen.getByText("2 selected")).toBeInTheDocument();
+        });
+
+        it("select none button clears all selections", () => {
+            renderWithFooter("multi", buildPayload("multi"));
+
+            fireEvent.click(screen.getByText("Select all"));
+            expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+            fireEvent.click(screen.getByText("Select none"));
+            expect(screen.queryByText("2 selected")).not.toBeInTheDocument();
+        });
+
+        it("selects all option selects all regular options", () => {
+            renderWithFooter("multi", buildPayload("multi", {
+                options: [
+                    { title: "All of the above" },
+                    { title: "Option A" },
+                    { title: "Option B" },
+                ],
+            }));
+
+            fireEvent.click(screen.getByText("All of the above"));
+            expect(screen.getByText("2 selected")).toBeInTheDocument();
+        });
+
+        it("renders empty options message with freeform", () => {
+            renderWithFooter("single", buildPayload("single", { options: [] }));
+            expect(screen.getByText("No options available.")).toBeInTheDocument();
+            expect(screen.getByText("My answer isn't listed above")).toBeInTheDocument();
+        });
+
+        it("submits freeform option when selected", async () => {
+            renderWithFooter("single", buildPayload("single"));
+
+            fireEvent.click(screen.getByText("My answer isn't listed above"));
+            fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+            await waitFor(() => {
+                expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
+            });
+
+            const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
+            expect(sent.kind).toBe("freeform");
+        });
     });
 });
