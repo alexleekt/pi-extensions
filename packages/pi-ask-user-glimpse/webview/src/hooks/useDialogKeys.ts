@@ -74,7 +74,7 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
                 target instanceof HTMLTextAreaElement;
 
             // If any overlay (settings dropdown, etc.) is open, ignore all keys
-            if (target.closest('[data-overlay="true"]')) return;
+            if (target instanceof Element && target.closest('[data-overlay="true"]')) return;
 
             if (e.key === "Escape") {
                 // If a cancel-confirm modal is open, let the modal handle Escape

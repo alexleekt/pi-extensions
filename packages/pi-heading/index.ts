@@ -159,10 +159,7 @@ export default function (pi: ExtensionAPI) {
         turnGeneration = 0;
         agentStartedForCurrentTurn = false;
         const replayed = replayBranch(ctx);
-        if (replayed?.achievement) {
-            setHeadingMessage(ctx, replayed.achievement, "achievement");
-            exposeHeading(pi, replayed, "achievement");
-        } else if (replayed?.goal) {
+        if (replayed?.goal) {
             setHeadingMessage(ctx, replayed.goal, "goal");
             exposeHeading(pi, replayed, "goal");
         } else {
@@ -178,9 +175,7 @@ export default function (pi: ExtensionAPI) {
         agentStartedForCurrentTurn = false;
         const leafId = ctx.sessionManager.getLeafId();
         const state = leafId ? getState(leafId) : undefined;
-        if (state?.achievement) {
-            setHeadingMessage(ctx, state.achievement, "achievement");
-        } else if (state?.goal) {
+        if (state?.goal) {
             setHeadingMessage(ctx, state.goal, "goal");
         }
         ctx.ui.setWorkingVisible(true); // ensure working indicator stays visible
@@ -315,12 +310,6 @@ export default function (pi: ExtensionAPI) {
             return;
         }
 
-        // Final turn: show completion prefix immediately
-        if (existing?.goal) {
-            setHeadingMessage(ctx, existing.goal, "achievement");
-            exposeHeading(pi, existing, "achievement");
-        }
-
         if (!assistantText.trim()) return;
 
         const myGeneration = turnGeneration;
@@ -370,7 +359,14 @@ export default function (pi: ExtensionAPI) {
                         persistState(pi, state);
                     }
                 }
-                setHeadingMessage(ctx, achievement, "achievement");
+                await pi.sendMessage(
+                    {
+                        customType: "heading-achievement",
+                        content: `✓ ${achievement}`,
+                        display: true,
+                    },
+                    { triggerTurn: false },
+                );
                 exposeHeading(pi, state, "achievement");
                 logDebug(
                     makeDebugEntryAchievement(
