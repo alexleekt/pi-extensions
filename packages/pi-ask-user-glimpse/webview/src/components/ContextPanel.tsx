@@ -6,6 +6,13 @@ import { renderMarkdownInline, sanitizeHtml } from "../util/markdown.js";
 import { useSettings } from "../util/settings.js";
 import SettingsButton from "./SettingsButton";
 
+/** Sanitize raw HTML context before injecting into sandboxed iframe.
+ *  Uses the same DOMPurify config as markdown pipeline for consistency.
+ */
+function sanitizeHtmlContext(rawHtml: string): string {
+    return sanitizeHtml(rawHtml);
+}
+
 interface ContextPanelProps {
     context: string;
     contextFormat?: "markdown" | "html";
@@ -99,6 +106,7 @@ const IFRAME_SCRIPT = `window.addEventListener("message", function(e) {
 });`;
 
 function buildIframeSrcdoc(rawHtml: string, theme: "light" | "dark"): string {
+    const sanitized = sanitizeHtmlContext(rawHtml);
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -113,7 +121,7 @@ ${PI_CHARTS_LIBRARY}
 </script>
 </head>
 <body class="${theme}">
-${rawHtml}
+${sanitized}
 <script>
 ${IFRAME_SCRIPT}
 </script>
