@@ -178,13 +178,11 @@ describe("Questionnaire", () => {
     it("shows cancel confirm when dirty from comments alone", () => {
         renderWithFooter(buildPayload());
 
-        fireEvent.click(screen.getByText("Q1-A"));
         fireEvent.click(screen.getAllByText("Add comment")[0]);
         const commentTextarea = screen.getByPlaceholderText("Optional comment…");
         fireEvent.change(commentTextarea, {
             target: { value: "Just a comment" },
         });
-        fireEvent.click(screen.getByText("Q1-A")); // deselect
         fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
         expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
