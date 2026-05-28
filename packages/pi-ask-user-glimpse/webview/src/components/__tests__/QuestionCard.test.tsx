@@ -148,6 +148,22 @@ describe("QuestionCard", () => {
         expect(onToggleComment).toHaveBeenCalledTimes(1);
     });
 
+    it("shows Edit comment button when comment exists", () => {
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+                comment="Existing comment"
+                onToggleComment={vi.fn()}
+                onCommentChange={vi.fn()}
+            />,
+        );
+        expect(screen.getByText("Edit comment")).toBeInTheDocument();
+    });
+
     it("shows textarea when showComment is true", () => {
         render(
             <QuestionCard
