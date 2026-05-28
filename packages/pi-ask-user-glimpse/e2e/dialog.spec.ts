@@ -39,11 +39,10 @@ test.describe("single-select dialog", () => {
         await expect(page.getByText("Option C")).toBeVisible();
     });
 
-    test("renders additional comments textarea", async ({ page }) => {
-        await expect(page.getByText("Additional Comments")).toBeVisible();
+    test("does not render additional comments section", async ({ page }) => {
         await expect(
-            page.getByPlaceholder("Optional additional comments…"),
-        ).toBeVisible();
+            page.getByText("Additional Comments"),
+        ).not.toBeVisible();
     });
 
     test("keyboard navigation with arrow keys", async ({ page }) => {
@@ -72,7 +71,8 @@ test.describe("single-select dialog", () => {
     });
 
     test("Escape blurs textarea when focused", async ({ page }) => {
-        const textarea = page.locator("textarea").last();
+        await page.getByText("Add comment").click();
+        const textarea = page.getByPlaceholder("Optional comment…");
         await textarea.click();
         await expect(textarea).toBeFocused();
 
@@ -132,26 +132,21 @@ test.describe("single-select dialog", () => {
         await expect(page.getByRole("heading", { name: "Unsaved changes" })).toBeVisible();
     });
 
-    test("Cancel triggers confirm when dirty from additional comments alone", async ({ page }) => {
-        const commentsTextarea = page.getByPlaceholder("Optional additional comments…");
-        await commentsTextarea.fill("Dirty comment");
+    test("Cancel triggers confirm when dirty from per-option comment", async ({ page }) => {
+        await page.locator("button[role='option']").first().click();
+        await page.getByText("Add comment").click();
+        const commentTextarea = page.getByPlaceholder("Optional comment…");
+        await commentTextarea.fill("Dirty comment");
 
         await page.getByRole("button", { name: "Cancel" }).click();
         await expect(page.getByRole("heading", { name: "Unsaved changes" })).toBeVisible();
     });
 
-    test("0 key focuses additional comments", async ({ page }) => {
-        await page.click("body");
-        await page.keyboard.press("0");
-        const commentsTextarea = page.getByPlaceholder("Optional additional comments…");
-        await expect(commentsTextarea).toBeFocused();
-    });
-
-    test("submits with additional comments when typed", async ({ page }) => {
+    test("submits with per-option comment", async ({ page }) => {
         await page.keyboard.press("1");
-
-        const commentsTextarea = page.getByPlaceholder("Optional additional comments…");
-        await commentsTextarea.fill("My extra thoughts");
+        await page.getByText("Add comment").click();
+        const commentTextarea = page.getByPlaceholder("Optional comment…");
+        await commentTextarea.fill("My comment");
 
         await page.getByRole("button", { name: "Submit" }).click();
         await expect(page.getByText("Submitting…")).toBeVisible();
@@ -165,12 +160,15 @@ test.describe("multi-select dialog", () => {
         await page.setContent(content);
     });
 
-    test("renders options and additional comments", async ({ page }) => {
+    test("renders options", async ({ page }) => {
         await expect(page.getByText("Option A")).toBeVisible();
-        await expect(page.getByText("Additional Comments")).toBeVisible();
+        await expect(page.getByText("Option B")).toBeVisible();
+    });
+
+    test("does not render additional comments section", async ({ page }) => {
         await expect(
-            page.getByPlaceholder("Optional additional comments…"),
-        ).toBeVisible();
+            page.getByText("Additional Comments"),
+        ).not.toBeVisible();
     });
 
     test("space toggles option selection", async ({ page }) => {
@@ -196,20 +194,16 @@ test.describe("multi-select dialog", () => {
         await expect(hint.getByText("not listed")).toBeVisible();
     });
 
-    test("Cancel triggers confirm when dirty from additional comments alone", async ({ page }) => {
-        const commentsTextarea = page.getByPlaceholder("Optional additional comments…");
-        await commentsTextarea.fill("Dirty comment");
+    test("Cancel triggers confirm when dirty from selection", async ({ page }) => {
+        await page.locator("button[role='option']").first().click();
 
         await page.getByRole("button", { name: "Cancel" }).click();
         await expect(page.getByRole("heading", { name: "Unsaved changes" })).toBeVisible();
     });
 
-    test("submits with selections and additional comments", async ({ page }) => {
+    test("submits with selections", async ({ page }) => {
         await page.locator("button[role='option']").first().click();
         await page.locator("button[role='option']").nth(1).click();
-
-        const commentsTextarea = page.getByPlaceholder("Optional additional comments…");
-        await commentsTextarea.fill("My extra thoughts");
 
         await page.getByRole("button", { name: "Submit" }).click();
         await expect(page.getByText("Submitting…")).toBeVisible();
@@ -223,20 +217,19 @@ test.describe("freeform dialog", () => {
         await page.setContent(content);
     });
 
-    test("renders textarea and additional comments", async ({ page }) => {
+    test("renders textarea", async ({ page }) => {
         await expect(page.getByPlaceholder("Type your answer…")).toBeVisible();
-        await expect(page.getByText("Additional Comments")).toBeVisible();
-        await expect(
-            page.getByPlaceholder("Optional additional comments…"),
-        ).toBeVisible();
     });
 
-    test("submits with text and additional comments", async ({ page }) => {
+    test("does not render additional comments section", async ({ page }) => {
+        await expect(
+            page.getByText("Additional Comments"),
+        ).not.toBeVisible();
+    });
+
+    test("submits with text", async ({ page }) => {
         const mainTextarea = page.getByPlaceholder("Type your answer…");
         await mainTextarea.fill("My main answer");
-
-        const commentsTextarea = page.getByPlaceholder("Optional additional comments…");
-        await commentsTextarea.fill("My extra thoughts");
 
         await page.getByRole("button", { name: "Submit" }).click();
         await expect(page.getByText("Submitting…")).toBeVisible();
@@ -245,14 +238,6 @@ test.describe("freeform dialog", () => {
     test("Cancel triggers confirm when dirty from main text", async ({ page }) => {
         const mainTextarea = page.getByPlaceholder("Type your answer…");
         await mainTextarea.fill("Dirty text");
-
-        await page.getByRole("button", { name: "Cancel" }).click();
-        await expect(page.getByRole("heading", { name: "Unsaved changes" })).toBeVisible();
-    });
-
-    test("Cancel triggers confirm when dirty from additional comments alone", async ({ page }) => {
-        const commentsTextarea = page.getByPlaceholder("Optional additional comments…");
-        await commentsTextarea.fill("Dirty comment");
 
         await page.getByRole("button", { name: "Cancel" }).click();
         await expect(page.getByRole("heading", { name: "Unsaved changes" })).toBeVisible();
@@ -297,17 +282,19 @@ test.describe("questionnaire dialog", () => {
         await page.setContent(content);
     });
 
-    test("renders questions and additional comments", async ({ page }) => {
+    test("renders questions", async ({ page }) => {
         await expect(page.getByText("Q1", { exact: true })).toBeVisible();
         await expect(page.getByText("Q2", { exact: true })).toBeVisible();
         await expect(page.getByText("Q3", { exact: true })).toBeVisible();
-        await expect(page.getByText("Additional Comments")).toBeVisible();
-        await expect(
-            page.getByPlaceholder("Optional additional comments…"),
-        ).toBeVisible();
     });
 
-    test("submits with answers and additional comments", async ({ page }) => {
+    test("does not render additional comments section", async ({ page }) => {
+        await expect(
+            page.getByText("Additional Comments"),
+        ).not.toBeVisible();
+    });
+
+    test("submits with answers", async ({ page }) => {
         await page.getByText("Q1-A").click();
         await page.getByText("Q2-A").click();
         await page.getByText("Q2-B").click();
@@ -315,19 +302,8 @@ test.describe("questionnaire dialog", () => {
         const freeformTextarea = page.getByPlaceholder("Your answer…");
         await freeformTextarea.fill("Freeform answer");
 
-        const commentsTextarea = page.getByPlaceholder("Optional additional comments…");
-        await commentsTextarea.fill("My extra thoughts");
-
         await page.getByRole("button", { name: "Submit" }).click();
         await expect(page.getByText("Submitting…")).toBeVisible();
-    });
-
-    test("Cancel triggers confirm when dirty from additional comments alone", async ({ page }) => {
-        const commentsTextarea = page.getByPlaceholder("Optional additional comments…");
-        await commentsTextarea.fill("Dirty comment");
-
-        await page.getByRole("button", { name: "Cancel" }).click();
-        await expect(page.getByRole("heading", { name: "Unsaved changes" })).toBeVisible();
     });
 
     test("Cancel triggers confirm when dirty from answers", async ({ page }) => {

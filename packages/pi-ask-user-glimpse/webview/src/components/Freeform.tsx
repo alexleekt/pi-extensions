@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { useDialogKeys } from "../hooks/useDialogKeys";
-import AdditionalComments from "./AdditionalComments";
 import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
 import { useFooterPortal } from "./FooterContext";
@@ -20,8 +19,6 @@ export default function Freeform({
     const [text, setText] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-    const [additionalComments, setAdditionalComments] = useState("");
-    const commentsRef = useRef<HTMLTextAreaElement | null>(null);
 
     const handleSubmit = useCallback(() => {
         if (isSubmitting) return;
@@ -30,12 +27,10 @@ export default function Freeform({
             kind: "freeform",
             text: text.trim(),
         };
-        if (additionalComments.trim())
-            result.additionalComments = additionalComments.trim();
         sendToGlimpse(result);
-    }, [isSubmitting, text, additionalComments]);
+    }, [isSubmitting, text]);
 
-    const isDirty = text.trim() !== "" || additionalComments.trim() !== "";
+    const isDirty = text.trim() !== "";
 
     const handleCancel = useCallback(() => {
         if (isDirty) {
@@ -71,15 +66,6 @@ export default function Freeform({
                     placeholder="Type your answer…"
                     maxLength={MAX_FREEFORM_LENGTH}
                     className="h-full w-full resize-none rounded-md border border-input bg-background p-3 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
-                />
-            </div>
-
-            {/* Additional comments — stays in right panel above the full-width footer */}
-            <div className="shrink-0 border-t border-border px-4 py-3">
-                <AdditionalComments
-                    ref={commentsRef}
-                    value={additionalComments}
-                    onChange={setAdditionalComments}
                 />
             </div>
 

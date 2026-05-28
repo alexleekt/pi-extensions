@@ -3,7 +3,6 @@ import type { AskUserPayload } from "../../../shared/ask-user";
 import { useDialogKeys } from "../hooks/useDialogKeys";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { renderOptionText } from "../util/html";
-import AdditionalComments from "./AdditionalComments";
 import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
 import { useFooterPortal } from "./FooterContext";
@@ -22,13 +21,11 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
     const [comments, setComments] = useState<Record<string, string>>({});
     const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [additionalComments, setAdditionalComments] = useState("");
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const optionRefs = useRef<
         Map<string, HTMLButtonElement | HTMLTextAreaElement | null>
     >(new Map());
     const questionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
-    const commentsRef = useRef<HTMLTextAreaElement | null>(null);
 
     // Auto-scroll to first unanswered question on mount
     useEffect(() => {
@@ -133,10 +130,8 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
             ),
             questionnaireDetails,
         };
-        if (additionalComments.trim())
-            result.additionalComments = additionalComments.trim();
         sendToGlimpse(result);
-    }, [isSubmitting, questions, answers, comments, additionalComments]);
+    }, [isSubmitting, questions, answers, comments]);
 
     const answeredCount = questions.filter((q) => {
         const ans = answers[q.title];
@@ -174,14 +169,6 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                 } else {
                     setSingleAnswer(questionTitle, opt.title);
                 }
-                return;
-            }
-
-            // 0 to focus global additional comments
-            if (e.key === "0") {
-                e.preventDefault();
-                commentsRef.current?.focus();
-                commentsRef.current?.scrollIntoView({ block: "nearest" });
                 return;
             }
 
@@ -234,8 +221,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
 
     const isDirty =
         Object.keys(answers).length > 0 ||
-        Object.values(comments).some((c) => c.trim() !== "") ||
-        additionalComments.trim() !== "";
+        Object.values(comments).some((c) => c.trim() !== "");
 
     const handleCancel = useCallback(() => {
         if (isDirty) {
@@ -592,11 +578,6 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                             </div>
                         );
                     })}
-                    <AdditionalComments
-                        ref={commentsRef}
-                        value={additionalComments}
-                        onChange={setAdditionalComments}
-                    />
                 </div>
             </div>
 

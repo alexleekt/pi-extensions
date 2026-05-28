@@ -64,36 +64,28 @@ describe("Questionnaire", () => {
         mockSendCancelled.mockClear();
     });
 
-    it("renders questions and additional comments", () => {
+    it("renders questions", () => {
         renderWithFooter(buildPayload());
         expect(screen.getByText("Q1")).toBeInTheDocument();
         expect(screen.getByText("Q2")).toBeInTheDocument();
         expect(screen.getByText("Q3")).toBeInTheDocument();
-        expect(screen.getByText("Additional Comments")).toBeInTheDocument();
     });
 
-    it("submits with answers and additional comments", async () => {
+    it("does not render additional comments section", () => {
+        renderWithFooter(buildPayload());
+        expect(
+            screen.queryByText("Additional Comments"),
+        ).not.toBeInTheDocument();
+    });
+
+    it("submits with answers", async () => {
         renderWithFooter(buildPayload());
 
-        // Answer Q1
         fireEvent.click(screen.getByText("Q1-A"));
-
-        // Answer Q2 (multi-select)
         fireEvent.click(screen.getByText("Q2-A"));
-        fireEvent.click(screen.getByText("Q2-B"));
-
-        // Answer Q3 (freeform)
         const freeformTextarea = screen.getByPlaceholderText("Your answer…");
         fireEvent.change(freeformTextarea, {
             target: { value: "Freeform answer" },
-        });
-
-        // Type additional comments
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
-            target: { value: "My extra thoughts" },
         });
 
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
@@ -104,7 +96,6 @@ describe("Questionnaire", () => {
 
         const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
         expect(sent.kind).toBe("questionnaire");
-        expect(sent.additionalComments).toBe("My extra thoughts");
         expect(Array.isArray(sent.questionnaireDetails)).toBe(true);
         const details = sent.questionnaireDetails as Array<{
             question: string;
@@ -113,15 +104,34 @@ describe("Questionnaire", () => {
         expect(details).toHaveLength(3);
     });
 
-    it("submits only additional comments when no answers provided", async () => {
+    it("submits per-question comment when provided", async () => {
         renderWithFooter(buildPayload());
 
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
-            target: { value: "Only additional comments" },
+        fireEvent.click(screen.getByText("Q1-A"));
+        fireEvent.click(screen.getAllByText("Add comment")[0]);
+        const commentTextarea = screen.getByPlaceholderText("Optional comment…");
+        fireEvent.change(commentTextarea, {
+            target: { value: "My comment" },
         });
+        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+        await waitFor(() => {
+            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
+        });
+
+        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
+        expect(sent.kind).toBe("questionnaire");
+        const details = sent.questionnaireDetails as Array<{
+            question: string;
+            answer: string;
+            comment?: string;
+        }>;
+        const q1 = details.find((d) => d.question === "Q1");
+        expect(q1?.comment).toBe("My comment");
+    });
+
+    it("submits empty questionnaire when no answers provided", async () => {
+        renderWithFooter(buildPayload());
 
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
@@ -131,45 +141,28 @@ describe("Questionnaire", () => {
 
         const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
         expect(sent.kind).toBe("questionnaire");
-        expect(sent.additionalComments).toBe("Only additional comments");
         const details = sent.questionnaireDetails as Array<unknown>;
         expect(details).toHaveLength(0);
-    });
-
-    it("does not include additionalComments when empty", async () => {
-        renderWithFooter(buildPayload());
-
-        fireEvent.click(screen.getByText("Q1-A"));
-        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
-
-        await waitFor(() => {
-            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
-        });
-
-        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
-        expect(sent.additionalComments).toBeUndefined();
-    });
-
-    it("shows cancel confirm when dirty from additional comments alone", () => {
-        renderWithFooter(buildPayload());
-
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
-            target: { value: "Dirty comment" },
-        });
-
-        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-
-        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
-        expect(mockSendCancelled).not.toHaveBeenCalled();
     });
 
     it("shows cancel confirm when dirty from answers", () => {
         renderWithFooter(buildPayload());
 
         fireEvent.click(screen.getByText("Q1-A"));
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    });
+
+    it("shows cancel confirm when dirty from per-question comment", () => {
+        renderWithFooter(buildPayload());
+
+        fireEvent.click(screen.getByText("Q1-A"));
+        fireEvent.click(screen.getAllByText("Add comment")[0]);
+        const commentTextarea = screen.getByPlaceholderText("Optional comment…");
+        fireEvent.change(commentTextarea, {
+            target: { value: "Dirty comment" },
+        });
         fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
         expect(screen.getByText("Unsaved changes")).toBeInTheDocument();

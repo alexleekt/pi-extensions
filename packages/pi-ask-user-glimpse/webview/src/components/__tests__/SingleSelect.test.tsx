@@ -44,28 +44,23 @@ describe("SingleSelect", () => {
         mockSendCancelled.mockClear();
     });
 
-    it("renders options and additional comments", () => {
+    it("renders options", () => {
         renderWithFooter(buildPayload());
         expect(screen.getByText("Option A")).toBeInTheDocument();
         expect(screen.getByText("Option B")).toBeInTheDocument();
-        expect(screen.getByText("Additional Comments")).toBeInTheDocument();
     });
 
-    it("submits with additional comments when dirty", async () => {
+    it("does not render additional comments section", () => {
+        renderWithFooter(buildPayload());
+        expect(
+            screen.queryByText("Additional Comments"),
+        ).not.toBeInTheDocument();
+    });
+
+    it("submits selected option", async () => {
         renderWithFooter(buildPayload());
 
-        // Select an option
         fireEvent.click(screen.getByText("Option A"));
-
-        // Type additional comments
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
-            target: { value: "My extra thoughts" },
-        });
-
-        // Submit
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
         await waitFor(() => {
@@ -75,21 +70,32 @@ describe("SingleSelect", () => {
         const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
         expect(sent.kind).toBe("selection");
         expect(sent.selections).toEqual(["Option A"]);
-        expect(sent.additionalComments).toBe("My extra thoughts");
     });
 
-    it("submits additional comments even without option selection when freeform is allowed", async () => {
+    it("submits per-option comment when provided", async () => {
         renderWithFooter(buildPayload());
 
-        // Type only additional comments (no option selected)
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
-            target: { value: "Only additional comments" },
+        fireEvent.click(screen.getByText("Option A"));
+        fireEvent.click(screen.getByText("Add comment"));
+        const commentTextarea = screen.getByPlaceholderText("Optional comment…");
+        fireEvent.change(commentTextarea, {
+            target: { value: "My comment" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+        await waitFor(() => {
+            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
         });
 
-        // Submit
+        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
+        expect(sent.kind).toBe("selection");
+        expect(sent.selections).toEqual(["Option A"]);
+        expect(sent.comment).toBe("My comment");
+    });
+
+    it("submits freeform when no option selected and freeform allowed", async () => {
+        renderWithFooter(buildPayload());
+
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
         await waitFor(() => {
@@ -98,33 +104,27 @@ describe("SingleSelect", () => {
 
         const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
         expect(sent.kind).toBe("freeform");
-        expect(sent.additionalComments).toBe("Only additional comments");
     });
 
-    it("does not include additionalComments when empty", async () => {
+    it("shows cancel confirm when dirty from selection", () => {
         renderWithFooter(buildPayload());
 
         fireEvent.click(screen.getByText("Option A"));
-        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-        await waitFor(() => {
-            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
-        });
-
-        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
-        expect(sent.additionalComments).toBeUndefined();
+        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+        expect(mockSendCancelled).not.toHaveBeenCalled();
     });
 
-    it("shows cancel confirm when dirty from additional comments alone", () => {
+    it("shows cancel confirm when dirty from per-option comment", () => {
         renderWithFooter(buildPayload());
 
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
+        fireEvent.click(screen.getByText("Option A"));
+        fireEvent.click(screen.getByText("Add comment"));
+        const commentTextarea = screen.getByPlaceholderText("Optional comment…");
+        fireEvent.change(commentTextarea, {
             target: { value: "Dirty comment" },
         });
-
         fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
         expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
@@ -140,13 +140,8 @@ describe("SingleSelect", () => {
         expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
     });
 
-    it("hides per-option comment section when allowComment is false but still shows AdditionalComments", () => {
+    it("hides per-option comment section when allowComment is false", () => {
         renderWithFooter(buildPayload({ allowComment: false }));
-
-        // The per-option comment toggle should not be visible
         expect(screen.queryByText("Add comment")).not.toBeInTheDocument();
-
-        // But the global AdditionalComments textarea should still be visible
-        expect(screen.getByText("Additional Comments")).toBeInTheDocument();
     });
 });

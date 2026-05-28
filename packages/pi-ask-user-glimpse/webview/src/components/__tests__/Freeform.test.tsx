@@ -37,27 +37,26 @@ describe("Freeform", () => {
         mockSendCancelled.mockClear();
     });
 
-    it("renders textarea and additional comments", () => {
+    it("renders textarea", () => {
         renderWithFooter(buildPayload());
         expect(
             screen.getByPlaceholderText("Type your answer…"),
         ).toBeInTheDocument();
-        expect(screen.getByText("Additional Comments")).toBeInTheDocument();
     });
 
-    it("submits text and additional comments", async () => {
+    it("does not render additional comments", () => {
+        renderWithFooter(buildPayload());
+        expect(
+            screen.queryByText("Additional Comments"),
+        ).not.toBeInTheDocument();
+    });
+
+    it("submits text", async () => {
         renderWithFooter(buildPayload());
 
         const mainTextarea = screen.getByPlaceholderText("Type your answer…");
         fireEvent.change(mainTextarea, {
             target: { value: "My main answer" },
-        });
-
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
-            target: { value: "My extra thoughts" },
         });
 
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
@@ -69,71 +68,14 @@ describe("Freeform", () => {
         const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
         expect(sent.kind).toBe("freeform");
         expect(sent.text).toBe("My main answer");
-        expect(sent.additionalComments).toBe("My extra thoughts");
     });
 
-    it("submits only additional comments when main text is empty", async () => {
-        renderWithFooter(buildPayload());
-
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
-            target: { value: "Only extra thoughts" },
-        });
-
-        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
-
-        await waitFor(() => {
-            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
-        });
-
-        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
-        expect(sent.kind).toBe("freeform");
-        expect(sent.text).toBe("");
-        expect(sent.additionalComments).toBe("Only extra thoughts");
-    });
-
-    it("does not include additionalComments when empty", async () => {
-        renderWithFooter(buildPayload());
-
-        const mainTextarea = screen.getByPlaceholderText("Type your answer…");
-        fireEvent.change(mainTextarea, {
-            target: { value: "Main answer only" },
-        });
-
-        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
-
-        await waitFor(() => {
-            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
-        });
-
-        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
-        expect(sent.additionalComments).toBeUndefined();
-    });
-
-    it("shows cancel confirm when dirty from main text", () => {
+    it("shows cancel confirm when dirty", () => {
         renderWithFooter(buildPayload());
 
         const mainTextarea = screen.getByPlaceholderText("Type your answer…");
         fireEvent.change(mainTextarea, {
             target: { value: "Dirty text" },
-        });
-
-        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-
-        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
-        expect(mockSendCancelled).not.toHaveBeenCalled();
-    });
-
-    it("shows cancel confirm when dirty from additional comments alone", () => {
-        renderWithFooter(buildPayload());
-
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
-            target: { value: "Dirty comment" },
         });
 
         fireEvent.click(screen.getByRole("button", { name: "Cancel" }));

@@ -3,7 +3,6 @@ import { FREEFORM_OPTION_TITLE, type AskUserPayload } from "../../../shared/ask-
 import { useDialogKeys } from "../hooks/useDialogKeys";
 import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import { renderOptionText } from "../util/html";
-import AdditionalComments from "./AdditionalComments";
 import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
 import { useFooterPortal } from "./FooterContext";
@@ -20,11 +19,9 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
     const [showComment, setShowComment] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [additionalComments, setAdditionalComments] = useState("");
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const freeformRef = useRef<HTMLButtonElement | null>(null);
-    const commentsRef = useRef<HTMLTextAreaElement | null>(null);
 
     const hasFreeform = payload.allowFreeform;
     const maxIndex = hasFreeform ? payload.options.length : payload.options.length - 1;
@@ -33,7 +30,6 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
         selected: null as string | null,
         comment: "",
         showComment: false,
-        additionalComments: "",
         activeIndex: -1,
         isSubmitting: false,
         options: payload.options,
@@ -43,7 +39,6 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
         selected,
         comment,
         showComment,
-        additionalComments,
         activeIndex,
         isSubmitting,
         options: payload.options,
@@ -58,8 +53,6 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
         };
         if (s.showComment && s.comment.trim())
             result.comment = s.comment.trim();
-        if (s.additionalComments.trim())
-            result.additionalComments = s.additionalComments.trim();
         sendToGlimpse(result);
     }, []);
 
@@ -71,8 +64,6 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
         };
         if (s.showComment && s.comment.trim())
             result.comment = s.comment.trim();
-        if (s.additionalComments.trim())
-            result.additionalComments = s.additionalComments.trim();
         sendToGlimpse(result);
     }, []);
 
@@ -107,8 +98,7 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
 
     const isDirty =
         selected !== null ||
-        comment.trim() !== "" ||
-        additionalComments.trim() !== "";
+        comment.trim() !== "";
 
     const handleCancel = useCallback(() => {
         if (isDirty) {
@@ -192,14 +182,6 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
                     freeformRef.current?.focus();
                     freeformRef.current?.scrollIntoView({ block: "nearest" });
                 }
-                return;
-            }
-
-            // 0 to focus additional comments
-            if (e.key === "0") {
-                e.preventDefault();
-                commentsRef.current?.focus();
-                commentsRef.current?.scrollIntoView({ block: "nearest" });
                 return;
             }
 
@@ -361,10 +343,10 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
                 )}
             </div>
 
-            {/* Additional comments — stays in right panel above the full-width footer */}
+            {/* Per-selection comment — stays in right panel above the full-width footer */}
             <div className="shrink-0 border-t border-border px-4 py-3">
                 {payload.allowComment && (
-                    <div className="mb-3">
+                    <div>
                         <button
                             onClick={() => setShowComment((s) => !s)}
                             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -388,11 +370,6 @@ export default function SingleSelect({ payload }: SingleSelectProps) {
                         )}
                     </div>
                 )}
-                <AdditionalComments
-                    ref={commentsRef}
-                    value={additionalComments}
-                    onChange={setAdditionalComments}
-                />
             </div>
 
             <CancelConfirmModal

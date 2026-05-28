@@ -11,7 +11,6 @@ export interface AskResponse {
         kind: "selection" | "freeform";
         comment?: string;
     }[];
-    additionalComments?: string;
 }
 
 export interface AskToolDetails {
@@ -40,7 +39,6 @@ function buildResponse(
         return {
             kind,
             text: String(result.text ?? "").trim(),
-            additionalComments: pickString(result.additionalComments),
         };
     }
 
@@ -64,7 +62,6 @@ function buildResponse(
                       };
                   })
                 : [],
-            additionalComments: pickString(result.additionalComments),
         };
     }
 
@@ -78,7 +75,6 @@ function buildResponse(
         kind,
         selections,
         comment: pickString(result.comment),
-        additionalComments: pickString(result.additionalComments),
     };
 }
 
@@ -93,8 +89,6 @@ function responseToText(response: AskResponse): string {
     }
 
     if (response.comment) lines.push(`Comment: ${response.comment}`);
-    if (response.additionalComments)
-        lines.push(`Additional Comments: ${response.additionalComments}`);
 
     return lines.join("\n\n") || "No response";
 }

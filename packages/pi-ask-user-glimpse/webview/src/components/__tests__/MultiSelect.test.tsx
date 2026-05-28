@@ -45,26 +45,24 @@ describe("MultiSelect", () => {
         mockSendCancelled.mockClear();
     });
 
-    it("renders options and additional comments", () => {
+    it("renders options", () => {
         renderWithFooter(buildPayload());
         expect(screen.getByText("Option A")).toBeInTheDocument();
         expect(screen.getByText("Option B")).toBeInTheDocument();
-        expect(screen.getByText("Additional Comments")).toBeInTheDocument();
     });
 
-    it("submits with additional comments when selections are made", async () => {
+    it("does not render additional comments section", () => {
+        renderWithFooter(buildPayload());
+        expect(
+            screen.queryByText("Additional Comments"),
+        ).not.toBeInTheDocument();
+    });
+
+    it("submits selections", async () => {
         renderWithFooter(buildPayload());
 
         fireEvent.click(screen.getByText("Option A"));
         fireEvent.click(screen.getByText("Option B"));
-
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
-            target: { value: "My extra thoughts" },
-        });
-
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
         await waitFor(() => {
@@ -74,18 +72,31 @@ describe("MultiSelect", () => {
         const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
         expect(sent.kind).toBe("selection");
         expect(sent.selections).toEqual(["Option A", "Option B"]);
-        expect(sent.additionalComments).toBe("My extra thoughts");
     });
 
-    it("submits additional comments with freeform when no selection and freeform allowed", async () => {
+    it("submits per-option comment when provided", async () => {
         renderWithFooter(buildPayload());
 
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
-            target: { value: "Only additional comments" },
+        fireEvent.click(screen.getByText("Option A"));
+        fireEvent.click(screen.getByText("Add comment"));
+        const commentTextarea = screen.getByPlaceholderText("Optional comment…");
+        fireEvent.change(commentTextarea, {
+            target: { value: "My comment" },
         });
+        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+        await waitFor(() => {
+            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
+        });
+
+        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
+        expect(sent.kind).toBe("selection");
+        expect(sent.selections).toEqual(["Option A"]);
+        expect(sent.comment).toBe("My comment");
+    });
+
+    it("submits freeform when no selection and freeform allowed", async () => {
+        renderWithFooter(buildPayload());
 
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
@@ -95,43 +106,26 @@ describe("MultiSelect", () => {
 
         const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
         expect(sent.kind).toBe("freeform");
-        expect(sent.additionalComments).toBe("Only additional comments");
-    });
-
-    it("does not include additionalComments when empty", async () => {
-        renderWithFooter(buildPayload());
-
-        fireEvent.click(screen.getByText("Option A"));
-        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
-
-        await waitFor(() => {
-            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
-        });
-
-        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
-        expect(sent.additionalComments).toBeUndefined();
-    });
-
-    it("shows cancel confirm when dirty from additional comments alone", () => {
-        renderWithFooter(buildPayload());
-
-        const commentsTextarea = screen.getByPlaceholderText(
-            "Optional additional comments…",
-        );
-        fireEvent.change(commentsTextarea, {
-            target: { value: "Dirty comment" },
-        });
-
-        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-
-        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
-        expect(mockSendCancelled).not.toHaveBeenCalled();
     });
 
     it("shows cancel confirm when dirty from selections", () => {
         renderWithFooter(buildPayload());
 
         fireEvent.click(screen.getByText("Option A"));
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+        expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    });
+
+    it("shows cancel confirm when dirty from per-option comment", () => {
+        renderWithFooter(buildPayload());
+
+        fireEvent.click(screen.getByText("Option A"));
+        fireEvent.click(screen.getByText("Add comment"));
+        const commentTextarea = screen.getByPlaceholderText("Optional comment…");
+        fireEvent.change(commentTextarea, {
+            target: { value: "Dirty comment" },
+        });
         fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
         expect(screen.getByText("Unsaved changes")).toBeInTheDocument();

@@ -9,30 +9,7 @@ describe("formatResponse", () => {
     ];
 
     describe("freeform", () => {
-        it("includes additionalComments in response when provided", () => {
-            const result = formatResponse(
-                question,
-                options,
-                {
-                    kind: "freeform",
-                    text: "My answer",
-                    additionalComments: "My extra thoughts",
-                },
-                false,
-            );
-
-            expect(result.details?.response?.kind).toBe("freeform");
-            expect(result.details?.response?.text).toBe("My answer");
-            expect(result.details?.response?.additionalComments).toBe(
-                "My extra thoughts",
-            );
-            expect(result.content[0].text).toContain("My answer");
-            expect(result.content[0].text).toContain(
-                "Additional Comments: My extra thoughts",
-            );
-        });
-
-        it("does not include additionalComments when not provided", () => {
+        it("includes text in response", () => {
             const result = formatResponse(
                 question,
                 options,
@@ -40,28 +17,12 @@ describe("formatResponse", () => {
                 false,
             );
 
-            expect(result.details?.response?.additionalComments).toBeUndefined();
+            expect(result.details?.response?.kind).toBe("freeform");
+            expect(result.details?.response?.text).toBe("My answer");
             expect(result.content[0].text).toBe("My answer");
         });
 
-        it("formats text with only additionalComments and no main text", () => {
-            const result = formatResponse(
-                question,
-                options,
-                {
-                    kind: "freeform",
-                    text: "",
-                    additionalComments: "Only extra thoughts",
-                },
-                false,
-            );
-
-            expect(result.content[0].text).toBe(
-                "Additional Comments: Only extra thoughts",
-            );
-        });
-
-        it("returns 'No response' when freeform text and additionalComments are empty", () => {
+        it("returns 'No response' when freeform text is empty", () => {
             const result = formatResponse(
                 question,
                 options,
@@ -74,7 +35,7 @@ describe("formatResponse", () => {
     });
 
     describe("selection", () => {
-        it("includes additionalComments in response when provided", () => {
+        it("includes comment in response when provided", () => {
             const result = formatResponse(
                 question,
                 options,
@@ -82,7 +43,6 @@ describe("formatResponse", () => {
                     kind: "selection",
                     selections: ["Option A"],
                     comment: "My comment",
-                    additionalComments: "My extra thoughts",
                 },
                 false,
             );
@@ -90,17 +50,11 @@ describe("formatResponse", () => {
             expect(result.details?.response?.kind).toBe("selection");
             expect(result.details?.response?.selections).toEqual(["Option A"]);
             expect(result.details?.response?.comment).toBe("My comment");
-            expect(result.details?.response?.additionalComments).toBe(
-                "My extra thoughts",
-            );
             expect(result.content[0].text).toContain("Option A");
             expect(result.content[0].text).toContain("Comment: My comment");
-            expect(result.content[0].text).toContain(
-                "Additional Comments: My extra thoughts",
-            );
         });
 
-        it("does not include additionalComments when not provided", () => {
+        it("does not include comment when not provided", () => {
             const result = formatResponse(
                 question,
                 options,
@@ -108,12 +62,12 @@ describe("formatResponse", () => {
                 false,
             );
 
-            expect(result.details?.response?.additionalComments).toBeUndefined();
+            expect(result.details?.response?.comment).toBeUndefined();
         });
     });
 
     describe("questionnaire", () => {
-        it("includes additionalComments in response when provided", () => {
+        it("includes questionnaire details in response", () => {
             const result = formatResponse(
                 question,
                 options,
@@ -127,52 +81,23 @@ describe("formatResponse", () => {
                             kind: "selection" as const,
                         },
                     ],
-                    additionalComments: "My extra thoughts",
                 },
                 false,
             );
 
             expect(result.details?.response?.kind).toBe("questionnaire");
-            expect(result.details?.response?.additionalComments).toBe(
-                "My extra thoughts",
-            );
-            expect(result.content[0].text).toContain(
-                "Additional Comments: My extra thoughts",
-            );
-        });
-
-        it("does not include additionalComments when not provided", () => {
-            const result = formatResponse(
-                question,
-                options,
-                {
-                    kind: "questionnaire",
-                    selections: ["Q1: A"],
-                    questionnaireDetails: [
-                        {
-                            question: "Q1",
-                            answer: "A",
-                            kind: "selection" as const,
-                        },
-                    ],
-                },
-                false,
-            );
-
-            expect(result.details?.response?.additionalComments).toBeUndefined();
+            expect(result.details?.response?.questionnaireDetails).toEqual([
+                { question: "Q1", answer: "A", kind: "selection" },
+            ]);
         });
     });
 
     describe("cancelled", () => {
-        it("returns cancelled response even when additionalComments was present", () => {
+        it("returns cancelled response", () => {
             const result = formatResponse(
                 question,
                 options,
-                {
-                    kind: "freeform",
-                    text: "My answer",
-                    additionalComments: "My extra thoughts",
-                },
+                { kind: "freeform", text: "My answer" },
                 true,
             );
 
