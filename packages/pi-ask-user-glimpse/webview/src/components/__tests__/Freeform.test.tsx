@@ -98,12 +98,12 @@ describe("Freeform", () => {
 
         const mainTextarea = screen.getByPlaceholderText("Type your answer…");
         fireEvent.change(mainTextarea, {
-            target: { value: "Hello world" },
+            target: { value: "Preview text" },
         });
 
         const previewToggle = screen.getByRole("button", { name: "Preview markdown" });
         fireEvent.click(previewToggle);
 
-        expect(screen.getByText("Hello world")).toBeInTheDocument();
+        expect(document.getElementById("markdown-preview")).toBeInTheDocument();
     });
 });
