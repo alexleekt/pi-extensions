@@ -1,15 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
-import { useDialogKeys } from "../hooks/useDialogKeys";
-import { sendCancelled, sendToGlimpse } from "../util/glimpse";
+import { useBaseDialog } from "../hooks/useBaseDialog";
+import { sendToGlimpse } from "../util/glimpse";
 import CancelConfirmModal from "./CancelConfirmModal";
-import DialogFooter from "./DialogFooter";
-import { useFooterPortal } from "./FooterContext";
-import GlobalKeyboardHint from "./GlobalKeyboardHint";
-import { CheckIcon, CommentIcon, isSelectAllOption } from "./icons";
-import MarkdownPreview from "./MarkdownPreview";
-import OptionCard from "./OptionCard";
-import RichText from "./RichText";
+import QuestionCard from "./QuestionCard";
 
 interface QuestionnaireProps {
     payload: AskUserPayload;
@@ -22,89 +16,28 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
     const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
     const [comments, setComments] = useState<Record<string, string>>({});
     const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-    const optionRefs = useRef<
-        Map<string, HTMLButtonElement | HTMLTextAreaElement | null>
-    >(new Map());
     const questionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
-    // Auto-scroll to first unanswered question on mount
-    useEffect(() => {
-        const firstUnanswered = questions.find((q) => {
-            const ans = answers[q.title];
-            if (ans === undefined) return true;
-            if (Array.isArray(ans)) return ans.length === 0;
-            return String(ans).trim().length === 0;
-        });
-        if (firstUnanswered) {
-            const el = questionRefs.current.get(firstUnanswered.title);
-            if (el) {
-                el.scrollIntoView({ behavior: "smooth", block: "start" });
-                const hasOptions =
-                    firstUnanswered.options &&
-                    firstUnanswered.options.length > 0;
-                if (!hasOptions) {
-                    optionRefs.current
-                        .get(`${firstUnanswered.title}-freeform`)
-                        ?.focus();
-                }
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const setSingleAnswer = useCallback(
-        (questionTitle: string, value: string) => {
-            setAnswers((prev) => ({ ...prev, [questionTitle]: value }));
-        },
-        [],
-    );
-
-    const toggleMultiAnswer = useCallback(
-        (questionTitle: string, optionTitle: string) => {
-            const q = questions.find((qq) => qq.title === questionTitle);
-            const selectAllOpt = q?.options?.find((opt) =>
-                isSelectAllOption(opt.title),
-            );
-
-            if (selectAllOpt && optionTitle === selectAllOpt.title) {
-                const regularOptions = (q?.options ?? [])
-                    .filter((opt) => !isSelectAllOption(opt.title))
-                    .map((opt) => opt.title);
-                setAnswers((prev) => ({
-                    ...prev,
-                    [questionTitle]: regularOptions,
-                }));
-                return;
-            }
-
-            setAnswers((prev) => {
-                const current = prev[questionTitle];
-                const arr = Array.isArray(current)
-                    ? [...current]
-                    : current
-                      ? [current]
-                      : [];
-                let next = arr.includes(optionTitle)
-                    ? arr.filter((v) => v !== optionTitle)
-                    : [...arr, optionTitle];
-                if (selectAllOpt && next.includes(selectAllOpt.title)) {
-                    next = next.filter((v) => v !== selectAllOpt.title);
-                }
-                return { ...prev, [questionTitle]: next };
-            });
-        },
-        [questions],
-    );
+    const stateRef = useRef({
+        answers: {} as Record<string, AnswerValue>,
+        comments: {} as Record<string, string>,
+        showCommentFor: null as string | null,
+        isSubmitting: false,
+        questions,
+    });
+    stateRef.current = {
+        answers,
+        comments,
+        showCommentFor,
+        isSubmitting: false,
+        questions,
+    };
 
     const handleSubmit = useCallback(() => {
-        if (isSubmitting) return;
-        setIsSubmitting(true);
-
-        const questionnaireDetails = questions
+        const s = stateRef.current;
+        const questionnaireDetails = s.questions
             .map((q) => {
-                const answer = answers[q.title];
+                const answer = s.answers[q.title];
                 const answerText = Array.isArray(answer)
                     ? answer.join(", ")
                     : (answer ?? "").trim();
@@ -115,7 +48,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                     kind: (q.options && q.options.length > 0
                         ? "selection"
                         : "freeform") as "selection" | "freeform",
-                    comment: comments[q.title]?.trim() || undefined,
+                    comment: s.comments[q.title]?.trim() || undefined,
                 };
             })
             .filter(Boolean) as {
@@ -133,7 +66,11 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
             questionnaireDetails,
         };
         sendToGlimpse(result);
-    }, [isSubmitting, questions, answers, comments]);
+    }, []);
+
+    const isDirty =
+        Object.keys(answers).length > 0 ||
+        Object.values(comments).some((c) => c.trim() !== "");
 
     const answeredCount = questions.filter((q) => {
         const ans = answers[q.title];
@@ -142,337 +79,73 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         return String(ans).trim().length > 0;
     }).length;
 
-    // Component-specific keydown: Space to toggle, Arrow navigation between options, number keys to select
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            const target = e.target as HTMLElement;
-            const isInInput =
-                target instanceof HTMLInputElement ||
-                target instanceof HTMLTextAreaElement;
-
-            if (e.key === "Escape") return; // handled by useDialogKeys
-            if (e.key === "Tab") return; // browser handles zone navigation
-            if (isInInput) return;
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) return; // handled by useDialogKeys
-
-            const questionTitle = target
-                .closest("[data-question]")
-                ?.getAttribute("data-question");
-
-            // Number keys 1-9 to select/toggle options in the focused question
-            if (e.key >= "1" && e.key <= "9") {
-                const idx = parseInt(e.key, 10) - 1;
-                if (!questionTitle) return;
-                const q = questions.find((qq) => qq.title === questionTitle);
-                if (!q?.options || idx < 0 || idx >= q.options.length) return;
-                const opt = q.options[idx];
-                if (q.allowMultiple) {
-                    toggleMultiAnswer(questionTitle, opt.title);
-                } else {
-                    setSingleAnswer(questionTitle, opt.title);
-                }
-                return;
-            }
-
-            if (
-                (e.key === " " || e.key === "Spacebar") &&
-                target.tagName === "BUTTON"
-            ) {
-                const optionTitle = target.dataset.option;
-                if (questionTitle && optionTitle) {
-                    const q = questions.find(
-                        (qq) => qq.title === questionTitle,
-                    );
-                    if (q?.allowMultiple) {
-                        e.preventDefault();
-                        toggleMultiAnswer(questionTitle, optionTitle);
-                    }
-                }
-                return;
-            }
-
-            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-                if (target.tagName === "BUTTON" && target.dataset.question) {
-                    e.preventDefault();
-                    const currentOption = target.dataset.option;
-                    const siblings = Array.from(
-                        document.querySelectorAll<HTMLButtonElement>(
-                            `button[data-question="${target.dataset.question}"]`,
-                        ),
-                    );
-                    const idx = siblings.findIndex(
-                        (btn) => btn.dataset.option === currentOption,
-                    );
-                    if (idx === -1) return;
-                    const nextIdx =
-                        e.key === "ArrowDown"
-                            ? Math.min(idx + 1, siblings.length - 1)
-                            : Math.max(idx - 1, 0);
-                    const nextBtn = siblings[nextIdx];
-                    if (nextBtn) {
-                        nextBtn.focus();
-                        nextBtn.scrollIntoView({ block: "nearest" });
-                    }
-                }
-                return;
-            }
-        };
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [questions, toggleMultiAnswer, setSingleAnswer]);
-
-    const isDirty =
-        Object.keys(answers).length > 0 ||
-        Object.values(comments).some((c) => c.trim() !== "");
-
-    const handleCancel = useCallback(() => {
-        if (isDirty) {
-            setShowCancelConfirm(true);
-            return;
-        }
-        sendCancelled();
-    }, [isDirty]);
-
-    useDialogKeys({
+    const { isSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel } = useBaseDialog({
+        payload,
+        isDirty,
         onSubmit: handleSubmit,
-        onCancel: handleCancel,
-        isSubmitting,
         isCommentOpen: !!showCommentFor,
         onCloseComment: () => setShowCommentFor(null),
     });
 
-    /* Render footer via portal so it spans full window width beneath both panels. */
-    const footer = useMemo(
-        () => (
-            <DialogFooter
-                isSubmitting={isSubmitting}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-                hint={<GlobalKeyboardHint payload={payload} />}
-            />
-        ),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [isSubmitting, handleSubmit, handleCancel, payload],
-    );
-    useFooterPortal(footer);
+    const setSingleAnswer = useCallback((qTitle: string, value: string) => {
+        setAnswers((prev) => ({ ...prev, [qTitle]: value }));
+    }, []);
+
+    const toggleMultiAnswer = useCallback((qTitle: string, optTitle: string) => {
+        setAnswers((prev) => {
+            const current = prev[qTitle];
+            const arr = Array.isArray(current) ? current : current ? [current] : [];
+            const next = arr.includes(optTitle)
+                ? arr.filter((t) => t !== optTitle)
+                : [...arr, optTitle];
+            return { ...prev, [qTitle]: next };
+        });
+    }, []);
 
     return (
         <div className="flex h-full flex-col">
-            <div className="shrink-0 h-1 w-full bg-muted">
-                <div
-                    className="h-full bg-primary transition-all duration-300"
-                    style={{
-                        width: `${(answeredCount / questions.length) * 100}%`,
-                    }}
-                />
+            <div className="shrink-0 border-b border-border px-4 py-3">
+                <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">
+                        {answeredCount} of {questions.length} answered
+                    </span>
+                    {answeredCount === questions.length && (
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            All answered
+                        </span>
+                    )}
+                </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
-                <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">
-                        {answeredCount} / {questions.length} answered
-                    </span>
-                </div>
-
-                <div className="space-y-3">
-                    {questions.map((q) => {
-                        const answer = answers[q.title];
-                        const isAnswered =
-                            answer !== undefined &&
-                            (Array.isArray(answer)
-                                ? answer.length > 0
-                                : String(answer).trim().length > 0);
-                        const isRequired = payload.allowSkip === false;
-                        return (
-                            <div
-                                ref={(el) => {
-                                    questionRefs.current.set(q.title, el);
-                                }}
-                                key={q.title}
-                                data-question={q.title}
-                                className={`rounded-xl border p-4 bg-card ${isRequired && !isAnswered ? "border-destructive/50" : "border-border"}`}
-                            >
-                                <div className="mb-1 flex items-center gap-2">
-                                    <RichText
-                                        text={q.title}
-                                        className="font-medium"
-                                    />
-                                    {isRequired && !isAnswered && (
-                                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
-                                            Required
-                                        </span>
-                                    )}
-                                </div>
-                                {q.description && (
-                                    <RichText
-                                        text={q.description}
-                                        className="mb-3 text-sm text-muted-foreground"
-                                    />
-                                )}
-
-                                {q.options && q.options.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {q.allowMultiple
-                                            ? q.options.map((opt, optIdx) => {
-                                                  const arr = Array.isArray(
-                                                      answer,
-                                                  )
-                                                      ? answer
-                                                      : answer
-                                                        ? [answer]
-                                                        : [];
-                                                  const isSelected =
-                                                      arr.includes(opt.title);
-                                                  return (
-                                                      <OptionCard
-                                                          ref={(el) => {
-                                                              optionRefs.current.set(
-                                                                  `${q.title}-${opt.title}`,
-                                                                  el,
-                                                              );
-                                                          }}
-                                                          key={opt.title}
-                                                          title={opt.title}
-                                                          description={
-                                                              opt.description
-                                                          }
-                                                          index={optIdx}
-                                                          isSelected={isSelected}
-                                                          isActive={false}
-                                                          mode="multi"
-                                                          onClick={() =>
-                                                              toggleMultiAnswer(
-                                                                  q.title,
-                                                                  opt.title,
-                                                              )
-                                                          }
-                                                          recommended={
-                                                              opt.recommended
-                                                          }
-                                                          tabIndex={
-                                                              optIdx === 0
-                                                                  ? 0
-                                                                  : -1
-                                                          }
-                                                          data-question={q.title}
-                                                          data-option={opt.title}
-                                                      />
-                                                  );
-                                              })
-                                            : q.options.map((opt, optIdx) => {
-                                                  const isSelected =
-                                                      answer === opt.title;
-                                                  return (
-                                                      <OptionCard
-                                                          ref={(el) => {
-                                                              optionRefs.current.set(
-                                                                  `${q.title}-${opt.title}`,
-                                                                  el,
-                                                              );
-                                                          }}
-                                                          key={opt.title}
-                                                          title={opt.title}
-                                                          description={
-                                                              opt.description
-                                                          }
-                                                          index={optIdx}
-                                                          isSelected={isSelected}
-                                                          isActive={false}
-                                                          mode="single"
-                                                          onClick={() =>
-                                                              setSingleAnswer(
-                                                                  q.title,
-                                                                  opt.title,
-                                                              )
-                                                          }
-                                                          recommended={
-                                                              opt.recommended
-                                                          }
-                                                          tabIndex={
-                                                              optIdx === 0
-                                                                  ? 0
-                                                                  : -1
-                                                          }
-                                                          data-question={q.title}
-                                                          data-option={opt.title}
-                                                      />
-                                                  );
-                                              })}
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <textarea
-                                            ref={(el) => {
-                                                optionRefs.current.set(
-                                                    `${q.title}-freeform`,
-                                                    el,
-                                                );
-                                            }}
-                                            placeholder="Your answer…"
-                                            value={(answer as string) ?? ""}
-                                            onChange={(e) =>
-                                                setSingleAnswer(
-                                                    q.title,
-                                                    e.target.value,
-                                                )
-                                            }
-                                            maxLength={1000}
-                                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring resize-none"
-                                            rows={3}
-                                        />
-                                        <div className="mt-1 text-right text-xs text-muted-foreground">
-                                            {String(answer ?? "").length}/1000
-                                        </div>
-                                    </div>
-                                )}
-
-                                {payload.allowComment && (
-                                    <div className="mt-2">
-                                        <button
-                                            onClick={() =>
-                                                setShowCommentFor((prev) =>
-                                                    prev === q.title
-                                                        ? null
-                                                        : q.title,
-                                                )
-                                            }
-                                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                                            aria-expanded={
-                                                showCommentFor === q.title
-                                            }
-                                        >
-                                            <CommentIcon />
-                                            {showCommentFor === q.title
-                                                ? "Hide comment"
-                                                : comments[q.title]?.trim()
-                                                  ? "Edit comment"
-                                                  : "Add comment"}
-                                        </button>
-                                        {showCommentFor === q.title && (
-                                            <>
-                                                <textarea
-                                                    value={comments[q.title] ?? ""}
-                                                    onChange={(e) =>
-                                                        setComments((prev) => ({
-                                                            ...prev,
-                                                            [q.title]:
-                                                                e.target.value,
-                                                        }))
-                                                    }
-                                                    placeholder="Optional comment…"
-                                                    className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring resize-none"
-                                                    rows={3}
-                                                />
-                                                <MarkdownPreview
-                                                    text={comments[q.title] ?? ""}
-                                                />
-                                            </>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                <div className="space-y-4">
+                    {questions.map((q) => (
+                        <div
+                            key={q.title}
+                            ref={(el) => {
+                                questionRefs.current.set(q.title, el);
+                            }}
+                        >
+                            <QuestionCard
+                                question={q}
+                                answer={answers[q.title]}
+                                index={0}
+                                onSelect={(title) => setSingleAnswer(q.title, title)}
+                                onToggleMulti={(title) => toggleMultiAnswer(q.title, title)}
+                                onSetText={(text) => setSingleAnswer(q.title, text)}
+                                comment={comments[q.title] ?? ""}
+                                showComment={showCommentFor === q.title}
+                                onToggleComment={() =>
+                                    setShowCommentFor((prev) =>
+                                        prev === q.title ? null : q.title,
+                                    )
+                                }
+                                onCommentChange={(text) =>
+                                    setComments((prev) => ({ ...prev, [q.title]: text }))
+                                }
+                            />
+                        </div>
+                    ))}
                 </div>
             </div>
 

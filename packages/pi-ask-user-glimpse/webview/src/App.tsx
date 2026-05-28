@@ -4,9 +4,8 @@ import ContextPanel from "./components/ContextPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { FooterContext } from "./components/FooterContext";
 import Freeform from "./components/Freeform";
-import MultiSelect from "./components/MultiSelect";
 import Questionnaire from "./components/Questionnaire";
-import SingleSelect from "./components/SingleSelect";
+import SelectDialog from "./components/SelectDialog";
 
 function getPayload(): AskUserPayload {
     const raw = (window as unknown as Record<string, unknown>)
@@ -20,9 +19,9 @@ function getPayload(): AskUserPayload {
 function renderComponent(payload: AskUserPayload) {
     switch (payload.type) {
         case "single-select":
-            return <SingleSelect payload={payload} />;
+            return <SelectDialog payload={payload} mode="single" />;
         case "multi-select":
-            return <MultiSelect payload={payload} />;
+            return <SelectDialog payload={payload} mode="multi" />;
         case "questionnaire":
             return <Questionnaire payload={payload} />;
         case "freeform":

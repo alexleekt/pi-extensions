@@ -21,6 +21,7 @@ interface UseBaseDialogReturn {
     showCancelConfirm: boolean;
     setShowCancelConfirm: (v: boolean) => void;
     handleCancel: () => void;
+    handleSubmit: () => void;
 }
 
 export function useBaseDialog({
@@ -42,8 +43,14 @@ export function useBaseDialog({
         sendCancelled();
     }, [isDirty]);
 
+    const handleSubmit = useCallback(() => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        onSubmit();
+    }, [isSubmitting, onSubmit]);
+
     useDialogKeys({
-        onSubmit,
+        onSubmit: handleSubmit,
         onCancel: handleCancel,
         isSubmitting,
         isCommentOpen,
@@ -55,13 +62,13 @@ export function useBaseDialog({
         () => (
             <DialogFooter
                 isSubmitting={isSubmitting}
-                onSubmit={onSubmit}
+                onSubmit={handleSubmit}
                 onCancel={handleCancel}
                 hint={<GlobalKeyboardHint payload={payload} />}
                 submitDisabled={submitDisabled}
             />
         ),
-        [isSubmitting, onSubmit, handleCancel, payload, submitDisabled],
+        [isSubmitting, handleSubmit, handleCancel, payload, submitDisabled],
     );
     useFooterPortal(footer);
 
@@ -71,5 +78,6 @@ export function useBaseDialog({
         showCancelConfirm,
         setShowCancelConfirm,
         handleCancel,
+        handleSubmit,
     };
 }

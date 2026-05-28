@@ -3,16 +3,19 @@ import { FREEFORM_OPTION_TITLE, type AskUserPayload } from "../../../shared/ask-
 import { useBaseDialog } from "../hooks/useBaseDialog";
 import { sendToGlimpse } from "../util/glimpse";
 import CancelConfirmModal from "./CancelConfirmModal";
-import { CheckIcon, CommentIcon, isSelectAllOption } from "./icons";
+import { CheckIcon, CommentIcon, RadioIcon, isSelectAllOption } from "./icons";
 import MarkdownPreview from "./MarkdownPreview";
 import OptionCard from "./OptionCard";
 
-interface MultiSelectProps {
+interface SelectDialogProps {
     payload: AskUserPayload;
+    mode: "single" | "multi";
 }
 
-export default function MultiSelect({ payload }: MultiSelectProps) {
-    const [selected, setSelected] = useState<Set<string>>(new Set());
+export default function SelectDialog({ payload, mode }: SelectDialogProps) {
+    const isSingle = mode === "single";
+    const [selected, setSelected] = useState<string | null>(null);
+    const [selectedSet, setSelectedSet] = useState<Set<string>>(new Set());
     const [comment, setComment] = useState("");
     const [showComment, setShowComment] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
@@ -28,7 +31,8 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
     );
 
     const stateRef = useRef({
-        selected: new Set<string>(),
+        selected: null as string | null,
+        selectedSet: new Set<string>(),
         comment: "",
         showComment: false,
         activeIndex: -1,
@@ -36,9 +40,11 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         options: payload.options,
         allowFreeform: payload.allowFreeform,
         selectAllOption: undefined as typeof selectAllOption,
+        mode,
     });
     stateRef.current = {
         selected,
+        selectedSet,
         comment,
         showComment,
         activeIndex,
@@ -46,6 +52,7 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         options: payload.options,
         allowFreeform: payload.allowFreeform,
         selectAllOption,
+        mode,
     };
 
     const toggle = useCallback((title: string) => {
@@ -54,18 +61,26 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
             const regular = s.options
                 .filter((opt) => !isSelectAllOption(opt.title))
                 .map((opt) => opt.title);
-            setSelected(new Set(regular));
+            if (isSingle) {
+                setSelected(s.selectAllOption.title);
+            } else {
+                setSelectedSet(new Set(regular));
+            }
             return;
         }
-        setSelected((prev) => {
-            const next = new Set(prev);
-            if (next.has(title)) next.delete(title);
-            else next.add(title);
-            if (s.selectAllOption && next.has(s.selectAllOption.title))
-                next.delete(s.selectAllOption.title);
-            return next;
-        });
-    }, []);
+        if (isSingle) {
+            setSelected(title);
+        } else {
+            setSelectedSet((prev) => {
+                const next = new Set(prev);
+                if (next.has(title)) next.delete(title);
+                else next.add(title);
+                if (s.selectAllOption && next.has(s.selectAllOption.title))
+                    next.delete(s.selectAllOption.title);
+                return next;
+            });
+        }
+    }, [isSingle]);
 
     const handleFreeform = useCallback(() => {
         toggle(FREEFORM_OPTION_TITLE);
@@ -78,46 +93,64 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
         const s = stateRef.current;
         if (s.isSubmitting) return;
 
-        if (s.selected.has(FREEFORM_OPTION_TITLE)) {
+        if (s.mode === "single") {
+            if (s.selected === FREEFORM_OPTION_TITLE) {
+                const result: Record<string, unknown> = { kind: "freeform", text: "" };
+                if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
+                sendToGlimpse(result);
+                return;
+            }
+            const fallbackSelection =
+                s.activeIndex >= 0 && s.activeIndex < s.options.length
+                    ? s.options[s.activeIndex].title
+                    : null;
+            const selection = s.selected ?? fallbackSelection;
+            if (s.allowFreeform && selection === null) {
+                const result: Record<string, unknown> = { kind: "freeform", text: "" };
+                if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
+                sendToGlimpse(result);
+            } else {
+                const result: Record<string, unknown> = {
+                    kind: "selection",
+                    selections: selection ? [selection] : [],
+                };
+                if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
+                sendToGlimpse(result);
+            }
+        } else {
+            if (s.selectedSet.has(FREEFORM_OPTION_TITLE)) {
+                const result: Record<string, unknown> = { kind: "freeform", text: "" };
+                if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
+                sendToGlimpse(result);
+                return;
+            }
+            const hasSelection = s.selectedSet.size > 0;
+            if (!hasSelection && s.allowFreeform) {
+                const result: Record<string, unknown> = { kind: "freeform", text: "" };
+                if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
+                sendToGlimpse(result);
+                return;
+            }
             const result: Record<string, unknown> = {
-                kind: "freeform",
-                text: "",
+                kind: "selection",
+                selections: Array.from(s.selectedSet),
             };
-            if (s.showComment && s.comment.trim())
-                result.comment = s.comment.trim();
+            if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
             sendToGlimpse(result);
-            return;
         }
-
-        const hasSelection = s.selected.size > 0;
-        if (!hasSelection && s.allowFreeform) {
-            const result: Record<string, unknown> = {
-                kind: "freeform",
-                text: "",
-            };
-            if (s.showComment && s.comment.trim())
-                result.comment = s.comment.trim();
-            sendToGlimpse(result);
-            return;
-        }
-        const result: Record<string, unknown> = {
-            kind: "selection",
-            selections: Array.from(s.selected),
-        };
-        if (s.showComment && s.comment.trim())
-            result.comment = s.comment.trim();
-        sendToGlimpse(result);
     }, []);
 
-    const isDirty = selected.size > 0 || comment.trim() !== "";
+    const isDirty = isSingle
+        ? selected !== null || comment.trim() !== ""
+        : selectedSet.size > 0 || comment.trim() !== "";
 
-    const { isSubmitting, setIsSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel } = useBaseDialog({
+    const { isSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel, handleSubmit: baseHandleSubmit } = useBaseDialog({
         payload,
         isDirty,
         onSubmit: handleSubmit,
         isCommentOpen: showComment,
         onCloseComment: () => setShowComment(false),
-        submitDisabled: !hasFreeform && selected.size === 0,
+        submitDisabled: !hasFreeform && (isSingle ? selected === null : selectedSet.size === 0),
     });
 
     useEffect(() => {
@@ -141,26 +174,27 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                 target instanceof HTMLInputElement ||
                 target instanceof HTMLTextAreaElement;
 
-            if (e.key === "Escape") return; // handled by useDialogKeys
-            if (e.key === "Tab") return; // browser handles zone navigation
+            if (e.key === "Escape") return;
+            if (e.key === "Tab") return;
             if (isInInput) return;
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) return; // handled by useDialogKeys
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) return;
 
-            // Number keys 1-9 to toggle options (without submitting)
             if (e.key >= "1" && e.key <= "9") {
                 const idx = parseInt(e.key, 10) - 1;
                 if (idx >= 0 && idx < s.options.length) {
-                    toggle(s.options[idx].title);
+                    const opt = s.options[idx];
+                    if (s.mode === "single") {
+                        setSelected(opt.title);
+                    } else {
+                        toggle(opt.title);
+                    }
                     setActiveIndex(idx);
                     optionRefs.current[idx]?.focus();
-                    optionRefs.current[idx]?.scrollIntoView({
-                        block: "nearest",
-                    });
+                    optionRefs.current[idx]?.scrollIntoView({ block: "nearest" });
                 }
                 return;
             }
 
-            // Minus key to toggle freeform option (without submitting)
             if (e.key === "-" || e.key === "_") {
                 if (s.allowFreeform) {
                     e.preventDefault();
@@ -178,14 +212,10 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                     const next = Math.min(prev + 1, maxIndex);
                     if (next < s.options.length) {
                         optionRefs.current[next]?.focus();
-                        optionRefs.current[next]?.scrollIntoView({
-                            block: "nearest",
-                        });
+                        optionRefs.current[next]?.scrollIntoView({ block: "nearest" });
                     } else if (s.allowFreeform && next === s.options.length) {
                         freeformRef.current?.focus();
-                        freeformRef.current?.scrollIntoView({
-                            block: "nearest",
-                        });
+                        freeformRef.current?.scrollIntoView({ block: "nearest" });
                     }
                     return next;
                 });
@@ -195,75 +225,84 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                     const next = Math.max(prev - 1, 0);
                     if (next < s.options.length) {
                         optionRefs.current[next]?.focus();
-                        optionRefs.current[next]?.scrollIntoView({
-                            block: "nearest",
-                        });
+                        optionRefs.current[next]?.scrollIntoView({ block: "nearest" });
                     } else if (s.allowFreeform && next === s.options.length) {
                         freeformRef.current?.focus();
-                        freeformRef.current?.scrollIntoView({
-                            block: "nearest",
-                        });
+                        freeformRef.current?.scrollIntoView({ block: "nearest" });
                     }
                     return next;
                 });
             } else if (e.key === " " || e.key === "Spacebar") {
-                e.preventDefault();
-                if (s.activeIndex >= 0 && s.activeIndex < s.options.length)
-                    toggle(s.options[s.activeIndex].title);
-                else if (s.allowFreeform && s.activeIndex === s.options.length)
-                    toggle(FREEFORM_OPTION_TITLE);
+                if (s.mode === "multi") {
+                    e.preventDefault();
+                    if (s.activeIndex >= 0 && s.activeIndex < s.options.length)
+                        toggle(s.options[s.activeIndex].title);
+                    else if (s.allowFreeform && s.activeIndex === s.options.length)
+                        toggle(FREEFORM_OPTION_TITLE);
+                }
             } else if (e.key === "Enter") {
                 e.preventDefault();
-                const focusedEl = document.activeElement;
-                const freeformFocused =
-                    s.allowFreeform &&
-                    focusedEl != null &&
-                    (focusedEl === freeformRef.current ||
-                        freeformRef.current?.contains(focusedEl));
-                if (freeformFocused) {
-                    // Enter on freeform: only toggle, do not submit
-                    toggle(FREEFORM_OPTION_TITLE);
-                } else if (
-                    s.activeIndex >= 0 &&
-                    s.activeIndex < s.options.length
-                ) {
-                    toggle(s.options[s.activeIndex].title);
-                } else if (s.allowFreeform && s.activeIndex === s.options.length) {
-                    // Freeform active via navigation: just toggle
-                    toggle(FREEFORM_OPTION_TITLE);
+                if (s.mode === "single") {
+                    const focusedEl = document.activeElement;
+                    const freeformFocused =
+                        s.allowFreeform &&
+                        focusedEl != null &&
+                        (focusedEl === freeformRef.current ||
+                            freeformRef.current?.contains(focusedEl));
+                    if (freeformFocused) {
+                        setSelected(FREEFORM_OPTION_TITLE);
+                    } else if (s.activeIndex >= 0 && s.activeIndex < s.options.length) {
+                        const opt = s.options[s.activeIndex];
+                        setSelected(opt.title);
+                        baseHandleSubmit();
+                    } else if (s.allowFreeform && s.activeIndex === s.options.length) {
+                        setSelected(FREEFORM_OPTION_TITLE);
+                    }
+                } else {
+                    const focusedEl = document.activeElement;
+                    const freeformFocused =
+                        s.allowFreeform &&
+                        focusedEl != null &&
+                        (focusedEl === freeformRef.current ||
+                            freeformRef.current?.contains(focusedEl));
+                    if (freeformFocused) {
+                        toggle(FREEFORM_OPTION_TITLE);
+                    } else if (s.activeIndex >= 0 && s.activeIndex < s.options.length) {
+                        toggle(s.options[s.activeIndex].title);
+                    } else if (s.allowFreeform && s.activeIndex === s.options.length) {
+                        toggle(FREEFORM_OPTION_TITLE);
+                    }
                 }
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [toggle, maxIndex]);
+    }, [toggle, maxIndex, isSingle, baseHandleSubmit]);
 
     return (
         <div className="flex h-full flex-col">
-            <div className="shrink-0 border-b border-border p-4">
-                {selected.size > 0 && (
-                    <div className="mt-2 flex items-center gap-2">
+            <div className="flex-1 overflow-y-auto p-4">
+                {!isSingle && selectedSet.size > 0 && (
+                    <div className="mb-2 flex items-center gap-2">
                         <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                            {selected.size} selected
+                            {selectedSet.size} selected
                         </div>
                         <button
-                            onClick={() => setSelected(new Set())}
+                            onClick={() => setSelectedSet(new Set())}
                             className="text-xs text-muted-foreground underline transition-colors hover:text-foreground"
                         >
                             Clear all
                         </button>
                     </div>
                 )}
-                {payload.options.length > 1 && (
-                    <div className="mt-2 flex items-center gap-2">
+                {!isSingle && payload.options.length > 1 && (
+                    <div className="mb-2 flex items-center gap-2">
                         <button
                             onClick={() => {
                                 const allRegular = payload.options
-                                    .filter(
-                                        (opt) => !isSelectAllOption(opt.title),
-                                    )
+                                    .filter((opt) => !isSelectAllOption(opt.title))
                                     .map((opt) => opt.title);
-                                setSelected(new Set(allRegular));
+                                setSelectedSet(new Set(allRegular));
                             }}
                             className="text-xs text-muted-foreground underline transition-colors hover:text-foreground"
                         >
@@ -271,22 +310,15 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                         </button>
                         <span className="text-xs text-muted-foreground">·</span>
                         <button
-                            onClick={() => setSelected(new Set())}
+                            onClick={() => setSelectedSet(new Set())}
                             className="text-xs text-muted-foreground underline transition-colors hover:text-foreground"
                         >
                             Select none
                         </button>
                     </div>
                 )}
-            </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
-                <div
-                    className="space-y-2"
-                    role="listbox"
-                    aria-label="Options"
-                    aria-multiselectable="true"
-                >
+                <div className="space-y-2" role="listbox" aria-label="Options" aria-multiselectable={!isSingle}>
                     {payload.options.length > 0 ? (
                         payload.options.map((opt, idx) => (
                             <OptionCard
@@ -297,9 +329,9 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                                 title={opt.title}
                                 description={opt.description}
                                 index={idx}
-                                isSelected={selected.has(opt.title)}
+                                isSelected={isSingle ? selected === opt.title : selectedSet.has(opt.title)}
                                 isActive={activeIndex === idx}
-                                mode="multi"
+                                mode={mode}
                                 onClick={() => toggle(opt.title)}
                                 recommended={opt.recommended}
                                 tabIndex={activeIndex === idx ? 0 : -1}
@@ -309,11 +341,7 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
                             No options available.
                             {payload.allowFreeform && (
-                                <span>
-                                    {" "}
-                                    Use "My answer isn't listed above" below to
-                                    submit your own.
-                                </span>
+                                <span> Use "My answer isn't listed above" below to submit your own.</span>
                             )}
                         </div>
                     )}
@@ -325,20 +353,24 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                         tabIndex={activeIndex === payload.options.length ? 0 : -1}
                         onClick={handleFreeform}
                         role="option"
-                        aria-selected={selected.has(FREEFORM_OPTION_TITLE)}
+                        aria-selected={isSingle ? selected === FREEFORM_OPTION_TITLE : selectedSet.has(FREEFORM_OPTION_TITLE)}
                         className={`mt-4 flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm transition-colors ${
-                            selected.has(FREEFORM_OPTION_TITLE)
+                            (isSingle ? selected === FREEFORM_OPTION_TITLE : selectedSet.has(FREEFORM_OPTION_TITLE))
                                 ? "border-primary bg-primary/5"
                                 : "border-dashed border-border text-muted-foreground hover:bg-accent"
                         } ${activeIndex === payload.options.length ? "ring-2 ring-ring" : ""}`}
                     >
-                        <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-                            selected.has(FREEFORM_OPTION_TITLE)
-                                ? "bg-primary text-primary-foreground"
-                                : "border border-border"
-                        }`}>
-                            {selected.has(FREEFORM_OPTION_TITLE) && <CheckIcon checked={true} />}
-                        </div>
+                        {isSingle ? (
+                            <RadioIcon checked={selected === FREEFORM_OPTION_TITLE} />
+                        ) : (
+                            <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
+                                selectedSet.has(FREEFORM_OPTION_TITLE)
+                                    ? "bg-primary text-primary-foreground"
+                                    : "border border-border"
+                            }`}>
+                                {selectedSet.has(FREEFORM_OPTION_TITLE) && <CheckIcon checked={true} />}
+                            </div>
+                        )}
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
                             -
                         </span>
@@ -347,7 +379,6 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                 )}
             </div>
 
-            {/* Per-selection comment — stays in right panel above the full-width footer */}
             <div className="shrink-0 border-t border-border px-4 py-3">
                 {payload.allowComment && (
                     <div>
