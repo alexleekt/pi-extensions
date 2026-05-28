@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import { sendToGlimpse } from "../util/glimpse";
 
 interface Props {
     children: ReactNode;
@@ -19,6 +20,18 @@ export default class ErrorBoundary extends Component<Props, State> {
         // eslint-disable-next-line no-console
         console.error("[ErrorBoundary] Caught error:", error.message, error.stack);
         return { hasError: true, error };
+    }
+
+    componentDidCatch(error: Error) {
+        // Notify the host so the tool doesn't hang forever
+        try {
+            sendToGlimpse({
+                __error: true,
+                message: error.message,
+            });
+        } catch {
+            // If the bridge is down, we can't do anything
+        }
     }
 
     render() {

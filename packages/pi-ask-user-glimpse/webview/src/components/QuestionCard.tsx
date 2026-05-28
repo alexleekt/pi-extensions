@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { CommentIcon } from "./icons";
 import MarkdownPreview from "./MarkdownPreview";
 import OptionCard from "./OptionCard";
@@ -33,7 +33,6 @@ interface QuestionCardProps {
 export default function QuestionCard({
     question,
     answer,
-    index,
     onSelect,
     onToggleMulti,
     onSetText,
@@ -43,10 +42,42 @@ export default function QuestionCard({
     onCommentChange,
 }: QuestionCardProps) {
     const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const [activeIndex, setActiveIndex] = useState(0);
     const isAnswered = Array.isArray(answer)
         ? answer.length > 0
         : answer !== undefined && answer !== "";
     const isRequired = true; // questionnaire questions are always required for now
+
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (!question.options || question.options.length === 0) return;
+        const maxIndex = question.options.length - 1;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActiveIndex((prev) => {
+                const next = Math.min(prev + 1, maxIndex);
+                optionRefs.current[next]?.focus();
+                return next;
+            });
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActiveIndex((prev) => {
+                const next = Math.max(prev - 1, 0);
+                optionRefs.current[next]?.focus();
+                return next;
+            });
+        } else if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            const opt = question.options[activeIndex];
+            if (opt) {
+                if (question.allowMultiple) {
+                    onToggleMulti(opt.title);
+                } else {
+                    onSelect(opt.title);
+                }
+            }
+        }
+    }, [question.options, question.allowMultiple, activeIndex, onSelect, onToggleMulti]);
 
     return (
         <div className="border-b border-border last:border-b-0 py-4">
@@ -63,7 +94,7 @@ export default function QuestionCard({
             )}
 
             {question.options && question.options.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-2" role="listbox" aria-label={question.title} onKeyDown={handleKeyDown}>
                     {question.options.map((opt, optIdx) => {
                         const arr = Array.isArray(answer)
                             ? answer
@@ -81,15 +112,18 @@ export default function QuestionCard({
                                 description={opt.description}
                                 index={optIdx}
                                 isSelected={isSelected}
-                                isActive={false}
+                                isActive={activeIndex === optIdx}
                                 mode={question.allowMultiple ? "multi" : "single"}
-                                onClick={() =>
-                                    question.allowMultiple
-                                        ? onToggleMulti(opt.title)
-                                        : onSelect(opt.title)
-                                }
+                                onClick={() => {
+                                    setActiveIndex(optIdx);
+                                    if (question.allowMultiple) {
+                                        onToggleMulti(opt.title);
+                                    } else {
+                                        onSelect(opt.title);
+                                    }
+                                }}
                                 recommended={opt.recommended}
-                                tabIndex={optIdx === 0 ? 0 : -1}
+                                tabIndex={activeIndex === optIdx ? 0 : -1}
                             />
                         );
                     })}

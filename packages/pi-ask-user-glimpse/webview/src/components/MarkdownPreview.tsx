@@ -17,12 +17,15 @@ export default function MarkdownPreview({ text, className = "" }: MarkdownPrevie
             <button
                 type="button"
                 onClick={() => setShowPreview((s) => !s)}
+                aria-expanded={showPreview}
+                aria-controls="markdown-preview"
                 className="mb-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
                 {showPreview ? "Hide preview" : "Preview markdown"}
             </button>
             {showPreview && (
                 <div
+                    id="markdown-preview"
                     className="rounded-md border border-border bg-muted/30 p-2 text-sm prose prose-sm max-w-none"
                     dangerouslySetInnerHTML={{ __html: html }}
                 />

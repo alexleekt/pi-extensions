@@ -14,9 +14,13 @@ export function sendToGlimpse(data: unknown): void {
         __theme: getCurrentTheme(),
         __animationLevel: getCurrentAnimationLevel(),
     };
-    (
-        window as unknown as { glimpse: { send: (data: unknown) => void } }
-    ).glimpse.send(enriched);
+    const bridge = (window as unknown as Record<string, unknown>).glimpse as
+        | { send: (data: unknown) => void }
+        | undefined;
+    if (!bridge) {
+        throw new Error("Glimpse bridge not available");
+    }
+    bridge.send(enriched);
 }
 
 /**
