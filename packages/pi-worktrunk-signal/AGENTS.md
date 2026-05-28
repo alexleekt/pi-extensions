@@ -1,5 +1,11 @@
 # pi-worktrunk-signal — Agent Reference
 
+## Project Context
+
+Repository: `~/git/pi-extensions/packages/pi-worktrunk-signal`
+Extension name: `@alexleekt/pi-worktrunk-signal`
+Purpose: Bridge Pi, herdr, and worktrunk for worktree management and subagent spawning.
+
 ## Extension Overview
 
 `pi-worktrunk-signal` bridges Pi, herdr, and worktrunk. It provides commands for worktree management and a tool for spawning subagents in isolated worktrees.
@@ -10,6 +16,18 @@
 - **Spawning subagents** — use `spawn_worktree_agent` instead of manual `herdr pane split` + `herdr pane run`
 - **Interactive worktree browsing** — use `/wt-list` for a visual overlay
 
+## Tool Parameters
+
+The `spawn_worktree_agent` tool accepts three parameters:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `branch` | string | Branch name for the worktree |
+| `task` | string | Task description for the subagent |
+| `repo` | string | Optional repo name (defaults to current repo) |
+
+Both `branch` and `task` must be provided.
+
 ## Commands
 
 ### `/wt-switch-create <branch> [<repo>] [-- <task>]`
@@ -18,7 +36,7 @@ Creates a worktree (or uses existing), creates a herdr workspace for it, and rel
 
 **Key behavior:**
 - Uses `herdr workspace create --cwd <path> --label <branch> --no-focus` — does NOT steal focus
-- Propagates the session name via `pi.setSessionName(branch)`
+- Sets the Pi session name to the branch name via `setSessionName` API
 - Falls back to `herdr pane run` in current pane if workspace creation fails
 
 **Examples:**
@@ -48,14 +66,6 @@ Remove a worktree. Defaults to the current branch if no argument given.
 Generate a commit message via the configured LLM (`wt step commit`) and commit.
 
 ## Tool: `spawn_worktree_agent`
-
-### Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `branch` | string | yes | Branch name for the worktree |
-| `task` | string | yes | Task description for the subagent |
-| `repo` | string | no | Optional repo name (defaults to current repo) |
 
 ### Herdr behavior
 
