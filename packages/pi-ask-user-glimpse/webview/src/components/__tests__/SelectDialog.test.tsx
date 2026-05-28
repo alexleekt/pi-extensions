@@ -406,6 +406,28 @@ describe("SelectDialog", () => {
             expect(screen.getByText("2 selected")).toBeInTheDocument();
         });
 
+        it("number key 1 selects the first option in multi-select", async () => {
+            renderWithFooter("multi", buildPayload("multi"));
+            fireEvent.keyDown(document.body, { key: "1" });
+            await waitFor(() => {
+                const optionA = screen.getByText("Option A").closest("[role='option']") as HTMLElement;
+                expect(optionA).toHaveAttribute("aria-selected", "true");
+            });
+        });
+
+        it("ArrowUp from freeform stays at freeform when no options exist", async () => {
+            renderWithFooter("single", buildPayload("single", { options: [] }));
+            await waitFor(() => {
+                const freeform = screen.getByText("My answer isn't listed above").closest("[role='option']") as HTMLElement;
+                expect(document.activeElement).toBe(freeform);
+            });
+            fireEvent.keyDown(document.body, { key: "ArrowUp" });
+            await waitFor(() => {
+                const freeform = screen.getByText("My answer isn't listed above").closest("[role='option']") as HTMLElement;
+                expect(document.activeElement).toBe(freeform);
+            });
+        });
+
         it("select none button clears all selections", () => {
             renderWithFooter("multi", buildPayload("multi"));
 
@@ -427,6 +449,51 @@ describe("SelectDialog", () => {
 
             fireEvent.click(screen.getByText("All of the above"));
             expect(screen.getByText("2 selected")).toBeInTheDocument();
+        });
+
+        it("selects all option selects all regular options in single-select", () => {
+            renderWithFooter("single", buildPayload("single", {
+                options: [
+                    { title: "All of the above" },
+                    { title: "Option A" },
+                    { title: "Option B" },
+                ],
+            }));
+
+            fireEvent.click(screen.getByText("All of the above"));
+            const allOption = screen.getByText("All of the above").closest("[role='option']") as HTMLElement;
+            expect(allOption).toHaveAttribute("aria-selected", "true");
+        });
+
+        it("deselecting regular option removes select-all in multi-select", () => {
+            renderWithFooter("multi", buildPayload("multi", {
+                options: [
+                    { title: "All of the above" },
+                    { title: "Option A" },
+                    { title: "Option B" },
+                ],
+            }));
+
+            fireEvent.click(screen.getByText("All of the above"));
+            expect(screen.getByText("2 selected")).toBeInTheDocument();
+            fireEvent.click(screen.getByText("Option A"));
+            expect(screen.queryByText("2 selected")).not.toBeInTheDocument();
+        });
+
+        it("submits freeform alongside regular options in multi-select", async () => {
+            renderWithFooter("multi", buildPayload("multi"));
+
+            fireEvent.click(screen.getByText("Option A"));
+            fireEvent.click(screen.getByText("My answer isn't listed above"));
+            fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+            await waitFor(() => {
+                expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
+            });
+
+            const sent = mockSendToGlimpse.mock.calls[0][0] as Record<string, unknown>;
+            expect(sent.kind).toBe("selection");
+            expect(sent.selections).toEqual(["Option A", "My answer isn't listed above"]);
         });
 
         it("ArrowDown navigates to next option and updates activeIndex in multi-select", async () => {
