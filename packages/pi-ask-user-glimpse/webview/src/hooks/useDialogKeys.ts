@@ -59,16 +59,7 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
         showCancelConfirm,
     };
 
-    /** Synchronous lock prevents double-submit between event loop ticks. */
-    const submittingLock = useRef(false);
-
-    useEffect(() => {
-        if (!isSubmitting) submittingLock.current = false;
-    }, [isSubmitting]);
-
     const stableSubmit = useCallback(() => {
-        if (submittingLock.current) return;
-        submittingLock.current = true;
         const s = stateRef.current;
         if (s.isSubmitting || s.submitDisabled || s.showCancelConfirm) return;
         s.onSubmit();

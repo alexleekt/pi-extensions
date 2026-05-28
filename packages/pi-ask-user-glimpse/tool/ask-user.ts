@@ -48,12 +48,7 @@ function resolveWebviewHtml(): string {
     const distPath = join(__dirname, "..", "dist", "index.html");
     console.log(`[pi-ask-user-glimpse] Loading webview from: ${distPath}`);
     try {
-        const html = readFileSync(distPath, "utf-8");
-        const hasNewCode = html.includes("items-center justify-between");
-        console.log(
-            `[pi-ask-user-glimpse] Webview has new code: ${hasNewCode}`,
-        );
-        return html;
+        return readFileSync(distPath, "utf-8");
     } catch {
         // Fallback for development: resolve from package root
         const pkgRoot = dirname(_require.resolve("../package.json"));

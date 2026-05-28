@@ -20,9 +20,13 @@ function buildPayload(type: string, overrides = {}) {
 
 function injectPayload(html: string, payload: unknown) {
     const mockGlimpse = `window.glimpse = { send: () => {} };`;
-    return html.replace(
-        "<script",
-        `<script>${mockGlimpse} window.__ASK_USER_PAYLOAD__ = ${JSON.stringify(payload)};</script><script`,
+    const injected = html.replace(
+        "/*ASK_USER_PAYLOAD*/",
+        `${JSON.stringify(payload)}`,
+    );
+    return injected.replace(
+        "<script>",
+        `<script>${mockGlimpse} `,
     );
 }
 

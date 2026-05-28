@@ -36,7 +36,6 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         comment: "",
         showComment: false,
         activeIndex: -1,
-        isSubmitting: false,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
         selectAllOption: undefined as typeof selectAllOption,
@@ -48,7 +47,6 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         comment,
         showComment,
         activeIndex,
-        isSubmitting: false,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
         selectAllOption,
@@ -86,8 +84,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
     }, [isSingle]);
 
     const handleFreeform = useCallback(() => {
-        toggle(FREEFORM_OPTION_TITLE);
-        setActiveIndex(payload.options.length);
+        toggle(FREEFORM_OPTION_TITLE, payload.options.length);
         freeformRef.current?.focus();
         freeformRef.current?.scrollIntoView({ block: "nearest" });
     }, [toggle, payload.options.length]);
@@ -95,11 +92,16 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
     const handleSubmit = useCallback(() => {
         const s = stateRef.current;
 
+        const send = (result: Record<string, unknown>) => {
+            if (s.showComment && s.comment.trim()) {
+                result.comment = s.comment.trim();
+            }
+            sendToGlimpse(result);
+        };
+
         if (s.mode === "single") {
             if (s.selected === FREEFORM_OPTION_TITLE) {
-                const result: Record<string, unknown> = { kind: "freeform", text: "" };
-                if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
-                sendToGlimpse(result);
+                send({ kind: "freeform", text: "" });
                 return;
             }
             const fallbackSelection =
@@ -108,43 +110,22 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                     : null;
             const selection = s.selected ?? fallbackSelection;
             if (s.allowFreeform && selection === null) {
-                const result: Record<string, unknown> = { kind: "freeform", text: "" };
-                if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
-                sendToGlimpse(result);
+                send({ kind: "freeform", text: "" });
             } else {
-                const result: Record<string, unknown> = {
-                    kind: "selection",
-                    selections: selection ? [selection] : [],
-                };
-                if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
-                sendToGlimpse(result);
+                send({ kind: "selection", selections: selection ? [selection] : [] });
             }
         } else {
             const hasFreeform = s.selectedSet.has(FREEFORM_OPTION_TITLE);
             const hasSelection = s.selectedSet.size > 0;
             if (hasFreeform) {
-                // If freeform is selected alongside other options, send all selections
-                const selections = Array.from(s.selectedSet);
-                const result: Record<string, unknown> = {
-                    kind: "selection",
-                    selections,
-                };
-                if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
-                sendToGlimpse(result);
+                send({ kind: "selection", selections: Array.from(s.selectedSet) });
                 return;
             }
             if (!hasSelection && s.allowFreeform) {
-                const result: Record<string, unknown> = { kind: "freeform", text: "" };
-                if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
-                sendToGlimpse(result);
+                send({ kind: "freeform", text: "" });
                 return;
             }
-            const result: Record<string, unknown> = {
-                kind: "selection",
-                selections: Array.from(s.selectedSet),
-            };
-            if (s.showComment && s.comment.trim()) result.comment = s.comment.trim();
-            sendToGlimpse(result);
+            send({ kind: "selection", selections: Array.from(s.selectedSet) });
         }
     }, []);
 

@@ -34,8 +34,6 @@ const OptionCard = forwardRef<HTMLDivElement, OptionCardProps>(
         ref,
     ) => {
         const isSelectAll = isSelectAllOption(title);
-        const role = "option";
-        const ariaState = { "aria-selected": isSelected };
 
         const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
             if (e.key === "Enter" || e.key === " ") {
@@ -50,8 +48,8 @@ const OptionCard = forwardRef<HTMLDivElement, OptionCardProps>(
                 tabIndex={tabIndex}
                 onClick={onClick}
                 onKeyDown={handleKeyDown}
-                role={role}
-                {...ariaState}
+                role="option"
+                aria-selected={isSelected}
                 data-question={dataQuestion}
                 data-option={dataOption}
                 className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
@@ -60,10 +58,8 @@ const OptionCard = forwardRef<HTMLDivElement, OptionCardProps>(
                         : "border-border bg-card hover:bg-accent"
                 } ${isActive ? "ring-2 ring-ring" : ""}`}
             >
-                {/* Selection icon */}
-                {isSelectAll ? (
-                    <RadioIcon checked={isSelected} />
-                ) : mode === "single" ? (
+                {/* Selection icon: radio for single/select-all, checkbox for multi */}
+                {isSelectAll || mode === "single" ? (
                     <RadioIcon checked={isSelected} />
                 ) : (
                     <div
@@ -73,7 +69,7 @@ const OptionCard = forwardRef<HTMLDivElement, OptionCardProps>(
                                 : "border border-border"
                         }`}
                     >
-                        {isSelected && <CheckIcon checked={true} />}
+                        {isSelected && <CheckIcon checked />}
                     </div>
                 )}
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { AskUserPayload } from "../../shared/ask-user";
 import ContextPanel from "./components/ContextPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -75,10 +75,7 @@ export default function App() {
         };
     }, [isDragging]);
 
-    const componentPayload = useMemo(
-        () => ({ ...payload, context: undefined }) as AskUserPayload,
-        [payload],
-    );
+    const componentPayload = { ...payload, context: undefined } as AskUserPayload;
 
     return (
         <FooterContext.Provider value={{ setFooter: setFooterNode }}>

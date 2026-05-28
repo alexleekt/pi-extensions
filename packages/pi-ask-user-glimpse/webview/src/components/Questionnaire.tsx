@@ -11,6 +11,12 @@ interface QuestionnaireProps {
 
 type AnswerValue = string | string[];
 
+function isAnswered(answer: AnswerValue | undefined): boolean {
+    if (answer === undefined) return false;
+    if (Array.isArray(answer)) return answer.length > 0;
+    return String(answer).trim().length > 0;
+}
+
 export default function Questionnaire({ payload }: QuestionnaireProps) {
     const questions = payload.questions ?? [];
     const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
@@ -21,14 +27,12 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         answers: {} as Record<string, AnswerValue>,
         comments: {} as Record<string, string>,
         showCommentFor: null as string | null,
-        isSubmitting: false,
         questions,
     });
     stateRef.current = {
         answers,
         comments,
         showCommentFor,
-        isSubmitting: false,
         questions,
     };
 
@@ -37,10 +41,10 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         const questionnaireDetails = s.questions
             .map((q) => {
                 const answer = s.answers[q.title];
+                if (!isAnswered(answer)) return null;
                 const answerText = Array.isArray(answer)
                     ? answer.join(", ")
                     : (answer ?? "").trim();
-                if (!answerText) return null;
                 return {
                     question: q.title,
                     answer: answerText,
@@ -68,17 +72,12 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
     }, []);
 
     const isDirty =
-        Object.values(answers).some((a) =>
-            Array.isArray(a) ? a.length > 0 : String(a).trim().length > 0,
-        ) ||
+        Object.values(answers).some(isAnswered) ||
         Object.values(comments).some((c) => c.trim() !== "");
 
-    const answeredCount = questions.filter((q) => {
-        const ans = answers[q.title];
-        if (ans === undefined) return false;
-        if (Array.isArray(ans)) return ans.length > 0;
-        return String(ans).trim().length > 0;
-    }).length;
+    const answeredCount = questions.filter((q) =>
+        isAnswered(answers[q.title]),
+    ).length;
 
     const { isSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel } = useBaseDialog({
         payload,

@@ -17,7 +17,6 @@ export default function GlobalKeyboardHint({ payload }: GlobalKeyboardHintProps)
                 { keys: ["1", "…", "9"], label: "select" },
                 { keys: ["Enter"], label: "choose" },
                 { keys: [modKey(), "Enter"], label: "submit" },
-                { keys: ["0"], label: "comments" },
             ];
             if (payload.allowFreeform) {
                 items.push({ keys: ["-"], label: "not listed" });
@@ -32,7 +31,6 @@ export default function GlobalKeyboardHint({ payload }: GlobalKeyboardHintProps)
                 { keys: ["Enter"], label: "choose" },
                 { keys: ["Space"], label: "toggle" },
                 { keys: [modKey(), "Enter"], label: "submit" },
-                { keys: ["0"], label: "comments" },
             ];
             if (payload.allowFreeform) {
                 items.push({ keys: ["-"], label: "not listed" });
@@ -45,7 +43,6 @@ export default function GlobalKeyboardHint({ payload }: GlobalKeyboardHintProps)
                     items={[
                         { keys: ["Esc"], label: "cancel" },
                         { keys: ["1", "…", "9"], label: "per question" },
-                        { keys: ["0"], label: "comments" },
                         { keys: ["Tab"], label: "next" },
                         { keys: [modKey(), "Enter"], label: "submit" },
                     ]}
