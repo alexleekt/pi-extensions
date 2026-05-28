@@ -61,27 +61,6 @@ function isInsideGitRepo(cwd: string): Promise<boolean> {
     });
 }
 
-function setMarker(cwd: string, branch: string, marker: string): Promise<void> {
-    return new Promise((resolve) => {
-        const payload = JSON.stringify({ marker, set_at: Date.now() });
-        exec(
-            `git config worktrunk.state.${branch}.marker '${payload}'`,
-            { cwd },
-            () => resolve(), // ignore errors (e.g., no git repo)
-        );
-    });
-}
-
-function clearMarker(cwd: string, branch: string): Promise<void> {
-    return new Promise((resolve) => {
-        exec(
-            `git config --unset worktrunk.state.${branch}.marker 2>/dev/null || true`,
-            { cwd },
-            () => resolve(),
-        );
-    });
-}
-
 function findWorktreePath(cwd: string, branch: string): Promise<string | null> {
     return new Promise((resolve) => {
         execFile(
@@ -202,6 +181,80 @@ async function buildWorktreeSelectItems(cwd: string): Promise<SelectItem[]> {
     return items;
 }
 
+/** Create a herdr workspace for a worktree and run Pi in it. */
+async function relaunchInWorktreeHerdr(
+    pi: ExtensionAPI,
+    ctx: { hasUI: boolean; ui: ExtensionUIContext; cwd: string },
+    branch: string,
+    repo?: string,
+    task?: string,
+): Promise<void> {
+    let worktreePath = await findWorktreePath(ctx.cwd, branch);
+    if (!worktreePath) {
+        const repoName = repo || path.basename(ctx.cwd);
+        worktreePath = path.resolve(ctx.cwd, `../${repoName}.${branch}`);
+    }
+
+    const cmd = task
+        ? `cd ${worktreePath} && pi "${task}"`
+        : `cd ${worktreePath} && pi`;
+
+    try {
+        // Create a new workspace for the worktree
+        const workspaceResult = await new Promise<string>((resolve, reject) => {
+            exec(
+                `herdr workspace create --cwd ${worktreePath} --label ${branch} --no-focus`,
+                { encoding: "utf-8" },
+                (err, stdout) => {
+                    if (err) return reject(err);
+                    resolve(stdout);
+                },
+            );
+        });
+
+        // Parse the workspace ID and root pane from the JSON output
+        let workspaceId: string | undefined;
+        let rootPaneId: string | undefined;
+        try {
+            const parsed = JSON.parse(workspaceResult);
+            workspaceId = parsed.result?.workspace?.workspace_id;
+            rootPaneId = parsed.result?.workspace?.root_pane;
+        } catch {
+            // Fallback: try to find the workspace by listing
+            const listResult = await new Promise<string>((resolve, reject) => {
+                exec("herdr workspace list", { encoding: "utf-8" }, (err, stdout) => {
+                    if (err) return reject(err);
+                    resolve(stdout);
+                });
+            });
+            try {
+                const parsed = JSON.parse(listResult);
+                const workspaces = parsed.result?.workspaces || [];
+                const ws = workspaces.find((w: { label?: string }) => w.label === branch);
+                if (ws) {
+                    workspaceId = ws.workspace_id;
+                    rootPaneId = ws.root_pane;
+                }
+            } catch {
+                // ignore
+            }
+        }
+
+        if (!rootPaneId) {
+            // Fallback: run in current pane
+            await pi.exec("herdr", ["pane", "run", process.env.HERDR_PANE_ID || "", cmd]);
+            if (ctx.hasUI) ctx.ui.notify(`Switched to ${branch} in current pane.`, "info");
+            return;
+        }
+
+        // Run Pi in the new workspace's root pane
+        await pi.exec("herdr", ["pane", "run", rootPaneId, cmd]);
+        if (ctx.hasUI) ctx.ui.notify(`Created workspace ${branch} and launched Pi.`, "info");
+    } catch (e) {
+        if (ctx.hasUI) ctx.ui.notify(`Workspace creation failed: ${errMsg(e)}`, "error");
+    }
+}
+
 async function relaunchInWorktree(
     pi: ExtensionAPI,
     ctx: { hasUI: boolean; ui: ExtensionUIContext; cwd: string },
@@ -227,6 +280,18 @@ async function relaunchInWorktree(
         return;
     }
 
+    // Propagate session name to the new worktree
+    try {
+        pi.setSessionName(branch);
+    } catch {
+        // ignore if not available
+    }
+
+    if (mux === "herdr") {
+        await relaunchInWorktreeHerdr(pi, ctx, branch, repo, task);
+        return;
+    }
+
     const cmd = task
         ? `cd ${worktreePath} && pi "${task}"`
         : `cd ${worktreePath} && pi`;
@@ -242,13 +307,6 @@ async function relaunchInWorktree(
             ]);
         } else if (mux === "zellij") {
             await pi.exec("zellij", ["run", "--", cmd]);
-        } else if (mux === "herdr") {
-            await pi.exec("herdr", [
-                "pane",
-                "run",
-                process.env.HERDR_PANE_ID || "",
-                cmd,
-            ]);
         }
         if (ctx.hasUI)
             ctx.ui.notify(`Switched to ${branch} via ${mux}.`, "info");
@@ -261,50 +319,20 @@ async function relaunchInWorktree(
 
 export default function (pi: ExtensionAPI) {
     let currentBranch: string | null = null;
-    let markerSet = false;
 
-    // ── Activity Tracking ─────────────────────────────────────────────────
+    // ── Session Tracking ──────────────────────────────────────────────────
 
     pi.on("session_start", async (_event, ctx) => {
         const cwd = ctx.cwd;
         if (!(await isInsideGitRepo(cwd))) return;
-
         const branch = await getBranchFromCwd(cwd);
         currentBranch = branch;
-
-        if (branch) {
-            await setMarker(cwd, branch, "💬");
-            markerSet = true;
-        }
-    });
-
-    pi.on("turn_start", async (_event, ctx) => {
-        const cwd = ctx.cwd;
-        if (!markerSet) return;
-        const branch = currentBranch || (await getBranchFromCwd(cwd));
-        if (branch) {
-            currentBranch = branch;
-            await setMarker(cwd, branch, "🤖");
-        }
-    });
-
-    pi.on("turn_end", async (_event, ctx) => {
-        const cwd = ctx.cwd;
-        if (!markerSet) return;
-        const branch = currentBranch || (await getBranchFromCwd(cwd));
-        if (branch) {
-            currentBranch = branch;
-            await setMarker(cwd, branch, "💬");
-        }
     });
 
     pi.on("session_shutdown", async (_event, ctx) => {
         const cwd = ctx.cwd;
         const branch = currentBranch || (await getBranchFromCwd(cwd));
-        if (branch) {
-            await clearMarker(cwd, branch);
-            markerSet = false;
-        }
+        currentBranch = branch;
     });
 
     // ── /wt-switch-create Command ─────────────────────────────────────────
@@ -488,13 +516,114 @@ export default function (pi: ExtensionAPI) {
         },
     });
 
+    // ── /wt-merge Command ─────────────────────────────────────────────────
+
+    pi.registerCommand("wt-merge", {
+        description:
+            "Merge current worktree into a target branch. Usage: /wt-merge <target>",
+        handler: async (args, ctx) => {
+            const target = (args || "").trim();
+            if (!target) {
+                if (ctx.hasUI)
+                    ctx.ui.notify(
+                        "Usage: /wt-merge <target-branch>",
+                        "error",
+                    );
+                return;
+            }
+
+            if (ctx.hasUI)
+                ctx.ui.notify(`Merging into ${target}…`, "info");
+
+            try {
+                const result = await new Promise<string>((resolve, reject) => {
+                    execFile(
+                        "wt",
+                        ["merge", target],
+                        { cwd: ctx.cwd, encoding: "utf-8" },
+                        (err, stdout) => {
+                            if (err) return reject(err);
+                            resolve(stdout);
+                        },
+                    );
+                });
+                if (ctx.hasUI) ctx.ui.notify(result.slice(0, 500), "info");
+            } catch (e) {
+                if (ctx.hasUI)
+                    ctx.ui.notify(`Merge failed: ${errMsg(e)}`, "error");
+            }
+        },
+    });
+
+    // ── /wt-remove Command ─────────────────────────────────────────────────
+
+    pi.registerCommand("wt-remove", {
+        description:
+            "Remove a worktree. Usage: /wt-remove [<branch>] (defaults to current branch)",
+        handler: async (args, ctx) => {
+            let branch = (args || "").trim();
+            if (!branch) {
+                branch = (await getBranchFromCwd(ctx.cwd)) || "";
+            }
+            if (!branch) {
+                if (ctx.hasUI)
+                    ctx.ui.notify(
+                        "No branch specified and could not detect current branch.",
+                        "error",
+                    );
+                return;
+            }
+
+            if (ctx.hasUI)
+                ctx.ui.notify(`Removing worktree: ${branch}…`, "info");
+
+            try {
+                await pi.exec("wt", ["remove", branch], { cwd: ctx.cwd });
+                if (ctx.hasUI)
+                    ctx.ui.notify(`Removed worktree ${branch}.`, "info");
+            } catch (e) {
+                if (ctx.hasUI)
+                    ctx.ui.notify(`Remove failed: ${errMsg(e)}`, "error");
+            }
+        },
+    });
+
+    // ── /wt-commit Command ─────────────────────────────────────────────────
+
+    pi.registerCommand("wt-commit", {
+        description:
+            "Generate a commit message using LLM and commit. Usage: /wt-commit",
+        handler: async (_args, ctx) => {
+            if (ctx.hasUI)
+                ctx.ui.notify("Running wt step commit…", "info");
+
+            try {
+                const result = await new Promise<string>((resolve, reject) => {
+                    execFile(
+                        "wt",
+                        ["step", "commit"],
+                        { cwd: ctx.cwd, encoding: "utf-8" },
+                        (err, stdout) => {
+                            if (err) return reject(err);
+                            resolve(stdout);
+                        },
+                    );
+                });
+                if (ctx.hasUI) ctx.ui.notify(result.slice(0, 500), "info");
+            } catch (e) {
+                if (ctx.hasUI)
+                    ctx.ui.notify(`Commit failed: ${errMsg(e)}`, "error");
+            }
+        },
+    });
+
     // ── spawn_worktree_agent Tool ─────────────────────────────────────────
 
     pi.registerTool({
         name: "spawn_worktree_agent",
         label: "Spawn Worktree Agent",
         description:
-            "Create a worktrunk worktree for a branch and spawn a Pi subagent in it. If the worktree already exists, the agent is spawned in the existing directory.",
+            "Create a worktrunk worktree for a branch and spawn a Pi subagent in it. If the worktree already exists, the agent is spawned in the existing directory. Creates a herdr-managed pane for visibility.",
         parameters: Type.Object({
             branch: Type.String({
                 description: "Branch name for the worktree",
@@ -541,7 +670,70 @@ export default function (pi: ExtensionAPI) {
                 worktreePath = path.resolve(cwd, `../${repoName}.${branch}`);
             }
 
-            // 3. Spawn subagent via the official pi subagent pattern
+            // 3. For herdr, create a visible pane instead of a headless subprocess
+            const mux = detectMultiplexer();
+            if (mux === "herdr") {
+                try {
+                    const paneResult = await new Promise<string>((resolve, reject) => {
+                        exec(
+                            `herdr pane split ${process.env.HERDR_PANE_ID || ""} --direction right --no-focus`,
+                            { encoding: "utf-8" },
+                            (err, stdout) => {
+                                if (err) return reject(err);
+                                resolve(stdout);
+                            },
+                        );
+                    });
+
+                    let newPaneId: string | undefined;
+                    try {
+                        const parsed = JSON.parse(paneResult);
+                        newPaneId = parsed.result?.pane?.pane_id;
+                    } catch {
+                        // ignore
+                    }
+
+                    if (!newPaneId) {
+                        return {
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `Created worktree but could not create herdr pane.`,
+                                },
+                            ],
+                            details: {},
+                            isError: true,
+                        } as unknown as AgentToolResult<unknown>;
+                    }
+
+                    const cmd = `cd ${worktreePath} && pi --no-session '${task.replace(/'/g, "'\\''")}'`;
+                    await pi.exec("herdr", ["pane", "run", newPaneId, cmd]);
+
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Spawned subagent in worktree ${branch} (pane ${newPaneId}). Use \`herdr wait agent-status ${newPaneId} --status done\` to coordinate.`,
+                            },
+                        ],
+                        details: { paneId: newPaneId, worktreePath },
+                        isError: false,
+                    } as unknown as AgentToolResult<unknown>;
+                } catch (e) {
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: `Failed to spawn in herdr pane: ${errMsg(e)}`,
+                            },
+                        ],
+                        details: {},
+                        isError: true,
+                    } as unknown as AgentToolResult<unknown>;
+                }
+            }
+
+            // 4. Fallback: headless subprocess for non-herdr multiplexers
             const subagentArgs = [
                 "--mode",
                 "json",
