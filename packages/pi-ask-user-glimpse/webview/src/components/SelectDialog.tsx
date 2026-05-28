@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FREEFORM_OPTION_TITLE, type AskUserPayload } from "../../../shared/ask-user";
 import { useBaseDialog } from "../hooks/useBaseDialog";
-import { sendToGlimpse } from "../util/glimpse";
+import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import CancelConfirmModal from "./CancelConfirmModal";
 import { CheckIcon, CommentIcon, RadioIcon, isSelectAllOption } from "./icons";
 import MarkdownPreview from "./MarkdownPreview";

@@ -65,6 +65,7 @@ test.describe("single-select dialog", () => {
     });
 
     test("Enter submits selected option", async ({ page }) => {
+        await page.click("body");
         await page.keyboard.press("1");
         await page.keyboard.press("Enter");
         await expect(page.getByText("Submitting…")).toBeVisible();

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { useBaseDialog } from "../hooks/useBaseDialog";
-import { sendToGlimpse } from "../util/glimpse";
+import { sendCancelled, sendToGlimpse } from "../util/glimpse";
 import CancelConfirmModal from "./CancelConfirmModal";
 import MarkdownPreview from "./MarkdownPreview";
 
