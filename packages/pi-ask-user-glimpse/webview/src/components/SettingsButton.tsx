@@ -147,6 +147,7 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                 <>
                     <div
                         className="fixed inset-0 z-40"
+                        data-overlay="true"
                         onClick={() => setOpen(false)}
                     />
                     <div className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border bg-popover p-2 shadow-lg">
