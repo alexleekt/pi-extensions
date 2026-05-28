@@ -81,7 +81,6 @@ export interface AskUserParams {
     allowFreeform?: boolean;
     allowComment?: boolean;
     allowSkip?: boolean;
-    displayMode?: string;
     followCursor?: boolean;
     theme?: ThemeMode;
     animationLevel?: AnimationLevel;
@@ -166,7 +165,6 @@ export async function askUserHandler(
 
     let result: Record<string, unknown> | null = null;
     let cancelled = false;
-    let error: string | undefined;
 
     try {
         const baseHtml = resolveWebviewHtml();
@@ -194,18 +192,18 @@ export async function askUserHandler(
             windowOptions.followCursor = true;
         }
 
-        result = (await prompt(html, { ...windowOptions, timeout: 120000 })) as Record<
-            string,
-            unknown
-        > | null;
-        if (result === null || result?.__cancelled === true) {
+        const rawResult = (await prompt(html, { ...windowOptions, timeout: 120000 })) as unknown;
+        if (rawResult === null || (typeof rawResult === "object" && rawResult !== null && (rawResult as Record<string, unknown>).__cancelled === true)) {
             cancelled = true;
             result = null;
-        } else if (result && onMetadata) {
-            onMetadata({
-                theme: result.__theme as string | undefined,
-                animationLevel: result.__animationLevel as string | undefined,
-            });
+        } else if (typeof rawResult === "object" && rawResult !== null) {
+            result = rawResult as Record<string, unknown>;
+            if (onMetadata) {
+                onMetadata({
+                    theme: result.__theme as string | undefined,
+                    animationLevel: result.__animationLevel as string | undefined,
+                });
+            }
         }
     } catch (_err) {
         // Glimpse unavailable — fast-exit and warn once
@@ -239,6 +237,5 @@ export async function askUserHandler(
         normalizedOptions,
         result,
         cancelled,
-        error,
     );
 }

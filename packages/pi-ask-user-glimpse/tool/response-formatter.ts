@@ -19,7 +19,6 @@ export interface AskToolDetails {
     options: { title: string; description?: string }[];
     response: AskResponse | null;
     cancelled: boolean;
-    error?: string;
 }
 
 function pickString(raw: unknown): string | undefined {
@@ -104,7 +103,6 @@ export function formatResponse(
     options: { title: string; description?: string }[],
     result: Record<string, unknown> | null,
     cancelled: boolean,
-    error?: string,
 ): AgentToolResult<AskToolDetails> {
     if (cancelled) {
         return {
@@ -114,7 +112,6 @@ export function formatResponse(
                 options,
                 response: null,
                 cancelled: true,
-                error,
             },
         };
     }
@@ -127,7 +124,6 @@ export function formatResponse(
                 options,
                 response: null,
                 cancelled: false,
-                error,
             },
         };
     }
@@ -138,6 +134,6 @@ export function formatResponse(
 
     return {
         content: [{ type: "text", text }],
-        details: { question, options, response, cancelled: false, error },
+        details: { question, options, response, cancelled: false },
     };
 }
