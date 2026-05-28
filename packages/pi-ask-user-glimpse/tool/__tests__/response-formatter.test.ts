@@ -126,4 +126,19 @@ describe("formatResponse", () => {
             expect(textContent(result)).toBe("Cancelled");
         });
     });
+
+    describe("null result", () => {
+        it("returns 'No response' when result is null and not cancelled", () => {
+            const result = formatResponse(
+                question,
+                options,
+                null,
+                false,
+            );
+
+            expect(textContent(result)).toBe("No response");
+            expect(result.details?.cancelled).toBe(false);
+            expect(result.details?.response).toBeNull();
+        });
+    });
 });
