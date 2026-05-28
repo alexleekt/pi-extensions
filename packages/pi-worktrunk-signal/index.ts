@@ -644,8 +644,9 @@ export default function (pi: ExtensionAPI) {
             const repo = params.repo;
             const task = params.task;
 
-            // 1. Create worktree
-            const wtArgs = ["switch", "--create", branch];
+            // 1. Create worktree (use --no-cd --no-hooks to avoid cd
+            // script side-effects and duplicate hooks in the subagent)
+            const wtArgs = ["switch", "--create", "--no-cd", "--no-hooks", branch];
             if (repo) wtArgs.push("--repo", repo);
 
             try {
