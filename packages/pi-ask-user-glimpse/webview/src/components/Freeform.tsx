@@ -6,6 +6,7 @@ import CancelConfirmModal from "./CancelConfirmModal";
 import DialogFooter from "./DialogFooter";
 import { useFooterPortal } from "./FooterContext";
 import GlobalKeyboardHint from "./GlobalKeyboardHint";
+import MarkdownPreview from "./MarkdownPreview";
 
 const MAX_FREEFORM_LENGTH = 2000;
 
@@ -67,6 +68,7 @@ export default function Freeform({
                     maxLength={MAX_FREEFORM_LENGTH}
                     className="h-full w-full resize-none rounded-md border border-input bg-background p-3 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
                 />
+                <MarkdownPreview text={text} className="mt-2" />
             </div>
 
             <CancelConfirmModal

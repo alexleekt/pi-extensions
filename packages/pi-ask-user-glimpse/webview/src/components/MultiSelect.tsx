@@ -7,6 +7,7 @@ import DialogFooter from "./DialogFooter";
 import { useFooterPortal } from "./FooterContext";
 import GlobalKeyboardHint from "./GlobalKeyboardHint";
 import { CheckIcon, CommentIcon, isSelectAllOption } from "./icons";
+import MarkdownPreview from "./MarkdownPreview";
 import OptionCard from "./OptionCard";
 import RichText from "./RichText";
 
@@ -395,13 +396,16 @@ export default function MultiSelect({ payload }: MultiSelectProps) {
                                   : "Add comment"}
                         </button>
                         {showComment && (
-                            <textarea
-                                value={comment}
-                                onChange={(e) => setComment(e.target.value)}
-                                placeholder="Optional comment…"
-                                className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
-                                rows={3}
-                            />
+                            <>
+                                <textarea
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                    placeholder="Optional comment…"
+                                    className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+                                    rows={3}
+                                />
+                                <MarkdownPreview text={comment} />
+                            </>
                         )}
                     </div>
                 )}

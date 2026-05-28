@@ -7,6 +7,7 @@ import DialogFooter from "./DialogFooter";
 import { useFooterPortal } from "./FooterContext";
 import GlobalKeyboardHint from "./GlobalKeyboardHint";
 import { CheckIcon, CommentIcon, isSelectAllOption } from "./icons";
+import MarkdownPreview from "./MarkdownPreview";
 import OptionCard from "./OptionCard";
 import RichText from "./RichText";
 
@@ -448,19 +449,24 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                                   : "Add comment"}
                                         </button>
                                         {showCommentFor === q.title && (
-                                            <textarea
-                                                value={comments[q.title] ?? ""}
-                                                onChange={(e) =>
-                                                    setComments((prev) => ({
-                                                        ...prev,
-                                                        [q.title]:
-                                                            e.target.value,
-                                                    }))
-                                                }
-                                                placeholder="Optional comment…"
-                                                className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring resize-none"
-                                                rows={3}
-                                            />
+                                            <>
+                                                <textarea
+                                                    value={comments[q.title] ?? ""}
+                                                    onChange={(e) =>
+                                                        setComments((prev) => ({
+                                                            ...prev,
+                                                            [q.title]:
+                                                                e.target.value,
+                                                        }))
+                                                    }
+                                                    placeholder="Optional comment…"
+                                                    className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring resize-none"
+                                                    rows={3}
+                                                />
+                                                <MarkdownPreview
+                                                    text={comments[q.title] ?? ""}
+                                                />
+                                            </>
                                         )}
                                     </div>
                                 )}
