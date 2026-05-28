@@ -1,7 +1,7 @@
 # Progress
 
 ## Status
-All approved phases complete. Phase 4 deferred, Phase 5-6 optional.
+All deferred work complete.
 
 ## Completed Phases
 
@@ -13,32 +13,38 @@ All approved phases complete. Phase 4 deferred, Phase 5-6 optional.
 - [x] Add csp attribute to HtmlContext iframe
 - [x] Create 53 security tests (all passing)
 
-**Files:** `package.json`, `webview/src/util/markdown.ts`, `webview/index.html`, `webview/src/components/ContextPanel.tsx`, `webview/src/util/__tests__/markdown.security.test.ts`
-
 ### Phase 2: Component Extraction ✅
 - [x] Create `RichText.tsx` — inline markdown rendering component
 - [x] Create `OptionCard.tsx` — shared option card for single/multi/questionnaire
-- [x] Refactor `SingleSelect.tsx` to use `OptionCard`
-- [x] Refactor `MultiSelect.tsx` to use `OptionCard`
-- [x] Refactor `Questionnaire.tsx` to use `OptionCard`
-
-**Files:** `webview/src/components/RichText.tsx`, `webview/src/components/OptionCard.tsx`, `webview/src/components/SingleSelect.tsx`, `webview/src/components/MultiSelect.tsx`, `webview/src/components/Questionnaire.tsx`
+- [x] Refactor all dialog components to use `OptionCard`
 
 ### Phase 3: Inline Markdown Expansion ✅
 - [x] Questionnaire question titles → `RichText` (inline markdown)
 - [x] Questionnaire question descriptions → `RichText` (inline markdown)
-- [x] Dialog question text (Single/Multi/Freeform) → already supported in `ContextPanel`
-- [x] Option titles/descriptions → already supported via `renderOptionText` → now via `RichText` in `OptionCard`
+- [x] Option titles/descriptions → `RichText` in `OptionCard`
 
-**Files:** `webview/src/components/Questionnaire.tsx`
+### Phase 4: Block Markdown Support ✅
+- [x] Change OptionCard from `<button>` to `<div role="button">` for block-level markdown support
+- [x] Add Enter/Space keyboard handlers and focus-visible styles
+- [x] Update e2e selectors
+
+### Phase 5: Markdown Preview ✅
+- [x] Create `MarkdownPreview.tsx` component with toggle
+- [x] Integrate into Freeform, SingleSelect, MultiSelect, and Questionnaire comment areas
+
+### Phase 6: HTML Context Sanitization ✅
+- [x] Apply DOMPurify sanitization to raw HTML context before iframe injection
+
+### Form Consolidation ✅
+- [x] Create `useBaseDialog` hook — shared state management for all dialogs
+- [x] Unify `SingleSelect` and `MultiSelect` into `SelectDialog` with `mode` prop
+- [x] Create `QuestionCard.tsx` — shared question rendering for Questionnaire
+- [x] Refactor `Questionnaire.tsx` to use `QuestionCard`
+- [x] Update `App.tsx` to use unified components
+- [x] Delete old `SingleSelect.tsx`, `MultiSelect.tsx`, and their test files
 
 ## Validation
-- Unit tests: 100 pass across 9 test files
+- Unit tests: 100 pass across 8 test files
 - E2E tests: 31 pass across all dialog styles
-- Build: succeeds (dist/index.html with DOMPurify bundled)
+- Build: succeeds
 - Typecheck: clean
-
-## Deferred
-- Phase 4: Full block markdown for options (requires `<button>`→`<div role="button">` refactor)
-- Phase 5: Markdown preview for textareas (optional)
-- Phase 6: HTML format support in payload (optional)
