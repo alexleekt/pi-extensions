@@ -93,7 +93,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         const s = stateRef.current;
 
         const send = (result: Record<string, unknown>) => {
-            if (s.showComment && s.comment.trim()) {
+            if (s.comment.trim()) {
                 result.comment = s.comment.trim();
             }
             sendToGlimpse(result);
