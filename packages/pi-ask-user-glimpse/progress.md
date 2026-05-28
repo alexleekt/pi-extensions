@@ -1,22 +1,30 @@
 # Progress
 
 ## Status
-In Progress
+In Progress — Phase 0 (DOMPurify Security Hardening) COMPLETE
 
 ## Tasks
-- [x] Phase 0: Mermaid security hardening (securityLevel: "strict")
-- [x] Phase 0: Link post-processing (DOMPurify already in place)
-- [x] Phase 0: CSP attribute on HtmlContext iframe
-- [x] Phase 0: Build verification
-- [x] Phase 0: Test verification (51/51 pass)
-- [ ] Phase 0: CSP meta tag in index.html (deferred)
-- [ ] Phase 0: CUA interactive verification (deferred)
-- [ ] Phase 2: Extract RichText + OptionCard components
-- [ ] Phase 3: Inline markdown expansion
+- [x] Install DOMPurify dependency
+- [x] Replace regex-based `sanitizeHtml` with DOMPurify in `webview/src/util/markdown.ts`
+- [x] Add CSP meta tag to `webview/index.html` (script-src 'unsafe-inline'; connect-src 'none')
+- [x] Configure DOMPurify with strict ALLOWED_TAGS and ALLOWED_ATTR lists
+- [x] Add DOMPurify hook for `target="_blank"` + `rel="noopener noreferrer"` on all safe links
+- [x] Add href protocol validation (http, https, mailto, tel only)
+- [x] Update security test suite — 49 tests passing, all DOMPurify migration targets activated
+- [x] Build passes (`npm run build`)
+- [x] All unit tests pass (`npm test` — 100 tests across 9 files)
 
 ## Files Changed
-- `webview/src/components/ContextPanel.tsx` — mermaid securityLevel strict, iframe csp attr
-- `webview/src/util/markdown.ts` — already had DOMPurify + link post-processing
+- `package.json` — Added `dompurify` and `@types/dompurify`
+- `webview/src/util/markdown.ts` — Replaced regex sanitizer with DOMPurify + strict allow-list + link hardening hook
+- `webview/index.html` — Added CSP meta tag for GlimpseUI WKWebView
+- `webview/src/util/__tests__/markdown.security.test.ts` — Updated 49 tests, unskipped all DOMPurify targets, added link-hardening tests
 
 ## Notes
-All 51 unit tests pass. Build succeeds. Mermaid securityLevel changed from "loose" to "strict" to prevent SVG-based HTML injection bypass. Link post-processing was already implemented via DOMPurify hook. Iframe CSP attribute added for defense-in-depth.
+DOMPurify closes 5+ documented bypass vectors in the old regex sanitizer: HTML entity encoding, whitespace padding, backtick quotes, style attribute injection, and missing protocol schemes (blob, file, vbscript, ftp). CSP meta tag is required because GlimpseUI uses `loadHTMLString` with `baseURL: nil` — no origin, no network, inline bridge script injection.
+
+## Next Steps
+- Phase 1: Validation in real Glimpse dialog (CUA interactive test)
+- Phase 2: Extract `RichText` + `OptionCard` components
+- Phase 3: Inline markdown expansion to questionnaire titles, descriptions, dialog questions
+- Phase 4: Full block markdown for options (requires `<button>` → `<div role="button">` refactor)

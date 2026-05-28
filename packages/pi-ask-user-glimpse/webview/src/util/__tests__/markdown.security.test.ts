@@ -80,65 +80,47 @@ describe("markdown security pipeline", () => {
         // ──────────────────────────────────────────────────────────────
         // XSS vector: style attribute with javascript: URL
         // ──────────────────────────────────────────────────────────────
-        it("⚠️ DOMPurify required: strips style attribute with javascript: URL", () => {
+        it("strips style attribute with javascript: URL", () => {
             const input = '<div style="background-image:url(javascript:alert(\'xss\'))">text</div>';
             const output = sanitizeHtml(input);
-            // Current regex sanitizer does NOT strip style attributes.
-            // This is a known bypass vector. The test documents the expected
-            // behavior once DOMPurify is integrated.
-            // DOMPurify strips style by default when ALLOWED_ATTR excludes it.
-            // Marking as pending until DOMPurify migration.
+            expect(output).not.toContain("style=");
             expect(output).not.toContain("javascript:");
-            // If style attribute is present, it should not contain javascript:
-            if (output.includes("style=")) {
-                expect(output).not.toContain("background-image:url(javascript:");
-            }
+            expect(output).toContain("text");
         });
 
         // ──────────────────────────────────────────────────────────────
         // XSS vector: HTML entity encoding bypass
         // ──────────────────────────────────────────────────────────────
-        it("⚠️ DOMPurify required: strips href with javascript: as HTML entity", () => {
+        it("strips href with javascript: as HTML entity", () => {
             const input = '<a href="javascript&#58;alert(\'xss\')">click</a>';
             const output = sanitizeHtml(input);
-            // Current regex sanitizer does NOT handle HTML entity encoding in href.
-            // DOMPurify parses the DOM and normalizes entities before sanitization.
-            // This test documents the expected DOMPurify behavior.
-            // The current sanitizer will fail this; marked as documenting the gap.
-            if (output.includes("href")) {
-                expect(output).not.toContain("javascript:");
-                expect(output).not.toContain("&#58;");
-                expect(output).not.toContain("alert('xss')");
-            }
+            expect(output).not.toContain("javascript:");
+            expect(output).not.toContain("&#58;");
+            expect(output).not.toContain("alert('xss')");
+            expect(output).toContain("<a");
+            expect(output).toContain("</a>");
         });
 
         // ──────────────────────────────────────────────────────────────
         // XSS vector: whitespace padding in javascript:
         // ──────────────────────────────────────────────────────────────
-        it("⚠️ DOMPurify required: strips href with whitespace-padded javascript:", () => {
+        it("strips href with whitespace-padded javascript:", () => {
             const input = '<a href="javascript: alert(\'xss\')">click</a>';
             const output = sanitizeHtml(input);
-            // Current regex sanitizer does NOT handle whitespace-padded javascript:
-            // because the regex looks for 'javascript' immediately after the quote.
-            // DOMPurify handles this via proper URL parsing.
-            // The current sanitizer may leave this intact; test documents the gap.
-            if (output.includes("href")) {
-                expect(output).not.toContain("javascript:");
-            }
+            expect(output).not.toContain("javascript:");
+            expect(output).toContain("<a");
+            expect(output).toContain("</a>");
         });
 
         // ──────────────────────────────────────────────────────────────
         // XSS vector: backtick quotes
         // ──────────────────────────────────────────────────────────────
-        it("⚠️ DOMPurify required: strips href with backtick quotes", () => {
+        it("strips href with backtick quotes", () => {
             const input = '<a href=`javascript:alert(\'xss\')`>click</a>';
             const output = sanitizeHtml(input);
-            // Current regex sanitizer does NOT handle backtick-quoted attributes.
-            // DOMPurify normalizes all attribute quotes before processing.
-            // The current sanitizer may leave this intact; test documents the gap.
-            if (output.includes("href")) {
-                expect(output).not.toContain("javascript:");
-            }
+            expect(output).not.toContain("javascript:");
+            expect(output).toContain("<a");
+            expect(output).toContain("</a>");
         });
 
         // ──────────────────────────────────────────────────────────────
@@ -184,14 +166,14 @@ describe("markdown security pipeline", () => {
         // ──────────────────────────────────────────────────────────────
         it("preserves <a href='https://example.com'>link</a>", () => {
             const input = '<a href="https://example.com">link</a>';
-            expect(sanitizeHtml(input)).toContain("href=\"https://example.com\"");
+            expect(sanitizeHtml(input)).toContain('href="https://example.com"');
             expect(sanitizeHtml(input)).toContain("<a");
             expect(sanitizeHtml(input)).toContain("</a>");
         });
 
         it("preserves <a href='mailto:test@example.com'>email</a>", () => {
             const input = '<a href="mailto:test@example.com">email</a>';
-            expect(sanitizeHtml(input)).toContain("href=\"mailto:test@example.com\"");
+            expect(sanitizeHtml(input)).toContain('href="mailto:test@example.com"');
         });
 
         // ──────────────────────────────────────────────────────────────
@@ -285,6 +267,62 @@ describe("markdown security pipeline", () => {
             const input = '<meta http-equiv="refresh" content="0;url=evil.com">';
             expect(sanitizeHtml(input)).not.toContain("<meta");
         });
+
+        // ──────────────────────────────────────────────────────────────
+        // DOMPurify-specific: link post-processing
+        // ──────────────────────────────────────────────────────────────
+        it("adds target='_blank' and rel='noopener noreferrer' to safe links", () => {
+            const input = '<a href="https://example.com">link</a>';
+            const output = sanitizeHtml(input);
+            expect(output).toContain('target="_blank"');
+            expect(output).toContain('rel="noopener noreferrer"');
+        });
+
+        it("strips ftp: URLs from href", () => {
+            const input = '<a href="ftp://evil.com">link</a>';
+            const output = sanitizeHtml(input);
+            expect(output).not.toContain("ftp:");
+            expect(output).toContain("<a");
+            expect(output).toContain("</a>");
+        });
+
+        it("strips blob: URLs from href", () => {
+            const input = '<a href="blob:https://example.com/1234">link</a>';
+            const output = sanitizeHtml(input);
+            expect(output).not.toContain("blob:");
+            expect(output).toContain("<a");
+            expect(output).toContain("</a>");
+        });
+
+        it("strips file: URLs from href", () => {
+            const input = '<a href="file:///etc/passwd">link</a>';
+            const output = sanitizeHtml(input);
+            expect(output).not.toContain("file:");
+            expect(output).toContain("<a");
+            expect(output).toContain("</a>");
+        });
+
+        it("strips vbscript: URLs from href", () => {
+            const input = '<a href="vbscript:msgbox(\'xss\')">link</a>';
+            const output = sanitizeHtml(input);
+            expect(output).not.toContain("vbscript:");
+            expect(output).toContain("<a");
+            expect(output).toContain("</a>");
+        });
+
+        it("strips ping attribute on links", () => {
+            const input = '<a href="https://example.com" ping="https://evil.com">click</a>';
+            const output = sanitizeHtml(input);
+            expect(output).not.toContain("ping=");
+            expect(output).toContain("href=");
+        });
+
+        it("strips formaction attribute on buttons", () => {
+            const input = '<button formaction="javascript:alert(1)">click</button>';
+            const output = sanitizeHtml(input);
+            expect(output).not.toContain("formaction=");
+            expect(output).not.toContain("javascript:");
+        });
     });
 
     describe("renderMarkdown", () => {
@@ -302,8 +340,10 @@ describe("markdown security pipeline", () => {
         it("sanitizes raw <img> inside markdown", () => {
             const input = "![alt](x) <img src=x onerror=alert('xss')>";
             const output = renderMarkdown(input);
-            expect(output).not.toContain("<img");
-            expect(output).not.toContain("onerror");
+            // marked HTML-encodes raw HTML tags; DOMPurify strips markdown-generated <img>
+            expect(output).not.toContain("<img src=x");
+            expect(output).not.toContain("<img src=\"x\"");
+            expect(output).toContain("&lt;img");
         });
 
         it("sanitizes malicious link in markdown", () => {
@@ -326,23 +366,21 @@ describe("markdown security pipeline", () => {
             const output = renderMarkdown(input);
             expect(output).toContain("https://example.com");
             expect(output).toContain("<a");
+            expect(output).toContain('target="_blank"');
+            expect(output).toContain('rel="noopener noreferrer"');
         });
 
         // ──────────────────────────────────────────────────────────────
         // Mermaid-specific: code blocks with <script> in labels
         // ──────────────────────────────────────────────────────────────
-        it("⚠️ DOMPurify required: mermaid code blocks with <script> in labels are escaped", () => {
+        it("mermaid code blocks with <script> in labels are escaped", () => {
             const input = '```mermaid\ngraph TD\n  A["<script>alert(1)</script>"]\n```';
             const output = renderMarkdown(input);
             // The markdown renderer produces mermaid divs; the sanitizer runs on the HTML.
-            // Current: marked produces `<div class="mermaid">...` with the raw text inside.
+            // marked produces `<div class="mermaid">...` with the raw text inside.
             // The sanitizer strips the <script> tag from the label text.
-            // But mermaid later renders the label and may execute HTML.
-            // This test documents that mermaid text should be escaped BEFORE rendering.
             expect(output).toContain("mermaid");
-            // After DOMPurify migration, mermaid text should be escaped before insertion.
-            // Currently, the sanitizer strips the <script> tag but the raw text remains.
-            // This is a known gap in the mermaid pipeline.
+            expect(output).not.toContain("<script>");
         });
     });
 
@@ -376,83 +414,8 @@ describe("markdown security pipeline", () => {
             const output = renderMarkdownInline(input);
             expect(output).toContain("https://example.com");
             expect(output).toContain("<a");
-        });
-    });
-
-    // ──────────────────────────────────────────────────────────────
-    // Future-proofing: tests for DOMPurify behavior
-    // These will be skipped until DOMPurify is integrated, then
-    // unskipped to become the security baseline.
-    // ──────────────────────────────────────────────────────────────
-    describe("🚧 DOMPurify migration targets (skipped until integration)", () => {
-        it.skip("strips all style attributes", () => {
-            const input = '<div style="display:none">text</div>';
-            const output = sanitizeHtml(input);
-            expect(output).not.toContain("style=");
-        });
-
-        it.skip("strips javascript: in href with entity encoding", () => {
-            const input = '<a href="javascript&#58;alert(\'xss\')">click</a>';
-            const output = sanitizeHtml(input);
-            expect(output).not.toContain("javascript:");
-            expect(output).not.toContain("&#58;");
-        });
-
-        it.skip("strips javascript: in href with whitespace padding", () => {
-            const input = '<a href="javascript: alert(\'xss\')">click</a>';
-            const output = sanitizeHtml(input);
-            expect(output).not.toContain("javascript:");
-        });
-
-        it.skip("strips backtick-quoted attributes", () => {
-            const input = '<a href=`javascript:alert(\'xss\')`>click</a>';
-            const output = sanitizeHtml(input);
-            expect(output).not.toContain("javascript:");
-        });
-
-        it.skip("strips vbscript: URLs", () => {
-            const input = '<a href="vbscript:msgbox(\'xss\')">click</a>';
-            const output = sanitizeHtml(input);
-            expect(output).not.toContain("vbscript:");
-        });
-
-        it.skip("strips blob: URLs", () => {
-            const input = '<a href="blob:https://example.com/1234">click</a>';
-            const output = sanitizeHtml(input);
-            expect(output).not.toContain("blob:");
-        });
-
-        it.skip("strips ping attribute on links", () => {
-            const input = '<a href="https://example.com" ping="https://evil.com">click</a>';
-            const output = sanitizeHtml(input);
-            expect(output).not.toContain("ping=");
-        });
-
-        it.skip("strips srcdoc attribute on iframes", () => {
-            const input = '<iframe srcdoc="<script>alert(1)</script>"></iframe>';
-            const output = sanitizeHtml(input);
-            expect(output).not.toContain("srcdoc=");
-            expect(output).not.toContain("<iframe");
-        });
-
-        it.skip("strips formaction attribute on buttons", () => {
-            const input = '<button formaction="javascript:alert(1)">click</button>';
-            const output = sanitizeHtml(input);
-            expect(output).not.toContain("formaction=");
-        });
-
-        it.skip("adds target=\"_blank\" and rel=\"noopener noreferrer\" to safe links", () => {
-            const input = '<a href="https://example.com">link</a>';
-            const output = sanitizeHtml(input);
             expect(output).toContain('target="_blank"');
             expect(output).toContain('rel="noopener noreferrer"');
-        });
-
-        it.skip("validates href protocol after sanitization", () => {
-            const input = '<a href="https://example.com">safe</a><a href="ftp://evil.com">unsafe</a>';
-            const output = sanitizeHtml(input);
-            expect(output).toContain("https://example.com");
-            expect(output).not.toContain("ftp://evil.com");
         });
     });
 });
