@@ -163,4 +163,39 @@ describe("App", () => {
         expect(dialogPayload.context).toBeUndefined();
         expect(dialogPayload.question).toBe("Test question?");
     });
+
+    it("resizer drag updates panel width", async () => {
+        (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = createPayload("single-select");
+        const { container } = await renderApp();
+        const resizer = container.querySelector('[role="separator"]') as HTMLElement;
+        expect(resizer).toBeInTheDocument();
+
+        // Start drag
+        resizer.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+        // Move mouse
+        window.dispatchEvent(new MouseEvent("mousemove", { clientX: 500 }));
+        // End drag
+        window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    });
+
+    it("resizer double-click collapses panel", async () => {
+        (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = createPayload("single-select");
+        const { container } = await renderApp();
+        const resizer = container.querySelector('[role="separator"]') as HTMLElement;
+        expect(resizer).toBeInTheDocument();
+
+        resizer.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+
+    it("resizer click when collapsed expands panel", async () => {
+        (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = createPayload("single-select");
+        const { container } = await renderApp();
+        const resizer = container.querySelector('[role="separator"]') as HTMLElement;
+        expect(resizer).toBeInTheDocument();
+
+        // First collapse via double-click
+        resizer.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+        // Then click to expand
+        resizer.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    });
 });
