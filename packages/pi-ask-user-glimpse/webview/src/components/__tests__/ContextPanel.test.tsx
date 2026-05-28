@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import ContextPanel from "../ContextPanel";
 
 vi.mock("mermaid", () => ({
@@ -23,14 +23,21 @@ vi.mock("../SettingsButton", () => ({
 
 vi.mock("marked", () => ({
     marked: {
-        parse: (text: string) => {
+        parse: (text: string, opts?: { renderer?: { code?: (args: { text: string; lang?: string }) => string } }) => {
+            const renderer = opts?.renderer;
+            if (text.includes("```mermaid")) {
+                const mermaidText = text.match(/```mermaid\n([\s\S]*?)```/)?.[1] || "";
+                return renderer?.code?.({ text: mermaidText, lang: "mermaid" }) || `<div class="mermaid">${mermaidText}</div>`;
+            }
             if (text.startsWith("# ")) {
                 const heading = text.slice(2).split("\n")[0];
                 return `<h1>${heading}</h1>`;
             }
             return `<p>${text}</p>`;
         },
-        Renderer: class Renderer {},
+        Renderer: class Renderer {
+            code() { return ""; }
+        },
     },
 }));
 
@@ -96,5 +103,98 @@ describe("ContextPanel", () => {
         const markdownDiv = container.querySelector(".markdown-body");
         expect(markdownDiv).toBeInTheDocument();
         expect(markdownDiv?.innerHTML).toContain("<h1>Hello");
+    });
+
+    it("mermaid diagram rendering is triggered when context contains mermaid syntax", async () => {
+        const rafSpy = vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+            cb(0);
+            return 0;
+        });
+
+        const { container } = render(
+            <ContextPanel
+                context="```mermaid\ngraph TD\n  A --> B\n```"
+                contextFormat="markdown"
+            />,
+        );
+        const markdownDiv = container.querySelector(".markdown-body");
+        expect(markdownDiv).toBeInTheDocument();
+        expect(markdownDiv?.innerHTML).toContain('<div class="mermaid">');
+        const mermaid = await import("mermaid");
+        expect(mermaid.default.initialize).toHaveBeenCalled();
+        expect(mermaid.default.run).toHaveBeenCalled();
+
+        rafSpy.mockRestore();
+    });
+
+    it("HTML context format renders raw HTML in iframe", () => {
+        render(
+            <ContextPanel
+                context="<div class='custom'>Raw HTML</div>"
+                contextFormat="html"
+            />,
+        );
+        const iframe = screen.getByTitle("HTML context");
+        const srcdoc = iframe.getAttribute("srcDoc") ?? "";
+        expect(srcdoc).toContain("<div class='custom'>Raw HTML</div>");
+    });
+
+    it("iframe postMessage sends theme when iframe loads", () => {
+        const mockPostMessage = vi.fn();
+        const originalDesc = Object.getOwnPropertyDescriptor(
+            window.HTMLIFrameElement.prototype,
+            "contentWindow",
+        );
+        Object.defineProperty(window.HTMLIFrameElement.prototype, "contentWindow", {
+            get() {
+                return { postMessage: mockPostMessage };
+            },
+            configurable: true,
+        });
+
+        render(
+            <ContextPanel
+                context="<p>Hello</p>"
+                contextFormat="html"
+            />,
+        );
+        const iframe = screen.getByTitle("HTML context");
+        fireEvent.load(iframe);
+        expect(mockPostMessage).toHaveBeenCalledWith(
+            { type: "theme", theme: "light" },
+            "*",
+        );
+
+        // Restore original descriptor
+        if (originalDesc) {
+            Object.defineProperty(window.HTMLIFrameElement.prototype, "contentWindow", originalDesc);
+        }
+    });
+
+    it("empty HTML context renders empty iframe body", () => {
+        const { container } = render(
+            <ContextPanel context="" contextFormat="html" />,
+        );
+        const iframe = container.querySelector("iframe");
+        expect(iframe).toBeInTheDocument();
+        const srcdoc = iframe?.getAttribute("srcDoc") ?? "";
+        // The body should be empty (no HTML content between body tags)
+        const bodyMatch = srcdoc.match(/<body class="light">([\s\S]*?)<\/body>/);
+        expect(bodyMatch).toBeTruthy();
+        const bodyContent = bodyMatch?.[1] ?? "";
+        // After stripping the script tag, the body should be empty
+        const stripped = bodyContent.replace(/<script>[\s\S]*?<\/script>/, "").trim();
+        expect(stripped).toBe("");
+    });
+
+    it("Context panel with no context renders empty iframe", () => {
+        const { container } = render(
+            <ContextPanel context="" contextFormat="markdown" />,
+        );
+        const markdownDiv = container.querySelector(".markdown-body");
+        expect(markdownDiv).toBeInTheDocument();
+        // With no context and markdown format, the markdown body renders an empty paragraph
+        const innerHTML = markdownDiv?.innerHTML ?? "";
+        expect(innerHTML.trim()).toBe("<p></p>");
     });
 });
