@@ -84,6 +84,30 @@ describe("formatResponse", () => {
 
             expect(result.details?.response?.comment).toBeUndefined();
         });
+
+        it("handles single selection field instead of selections array", () => {
+            const result = formatResponse(
+                question,
+                options,
+                { kind: "selection", selection: "Option B" },
+                false,
+            );
+
+            expect(result.details?.response?.kind).toBe("selection");
+            expect(result.details?.response?.selections).toEqual(["Option B"]);
+            expect(textContent(result)).toBe("Option B");
+        });
+
+        it("returns 'No response' when selection is empty", () => {
+            const result = formatResponse(
+                question,
+                options,
+                { kind: "selection", selections: [] },
+                false,
+            );
+
+            expect(textContent(result)).toBe("No response");
+        });
     });
 
     describe("questionnaire", () => {
@@ -109,6 +133,46 @@ describe("formatResponse", () => {
             expect(result.details?.response?.questionnaireDetails).toEqual([
                 { question: "Q1", answer: "A", kind: "selection" },
             ]);
+        });
+
+        it("handles freeform questionnaire answers", () => {
+            const result = formatResponse(
+                question,
+                options,
+                {
+                    kind: "questionnaire",
+                    selections: ["Q1: Free answer"],
+                    questionnaireDetails: [
+                        {
+                            question: "Q1",
+                            answer: "Free answer",
+                            kind: "freeform",
+                            comment: "Extra note",
+                        },
+                    ],
+                },
+                false,
+            );
+
+            expect(result.details?.response?.kind).toBe("questionnaire");
+            expect(result.details?.response?.questionnaireDetails).toEqual([
+                { question: "Q1", answer: "Free answer", kind: "freeform", comment: "Extra note" },
+            ]);
+            expect(textContent(result)).toContain("Q1: Free answer");
+            expect(textContent(result)).toContain("Comment: Extra note");
+        });
+    });
+
+    describe("normalizeKind", () => {
+        it("defaults to selection for unknown kind values", () => {
+            const result = formatResponse(
+                question,
+                options,
+                { kind: "unknown", selections: ["Option A"] },
+                false,
+            );
+
+            expect(result.details?.response?.kind).toBe("selection");
         });
     });
 
