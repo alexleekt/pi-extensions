@@ -44,19 +44,19 @@ describe("setHeadingMessage", () => {
     test("clears working message when text is empty", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "");
-        expect(ctx._workingMessages).toEqual([undefined]);
+        expect(ctx._workingMessages).toEqual([""]);
     });
 
     test("clears working message when text is whitespace only", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "   ");
-        expect(ctx._workingMessages).toEqual([undefined]);
+        expect(ctx._workingMessages).toEqual([""]);
     });
 
     test("clears working message when mode is idle", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Something", "idle");
-        expect(ctx._workingMessages).toEqual([undefined]);
+        expect(ctx._workingMessages).toEqual([""]);
     });
 
     test("trims text before rendering", () => {
@@ -67,10 +67,10 @@ describe("setHeadingMessage", () => {
 });
 
 describe("clearHeading", () => {
-    test("clears working message", () => {
+    test("clears working message with empty string", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Fix the bug");
         clearHeading(ctx);
-        expect(ctx._workingMessages).toEqual(["Fix the bug", undefined]);
+        expect(ctx._workingMessages).toEqual(["Fix the bug", ""]);
     });
 });

@@ -145,6 +145,7 @@ export default function QuestionCard({
             ) : (
                 <div>
                     <textarea
+                        aria-label={`Answer for ${question.title}`}
                         placeholder="Your answer…"
                         value={(answer as string) ?? ""}
                         onChange={(e) => onSetText(e.target.value)}

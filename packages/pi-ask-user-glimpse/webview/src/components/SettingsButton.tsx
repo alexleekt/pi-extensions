@@ -149,6 +149,7 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                 onClick={() => setOpen((s) => !s)}
                 aria-expanded={open}
                 aria-haspopup="menu"
+                aria-controls="settings-menu"
                 className={buttonClassName ?? "rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"}
                 title="Settings"
             >
@@ -161,7 +162,7 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                         data-overlay="true"
                         onClick={() => setOpen(false)}
                     />
-                    <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border bg-popover p-2 shadow-lg">
+                    <div id="settings-menu" role="menu" className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border bg-popover p-2 shadow-lg">
                         <div className="mb-2 px-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Theme
                         </div>

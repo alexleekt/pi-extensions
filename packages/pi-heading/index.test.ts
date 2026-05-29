@@ -286,7 +286,7 @@ describe("headingExtension", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         await pi.handlers.session_start[0]({}, ctx);
-        expect(ctx.workingMessageCalls.some((m) => m === undefined)).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m === "")).toBe(true);
     });
 
     test("session_start does nothing when hasUI is false", async () => {
@@ -336,7 +336,7 @@ describe("headingExtension", () => {
         const ctx = makeMockCtx({ leafId: "leaf-no-state" });
         pi.handlers.agent_end[0]({}, ctx);
         expect(ctx.workingVisibleCalls).toContain(true);
-        expect(ctx.workingMessageCalls.some((m) => m === undefined)).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m === "")).toBe(true);
         expect(pi.eventEmissions.some((e) => e.channel === "heading:state" && (e.data as any).mode === "idle")).toBe(true);
     });
 
@@ -346,7 +346,7 @@ describe("headingExtension", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         await pi.handlers.session_shutdown[0]({}, ctx);
-        expect(ctx.workingMessageCalls.some((m) => m === undefined)).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m === "")).toBe(true);
         expect(ctx.workingVisibleCalls).toContain(true);
     });
 
@@ -356,9 +356,12 @@ describe("headingExtension", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.before_agent_start[0]({ prompt: "help with docker" }, ctx);
+        // Immediate placeholder is set synchronously before async summarize
+        expect(ctx.workingMessageCalls.length).toBeGreaterThanOrEqual(1);
+        expect(ctx.workingMessageCalls[0]).toContain("help with docker");
         await new Promise((r) => setTimeout(r, 50));
-        expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
-        expect(ctx.workingMessageCalls[0]).toContain("Docker setup");
+        // After summarize completes, the LLM goal replaces the placeholder
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("Docker setup"))).toBe(true);
     });
 
     test("before_agent_start does nothing for empty prompt", () => {
@@ -378,13 +381,52 @@ describe("headingExtension", () => {
     test("before_agent_start skips stale generation renders", async () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
-        // First call starts generation 1
+        // First call starts generation 1 and sets placeholder "first"
         pi.handlers.before_agent_start[0]({ prompt: "first" }, ctx);
-        // Second call bumps to generation 2 before first completes
+        // Second call bumps to generation 2 and sets placeholder "second"
         pi.handlers.before_agent_start[0]({ prompt: "second" }, ctx);
         await new Promise((r) => setTimeout(r, 100));
-        // Only the second call's result should render
-        expect(ctx.workingMessageCalls.length).toBe(1);
+        // Both placeholders + only the second call's result should render
+        expect(ctx.workingMessageCalls.length).toBe(3);
+        expect(ctx.workingMessageCalls[0]).toBe("first");
+        expect(ctx.workingMessageCalls[1]).toBe("second");
+        expect(ctx.workingMessageCalls[2]).toContain("Docker setup");
+    });
+
+    test("before_agent_start falls back to prompt when goal is empty", async () => {
+        mockCompleteSimple.mockImplementation(() =>
+            Promise.resolve({
+                role: "assistant",
+                content: [{ type: "text", text: '{"result": "   "}' }],
+                api: "openai-completions",
+                provider: "openai",
+                model: "test-model",
+                usage: {
+                    input: 0,
+                    output: 0,
+                    cacheRead: 0,
+                    cacheWrite: 0,
+                    totalTokens: 0,
+                    cost: {
+                        input: 0,
+                        output: 0,
+                        cacheRead: 0,
+                        cacheWrite: 0,
+                        total: 0,
+                    },
+                },
+                stopReason: "stop",
+                timestamp: Date.now(),
+            } as any),
+        );
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        pi.handlers.before_agent_start[0]({ prompt: "help with docker" }, ctx);
+        // Placeholder set immediately
+        expect(ctx.workingMessageCalls[0]).toContain("help with docker");
+        await new Promise((r) => setTimeout(r, 50));
+        // Empty goal should fall back to the prompt, not leave the message blank
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("help with docker"))).toBe(true);
     });
 
     test("before_agent_start notifies on summarize error", async () => {
@@ -410,11 +452,12 @@ describe("headingExtension", () => {
 
     // ── agent_start ──────────────────────────────────────────────
 
-    test("agent_start sets working message with goal", () => {
+    test("agent_start sets working message with goal and hides native loader", () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.agent_start[0]({}, ctx);
+        expect(ctx.workingVisibleCalls).toContain(false);
         expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
         expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
     });
@@ -428,11 +471,12 @@ describe("headingExtension", () => {
 
     // ── turn_start ─────────────────────────────────────────────
 
-    test("turn_start refreshes working message for tool-call turns", () => {
+    test("turn_start refreshes working message and hides native loader", () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.turn_start[0]({}, ctx);
+        expect(ctx.workingVisibleCalls).toContain(false);
         expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
         expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
     });

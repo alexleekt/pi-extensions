@@ -17,7 +17,6 @@ interface UseBaseDialogOptions {
 
 interface UseBaseDialogReturn {
     isSubmitting: boolean;
-    setIsSubmitting: (v: boolean) => void;
     showCancelConfirm: boolean;
     setShowCancelConfirm: (v: boolean) => void;
     handleCancel: () => void;
@@ -97,7 +96,6 @@ export function useBaseDialog({
 
     return {
         isSubmitting,
-        setIsSubmitting,
         showCancelConfirm,
         setShowCancelConfirm,
         handleCancel,

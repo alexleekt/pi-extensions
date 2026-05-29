@@ -146,6 +146,8 @@ function HtmlContext({
 
     // The iframe has an opaque origin (sandbox without allow-same-origin), so we
     // must target "*" for postMessage to be delivered at all.
+    // SECURITY: The iframe is sandboxed with allow-scripts only and no network access.
+    // The parent controls the srcdoc content entirely, so "*" is acceptable here.
     useEffect(() => {
         const cw = iframeRef.current?.contentWindow;
         if (!cw || !loaded) return;
@@ -199,6 +201,9 @@ export default function ContextPanel({
             mermaid.run({ nodes }).catch((err: unknown) => {
                 // eslint-disable-next-line no-console
                 console.warn("[mermaid] render error:", err);
+                for (const node of nodes) {
+                    node.textContent = "[Diagram rendering failed]";
+                }
             });
         });
 

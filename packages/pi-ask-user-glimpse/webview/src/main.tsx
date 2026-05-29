@@ -6,12 +6,29 @@ import { SettingsProvider } from "./util/settings";
 import "./index.generated.css";
 
 const raw = (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__;
-const payload = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+
+/** Lightweight runtime validation for the ask_user payload.
+ *  Ensures the payload has a recognized type before rendering.
+ */
+function validatePayload(raw: unknown): Record<string, unknown> | null {
+    if (!raw || typeof raw !== "object") return null;
+    const payload = raw as Record<string, unknown>;
+    const validTypes = ["single-select", "multi-select", "freeform", "questionnaire"];
+    if (!validTypes.includes(payload.type as string)) return null;
+    return payload;
+}
+
+const payload = validatePayload(raw);
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {
     document.body.innerHTML = '<div style="padding:20px;color:red">Error: #root element not found</div>';
     throw new Error("#root element not found");
+}
+
+if (!payload) {
+    document.body.innerHTML = '<div style="padding:20px;color:red">Error: Invalid ask_user payload</div>';
+    throw new Error("Invalid payload: missing or unrecognized type field");
 }
 
 ReactDOM.createRoot(rootEl).render(

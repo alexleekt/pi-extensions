@@ -27,5 +27,5 @@ export function setHeadingMessage(
 }
 
 export function clearHeading(ctx: ExtensionContext): void {
-  ctx.ui.setWorkingMessage();
+  ctx.ui.setWorkingMessage("");
 }

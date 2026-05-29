@@ -119,8 +119,8 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
 
             <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-4">
-                    {questions.map((q) => (
-                        <div key={q.title}>
+                    {questions.map((q, qIdx) => (
+                        <div key={qIdx}>
                             <QuestionCard
                                 question={q}
                                 answer={answers[q.title]}

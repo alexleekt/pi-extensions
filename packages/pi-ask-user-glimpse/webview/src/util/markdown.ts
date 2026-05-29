@@ -113,6 +113,11 @@ export function renderMarkdown(text: string, renderer?: marked.Renderer): string
 /**
  * Render markdown to sanitized HTML suitable for inline use.
  * Strips the wrapping `<p>` tag that `marked` adds for plain text.
+ *
+ * NOTE: Multi-paragraph markdown produces multiple `<p>` tags and this
+ * regex will only strip the first/last wrapping pair. Use `renderMarkdown`
+ * directly for block-level content, or ensure the caller wraps this in a
+ * block container (e.g. `<div>`) to avoid invalid inline HTML.
  */
 export function renderMarkdownInline(text: string): string {
     const html = renderMarkdown(text);

@@ -170,6 +170,10 @@ export default function (pi: ExtensionAPI) {
         agentStartedForCurrentTurn = false;
         const leafId = ctx.sessionManager.getLeafId();
         const state = leafId ? getState(leafId) : undefined;
+        // Restore Pi's native loader first, then set our custom message.
+        // This prevents setWorkingVisible(true) from resetting the message
+        // text back to the platform default "Working".
+        ctx.ui.setWorkingVisible(true); // ensure working indicator stays visible
         if (state?.goal) {
             const mode = state.achievement ? "achievement" : "goal";
             setHeadingMessage(ctx, state.goal, mode);
@@ -178,7 +182,6 @@ export default function (pi: ExtensionAPI) {
             clearHeading(ctx);
             clearExposure(pi);
         }
-        ctx.ui.setWorkingVisible(true); // ensure working indicator stays visible
     });
 
     pi.on("session_shutdown", async (_event, ctx) => {
@@ -199,6 +202,10 @@ export default function (pi: ExtensionAPI) {
 
         const leafId = ctx.sessionManager.getLeafId();
 
+        // Set an immediate placeholder so the user never sees the platform
+        // default "Working" while the async summarize is in progress.
+        setHeadingMessage(ctx, prompt.slice(0, 60), "working");
+
         // Fire-and-forget: do not await summarize — we must not block the agent
         void (async () => {
             try {
@@ -208,6 +215,9 @@ export default function (pi: ExtensionAPI) {
                 const existing = leafId ? getState(leafId) : undefined;
 
                 if (!result.goal.trim()) {
+                    // LLM returned an empty goal — keep the user's prompt as
+                    // the working message instead of leaving it blank.
+                    setHeadingMessage(ctx, prompt.slice(0, 60), "working");
                     logDebug(
                         makeDebugEntry(prompt, result, existing, ctx.model?.id),
                     );
@@ -262,6 +272,10 @@ export default function (pi: ExtensionAPI) {
         if (!ctx.hasUI) return;
         agentStartedForCurrentTurn = true;
 
+        // Suppress Pi's native "Working" loader so our widget spinner is the
+        // only visible progress indicator (per ADR 0002).
+        ctx.ui.setWorkingVisible(false);
+
         const leafId = ctx.sessionManager.getLeafId();
         const state = leafId ? getState(leafId) : undefined;
         if (state?.goal) {
@@ -274,6 +288,11 @@ export default function (pi: ExtensionAPI) {
 
     pi.on("turn_start", (_event: TurnStartEvent, ctx) => {
         if (!ctx.hasUI) return;
+
+        // Suppress Pi's native "Working" loader between tool-call turns
+        // (per ADR 0002 — restored at agent_end, not turn_end).
+        ctx.ui.setWorkingVisible(false);
+
         const leafId = ctx.sessionManager.getLeafId();
         const state = leafId ? getState(leafId) : undefined;
         if (state?.goal) {

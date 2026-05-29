@@ -131,7 +131,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         ? selected !== null || comment.trim() !== ""
         : selectedSet.size > 0 || comment.trim() !== "";
 
-    const { isSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel, handleDiscard, handleSubmit: baseHandleSubmit } = useBaseDialog({
+    const { showCancelConfirm, setShowCancelConfirm, handleCancel, handleDiscard, handleSubmit: baseHandleSubmit } = useBaseDialog({
         payload,
         isDirty,
         onSubmit: handleSubmit,
@@ -239,6 +239,9 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                             : null;
                     if (optionTitle) {
                         e.preventDefault();
+                        // Direct ref mutation required: baseHandleSubmit reads
+                        // stateRef.current synchronously before React batches the
+                        // setSelected update, so the ref must be up-to-date.
                         stateRef.current.selected = optionTitle;
                         setSelected(optionTitle);
                         baseHandleSubmit();
