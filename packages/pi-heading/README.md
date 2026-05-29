@@ -194,18 +194,18 @@ Parallel LLM calls:
     ↓
 Topic stability guard (prevents jitter)
     ↓
-setWidget("▸ {goal}")        ← goal phase
+setHeadingMessage(ctx, goal, "goal")     ← goal phase (▸ prefix)
     ↓
 agent_start event
     ↓
-setWidget("⠋ {goal}")        ← working phase (animated)
+setHeadingMessage(ctx, goal, "working")  ← working phase (⠋ spinner)
     ↓
 turn_end event
     ↓
 Achievement LLM call:
   • prompt: {goal} + {message}  ← goal context biases wording
     ↓
-setWidget("✓ {achievement}") ← achievement phase
+setHeadingMessage(ctx, achievement, "achievement")  ← achievement phase (✓ prefix)
     ↓
 appendEntry("heading", { topic, goal, achievement })  ← per-branch persistence
 ```
@@ -224,7 +224,7 @@ sequenceDiagram
     pi_heading->>pi_heading: bootstrapPrompts()
     pi_heading->>pi_heading: replayBranch(ctx)
     alt Has saved heading
-        pi_heading->>Pi: setWidget("▸ {goal}")
+        pi_heading->>Pi: setHeadingMessage(ctx, goal, "goal")
     end
 
     Note over User,LLM: User sends a message
@@ -234,15 +234,15 @@ sequenceDiagram
     Pi->>LLM: Agent loop begins
     LLM-->>Pi: Streaming response
     Pi->>pi_heading: agent_start
-    pi_heading->>Pi: setWidget("⠋ {goal}")   ← working spinner starts
+    pi_heading->>Pi: setHeadingMessage(ctx, goal, "working")  ← working spinner
     Pi->>pi_heading: turn_end
-    pi_heading->>Pi: setWidget("✓ {goal}")  ← completion prefix
+    pi_heading->>Pi: setHeadingMessage(ctx, goal, "achievement")  ← completion prefix
     alt More tool-call turns
         Pi->>pi_heading: turn_start
-        pi_heading->>Pi: setWidget("⠋ {goal}")  ← spinner restarts
+        pi_heading->>Pi: setHeadingMessage(ctx, goal, "working")  ← spinner restarts
         LLM-->>Pi: Streaming response
         Pi->>pi_heading: turn_end
-        pi_heading->>Pi: setWidget("✓ {goal}")  ← completion prefix
+        pi_heading->>Pi: setHeadingMessage(ctx, goal, "achievement")  ← completion prefix
     end
     Pi->>pi_heading: agent_end
 
@@ -251,18 +251,18 @@ sequenceDiagram
     pi_heading->>LLM: goal prompt → goal
     LLM-->>pi_heading: topic + goal
     pi_heading->>pi_heading: stableTopic(old, new)
-    pi_heading->>Pi: setWidget("▸ {goal}")    ← goal ready (if before agent_start)
+    pi_heading->>Pi: setHeadingMessage(ctx, goal, "goal")  ← goal ready
     pi_heading->>Pi: appendEntry("heading", {topic, goal})
 
     Note over pi_heading,LLM: Achievement summarization (with goal context)
     pi_heading->>LLM: achievement prompt (goal={goal}, output={message})
     LLM-->>pi_heading: achievement (echoes goal terminology)
-    pi_heading->>Pi: setWidget("✓ {achievement}")
+    pi_heading->>Pi: setHeadingMessage(ctx, achievement, "achievement")
     pi_heading->>Pi: appendEntry("heading", {topic, goal, achievement})
 
     Note over User,Pi: User leaves / session ends
     Pi->>pi_heading: session_shutdown (reason: quit/reload)
-    pi_heading->>Pi: setWidget(undefined)
+    pi_heading->>Pi: clearHeading(ctx)
 ```
 
 **Key points:**
@@ -276,7 +276,7 @@ sequenceDiagram
 
 ## No ghosting — how?
 
-The original `pi-recap` (by @Fornace, MIT licensed) used bordered panels with pi-tui components. Border characters would get orphaned in the terminal scrollback when the widget redrew. This version renders a **single plain-text line** via `ctx.ui.setWidget()` — no borders, no background colors, no custom components. Differential rendering naturally overwrites it in place.
+The original `pi-recap` (by @Fornace, MIT licensed) used bordered panels with pi-tui components. Border characters would get orphaned in the terminal scrollback when the widget redrew. This version renders a **single plain-text line** via `ctx.ui.setWorkingMessage()` — no borders, no background colors, no custom components. Differential rendering naturally overwrites it in place.
 
 ## License
 

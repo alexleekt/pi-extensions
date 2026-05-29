@@ -5,11 +5,9 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import {
-    cleanLLMOutput,
-    readPromptFile,
-    truncateToWords,
-} from "./summarize.js";
+import { cleanLLMOutput, extractTextFromMessage } from "./parse.js";
+import { readPromptFile, truncateToWords } from "./prompt.js";
+import { thinkingOffOpts } from "./run.js";
 
 describe("truncateToWords", () => {
     test("returns text unchanged when under limit", () => {
@@ -236,5 +234,103 @@ describe("readPromptFile", () => {
         expect(result.instructions).toBe("You are a tagger.");
         expect(result.template).toBe("{message}");
         expect(result.maxWords).toBe(7);
+    });
+
+    test("fallback when no Message: marker — template becomes {message}", () => {
+        fs.writeFileSync(
+            path.join(tmpDefaultDir, "goal.md"),
+            "---\nmax_words: 5\n---\nSome instructions without Message marker",
+            "utf8",
+        );
+        const result = readPromptFile("goal", tmpUserDir, tmpDefaultDir);
+        expect(result.instructions).toBe(
+            "Some instructions without Message marker",
+        );
+        expect(result.template).toBe("{message}");
+    });
+});
+
+describe("extractTextFromMessage", () => {
+    test("returns empty string for undefined", () => {
+        expect(extractTextFromMessage(undefined)).toBe("");
+    });
+
+    test("returns string directly when msg is a string", () => {
+        expect(extractTextFromMessage("hello" as any)).toBe("hello");
+    });
+
+    test("extracts from .text property", () => {
+        expect(extractTextFromMessage({ text: "hello world" } as any)).toBe(
+            "hello world",
+        );
+    });
+
+    test("extracts from .content string", () => {
+        expect(extractTextFromMessage({ content: "hello world" } as any)).toBe(
+            "hello world",
+        );
+    });
+
+    test("extracts from .content array with text parts", () => {
+        expect(
+            extractTextFromMessage({
+                content: [
+                    { type: "text", text: "hello" },
+                    { type: "text", text: " world" },
+                ],
+            } as any),
+        ).toBe("hello world");
+    });
+
+    test("extracts from .content array with string elements", () => {
+        expect(
+            extractTextFromMessage({
+                content: ["hello", " ", "world"],
+            } as any),
+        ).toBe("hello world");
+    });
+
+    test("skips thinking content", () => {
+        expect(
+            extractTextFromMessage({
+                content: [
+                    { type: "thinking", thinking: "let me think" },
+                    { type: "text", text: "result" },
+                ],
+            } as any),
+        ).toBe("result");
+    });
+
+    test("parses JSON result field", () => {
+        expect(
+            extractTextFromMessage({
+                content: [{ type: "text", text: '{"result": "parsed"}' }],
+            } as any),
+        ).toBe("parsed");
+    });
+
+    test("returns raw text when JSON parse fails", () => {
+        expect(
+            extractTextFromMessage({
+                content: [{ type: "text", text: "plain text" }],
+            } as any),
+        ).toBe("plain text");
+    });
+});
+
+describe("thinkingOffOpts", () => {
+    test("returns correct shapes for each API", () => {
+        expect(thinkingOffOpts({ api: "anthropic-messages" } as any)).toEqual({
+            thinkingEnabled: false,
+        });
+        expect(thinkingOffOpts({ api: "google-generative-ai" } as any)).toEqual(
+            {
+                thinking: { enabled: false },
+            },
+        );
+        expect(thinkingOffOpts({ api: "google-vertex" } as any)).toEqual({
+            thinking: { enabled: false },
+        });
+        expect(thinkingOffOpts({ api: "openai" } as any)).toEqual({});
     });
 });

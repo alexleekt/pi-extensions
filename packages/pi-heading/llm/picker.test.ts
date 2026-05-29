@@ -21,6 +21,8 @@ describe("picker", () => {
             `pi-heading-picker-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         );
         fs.mkdirSync(tmpDir, { recursive: true });
+        // Clear default config dir to prevent cross-test pollution
+        setModelOverride(undefined);
     });
 
     afterEach(() => {
