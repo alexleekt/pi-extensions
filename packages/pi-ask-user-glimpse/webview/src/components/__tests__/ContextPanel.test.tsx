@@ -29,6 +29,14 @@ vi.mock("marked", () => ({
                 const mermaidText = text.match(/```mermaid\n([\s\S]*?)```/)?.[1] || "";
                 return renderer?.code?.({ text: mermaidText, lang: "mermaid" }) || `<div class="mermaid">${mermaidText}</div>`;
             }
+            if (text.includes("```")) {
+                const codeMatch = text.match(/```(\w+)?\n([\s\S]*?)```/);
+                if (codeMatch) {
+                    const lang = codeMatch[1] || "";
+                    const code = codeMatch[2];
+                    return renderer?.code?.({ text: code, lang }) || `<pre><code>${code}</code></pre>`;
+                }
+            }
             if (text.startsWith("# ")) {
                 const heading = text.slice(2).split("\n")[0];
                 return `<h1>${heading}</h1>`;
