@@ -76,8 +76,6 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                 const next = new Set(prev);
                 if (next.has(title)) next.delete(title);
                 else next.add(title);
-                if (s.selectAllOption && next.has(s.selectAllOption.title))
-                    next.delete(s.selectAllOption.title);
                 return next;
             });
         }

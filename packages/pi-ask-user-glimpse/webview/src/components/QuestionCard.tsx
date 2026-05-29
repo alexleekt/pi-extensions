@@ -48,7 +48,6 @@ export default function QuestionCard({
     const isRequired = true; // questionnaire questions are always required for now
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (!question.options || question.options.length === 0) return;
         const maxIndex = question.options.length - 1;
 
         if (e.key >= "1" && e.key <= "9") {
