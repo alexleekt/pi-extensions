@@ -36,6 +36,16 @@ Registers Event Horizon proxy instances as LLM providers within Pi.
 - **LiteLLM `/v1/models` may not expose `model_info`** — This is expected. The fallback chain handles it.
 - **Set `EVENTHORIZON_DEBUG=1` for registration logging** — Console output is gated behind this env var to keep TUI clean.
 
+## Validation
+
+After modifying any `AGENT.md`, `AGENTS.md`, `claude.md`, or `SKILL.md` file, **always run agnix validation**:
+
+```bash
+agnix validate .
+```
+
+agnix validates: Skills • MCP servers • Hooks • Memory • Plugins across Claude Code, Cursor, Codex, and Kiro targets.
+
 ## Testing
 
 Install the extension, ensure Event Horizon is running, then:
