@@ -1,6 +1,6 @@
 {
     "name": "@alexleekt/pi-ask-user-glimpse",
-    "version": "0.5.1",
+    "version": "0.5.2",
     "description": "Ask better questions. Get better answers. Rich native WebView dialogs for the Pi agent.",
     "type": "module",
     "keywords": [

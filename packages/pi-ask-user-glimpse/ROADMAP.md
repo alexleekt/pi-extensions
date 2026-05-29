@@ -3,7 +3,7 @@
 ## Known Issues
 
 ### Image Attachment Bug in `ask_user` Responses
-- **Status:** Investigated — Root cause identified in upstream `pi-ai` provider code
+- **Status:** Defensively mitigated in extension; upstream fix still required
 - **Description:** When the assistant uses the `ask_user` tool to ask the user a question, and the user responds with plain text, the system sometimes injects "(see attached image)" into the assistant's context even though no image was sent by the user.
 - **Impact:** Breaks the grilling session flow; forces the assistant to ask for clarification, disrupting the one-question-at-a-time pattern.
 - **Occurrences:** 2026-05-22, during `grill-with-docs` skill session. Happened twice in the same conversation.
@@ -15,10 +15,7 @@
   1. User submits an empty freeform response (presses Enter without typing).
   2. User makes no selection and leaves no comment in a select dialog.
   3. A race condition or message-pipeline bug causes the text content to be dropped before reaching the provider layer.
-- **Extension Defensive Fix:** `responseToText()` in `tool/response-formatter.ts` can be hardened to never return empty text (e.g., return `" "` or a placeholder), ensuring `hasText` is always true and bypassing the buggy fallback.
-- **Upstream Fix Required:** The `pi-ai` OpenAI and Anthropic providers should only emit `"(see attached image)"` when `hasImages` is true; otherwise they should emit `"(no tool output)"` or omit the message.
-- **Workaround (immediate):** Ask the user to re-type their response when the bug occurs.
-- **Next Step:** File upstream bug report against `pi-ai` provider message conversion (OpenAI + Anthropic).
+- **Extension Defensive Fix (applied):** `responseToText()` in `tool/response-formatter.ts` never returns empty text. For empty selections, unanswered questions, or empty freeform input, it returns `"No response"` instead of `""
 
 ## Planned Improvements
 

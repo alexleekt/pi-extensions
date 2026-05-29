@@ -2,6 +2,62 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [0.5.2] — 2026-05-29
+
+### Security
+- **Phase 0 security hardening** — Replaced regex-based HTML sanitizer with DOMPurify configured with strict `ALLOWED_TAGS` and `ALLOWED_ATTR` lists. Added CSP meta tag to the HTML document. Hardened the iframe sandbox with `csp` and `referrerPolicy` attributes. Set Mermaid `securityLevel` to `"strict"` to prevent raw HTML in SVG node labels.
+- **XSS security test suite** — Added comprehensive tests covering DOMPurify bypass attempts, style attribute stripping, CSP presence, and HTML context injection vectors.
+- **Glimpse bridge validation** — `sendToGlimpse()` now validates that `window.glimpse` exists before calling `send()`, throwing a clear error if the bridge is undefined. Prevents silent failures in test environments.
+- **ErrorBoundary host notification** — Caught errors are now sent to the Pi host via `sendToGlimpse({ __error: true, message: ... })` so the ask-user tool does not hang indefinitely when the webview crashes.
+
+### Added
+- **Markdown rendering in option text** — Option titles and descriptions are rendered through inline markdown (`marked`). Bold, italic, code, and links display correctly. Search highlighting temporarily disables markdown rendering to avoid broken markup.
+- **HTML context format** — New `contextFormat: "html"` option for the `ask_user` tool. Renders the `context` field inside a sandboxed iframe (`sandbox="allow-scripts"`) in the left panel instead of markdown. Inherits wrapper CSS variables for automatic light/dark theme consistency.
+- **Markdown preview for textareas** — A live toggleable markdown preview below freeform and questionnaire textareas shows the rendered markdown output as the user types.
+- **RichText component** — Shared component for safe markdown rendering with highlight match support. Uses `div` wrapper by default to prevent invalid HTML when block-level markdown produces multiple paragraphs.
+- **OptionCard component** — Extracted shared option rendering with `role="option"`, `aria-selected`, Enter/Space keyboard activation, recommendation badges, and number badges.
+- **QuestionCard component** — Extracted questionnaire question rendering with inline markdown titles, progress indicators, and keyboard navigation.
+- **useBaseDialog hook** — Shared dialog state management (isSubmitting, showCancelConfirm, isDirty) and footer logic across all four dialog types.
+- **useDialogKeys overlay isolation** — Keyboard events are ignored when the target is inside an element with `data-overlay="true"`, preventing dialog shortcuts from firing while dropdowns or modals are open.
+- **Focus trapping** — CancelConfirmModal and SettingsButton dropdown now trap Tab and Shift+Tab focus, cycling between focusable elements without escaping to background elements.
+- **Questionnaire number key navigation** — Pressing 1–9 selects the corresponding option by index in questionnaire questions.
+- **Aria-live regions** — DialogFooter announces "Submitting answer" to screen readers when `isSubmitting` becomes true. SelectDialog announces the current selection count in multi-select mode.
+
+### Changed
+- **Form consolidation** — SingleSelect and MultiSelect merged into a single `SelectDialog` component with a `mode` prop. Questionnaire refactored to use `useBaseDialog` and `QuestionCard`. ~850 lines of duplicated code eliminated.
+- **Theme persistence refactor** — Extracted `enrichWithThemeSettings()`, `createThemeSaver()`, and `runAskUserWithTheme()` helpers in `index.ts` so all three entry points (`ask_user`, `/ask`, `/ask-debug`) share identical theme read/save behavior.
+- **ARIA role fixes** — OptionCard uses `role="option"` with `aria-selected` instead of incorrect `checkbox`/`radio` roles. Freeform button moved inside the `listbox` container. CancelConfirmModal and ShortcutsModal receive `role="dialog"`, `aria-modal`, and `aria-labelledby` attributes.
+- **SettingsButton ARIA** — Trigger button includes `aria-expanded` and `aria-haspopup="menu"`. Dropdown menu uses `role="menu"` with option buttons as `role="menuitemradio"` and `aria-checked`.
+- **ContextPanel question heading** — Changed from `h2` to `div` because `renderMarkdownInline` can produce multiple paragraphs, which is invalid HTML inside a heading element.
+- **Freeform textarea layout** — Changed from `h-full` to `flex-1` in a flex column so MarkdownPreview below the textarea remains visible.
+
+### Fixed
+- **Double-submit race condition** — Added synchronous `hasSent` ref guard in `useBaseDialog` to prevent rapid-fire submissions (double-click, rapid Enter) against the fire-and-forget Glimpse native bridge. React state batching is insufficient for this case.
+- **Double-cancel race condition** — Added `handleDiscard` function in `useBaseDialog` that sets the `hasSent` guard before calling `sendCancelled`, preventing double-cancel when the user clicks Discard rapidly.
+- **Multi-select double-toggle** — Removed the window-level Enter/Space listener for multi-select mode, eliminating the race where OptionCard and SelectDialog both fired and cancelled each other out.
+- **Stale activeIndex on click** — SelectDialog now updates `activeIndex` inside the toggle handler so keyboard Enter submits the clicked option, not the previously keyboard-focused one.
+- **CancelConfirmModal Escape trap** — Added capture-phase window keydown listener that calls `onStay` and stops propagation for Escape, preventing `useDialogKeys` from firing `sendCancelled` behind the modal.
+- **isSubmitting reset on error** — `useBaseDialog.handleSubmit` now wraps `onSubmit` in try/catch and resets `isSubmitting` to false on error, preventing permanent dialog lock.
+- **Cancel during submission** — `useBaseDialog.handleCancel` now returns early when `isSubmitting` is true, preventing the cancel-confirm modal from appearing while a submission is in flight.
+- **prompt() timeout** — Added 120-second timeout to `ask-user.ts` `prompt()` call to prevent indefinite hangs if the native Glimpse message is lost.
+- **Type safety fixes** — `pickString` uses explicit null/undefined checks instead of truthiness so `0`, `false`, and `""` are correctly converted to strings. `Questionnaire.isDirty` verifies actual answer values instead of key counts. `responseToText` has a dedicated questionnaire branch.
+- **Per-option comment visibility** — SelectDialog now sends the comment if text exists regardless of whether the comment textarea is visible, removing the incorrect `showComment` guard.
+- **Freeform response formatting** — `buildResponse` for freeform kind now includes `comment: pickString(result.comment)`, preserving per-option comments.
+- **Questionnaire key collisions** — `isAnswered` helper verifies array answers contain at least one non-empty element via `answer.some`, preventing empty string entries from being treated as valid.
+- **SettingsButton performance** — Wrapped `allOptions` in `useMemo` to prevent recreating the array on every render, stopping the window keydown listener from being removed and re-added on each render.
+- **App.tsx memoization** — Wrapped `componentPayload` and `footerContextValue` in `useMemo` to prevent creating new object references on every render.
+
+### Removed
+- **Global AdditionalComments** — The global AdditionalComments section at the bottom of all dialog types has been removed. Per-option "Add comment" buttons remain the only comment mechanism.
+- **ShortcutsModal** — The keyboard shortcuts modal component was deleted. It was not imported anywhere in the codebase.
+- **renderOptionText** — Dead utility function removed from `webview/src/util/html.ts`.
+- **displayMode parameter** — Removed from the `AskUserParams` interface in `tool/ask-user.ts` (LLM-facing schema in `index.ts` retains it for backward compatibility).
+- **Unused error variable** — Removed unused `error` variable from `askUserHandler` in `tool/ask-user.ts`.
+
+### Tests
+- **Test coverage expanded from ~35% to 98%+** — 329 unit tests across 29 test files, 31 e2e tests.
+- Added unit tests for: OptionCard, QuestionCard, ErrorBoundary, SettingsButton, CancelConfirmModal, useDialogKeys, DialogFooter, useBaseDialog, App.tsx, ContextPanel, response-formatter, ask-user backend, icons, html utilities, main.tsx, GlobalKeyboardHint, Freeform, SelectDialog, Questionnaire, settings.tsx, FooterContext, and more.
+
 ## [0.5.1] — 2026-05-27
 
 ### Changed
