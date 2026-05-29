@@ -21,33 +21,35 @@ vi.mock("../SettingsButton", () => ({
     default: () => <div data-testid="settings-button" />,
 }));
 
-vi.mock("marked", () => ({
-    marked: {
-        parse: (text: string, opts?: { renderer?: { code?: (args: { text: string; lang?: string }) => string } }) => {
-            const renderer = opts?.renderer;
-            if (text.includes("```mermaid")) {
-                const mermaidText = text.match(/```mermaid\n([\s\S]*?)```/)?.[1] || "";
-                return renderer?.code?.({ text: mermaidText, lang: "mermaid" }) || `<div class="mermaid">${mermaidText}</div>`;
-            }
-            if (text.includes("```")) {
-                const codeMatch = text.match(/```(\w+)?\n([\s\S]*?)```/);
-                if (codeMatch) {
-                    const lang = codeMatch[1] || "";
-                    const code = codeMatch[2];
-                    return renderer?.code?.({ text: code, lang }) || `<pre><code>${code}</code></pre>`;
+vi.mock("marked", async () => {
+    const actual = await vi.importActual<typeof import("marked")>("marked");
+    return {
+        ...actual,
+        marked: {
+            parse: (text: string, opts?: { renderer?: { code?: (args: { text: string; lang?: string }) => string } }) => {
+                const renderer = opts?.renderer;
+                if (text.includes("```mermaid")) {
+                    const mermaidText = text.match(/```mermaid\n([\s\S]*?)```/)?.[1] || "";
+                    return renderer?.code?.({ text: mermaidText, lang: "mermaid" }) || `<div class="mermaid">${mermaidText}</div>`;
                 }
-            }
-            if (text.startsWith("# ")) {
-                const heading = text.slice(2).split("\n")[0];
-                return `<h1>${heading}</h1>`;
-            }
-            return `<p>${text}</p>`;
+                if (text.includes("```")) {
+                    const codeMatch = text.match(/```(\w+)?\n([\s\S]*?)```/);
+                    if (codeMatch) {
+                        const lang = codeMatch[1] || "";
+                        const code = codeMatch[2];
+                        return renderer?.code?.({ text: code, lang }) || `<pre><code>${code}</code></pre>`;
+                    }
+                }
+                if (text.startsWith("# ")) {
+                    const heading = text.slice(2).split("\n")[0];
+                    return `<h1>${heading}</h1>`;
+                }
+                return `<p>${text}</p>`;
+            },
+            Renderer: actual.marked.Renderer,
         },
-        Renderer: class Renderer {
-            code() { return ""; }
-        },
-    },
-}));
+    };
+});
 
 vi.mock("../../util/markdown.js", () => ({
     sanitizeHtml: (html: string) => html,
@@ -127,6 +129,7 @@ describe("ContextPanel", () => {
         );
         const markdownDiv = container.querySelector(".markdown-body");
         expect(markdownDiv).toBeInTheDocument();
+        // The real marked library with MermaidRenderer produces <div class="mermaid"> for mermaid blocks
         expect(markdownDiv?.innerHTML).toContain('<div class="mermaid">');
         const mermaid = await import("mermaid");
         expect(mermaid.default.initialize).toHaveBeenCalled();
