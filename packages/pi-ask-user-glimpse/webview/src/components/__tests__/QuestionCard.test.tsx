@@ -483,5 +483,41 @@ describe("QuestionCard", () => {
             // No listbox when no options
             expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
         });
+
+        it("Enter key selects active option", () => {
+            const onSelect = vi.fn();
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions }}
+                    answer={undefined}
+                    onSelect={onSelect}
+                    onToggleMulti={vi.fn()}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            // Navigate down to Option B
+            fireEvent.keyDown(listbox, { key: "ArrowDown" });
+            fireEvent.keyDown(listbox, { key: "Enter" });
+            expect(onSelect).toHaveBeenCalledWith("Option B");
+        });
+
+        it("Space key toggles active option in multi-select", () => {
+            const onToggleMulti = vi.fn();
+            render(
+                <QuestionCard
+                    question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                    answer={undefined}
+                    onSelect={vi.fn()}
+                    onToggleMulti={onToggleMulti}
+                    onSetText={vi.fn()}
+                />,
+            );
+            const listbox = screen.getByRole("listbox");
+            // Navigate down to Option B
+            fireEvent.keyDown(listbox, { key: "ArrowDown" });
+            fireEvent.keyDown(listbox, { key: " " });
+            expect(onToggleMulti).toHaveBeenCalledWith("Option B");
+        });
     });
 });
