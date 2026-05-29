@@ -215,4 +215,16 @@ describe("ContextPanel", () => {
         expect(consoleSpy).toHaveBeenCalledWith("[mermaid] render error:", expect.any(Error));
         consoleSpy.mockRestore();
     });
+
+    it("renders non-mermaid code blocks with super.code", () => {
+        const { container } = render(
+            <ContextPanel
+                context="```js\nconst x = 1;\n```"
+                contextFormat="markdown"
+            />,
+        );
+        const markdownDiv = container.querySelector(".markdown-body");
+        expect(markdownDiv).toBeInTheDocument();
+        expect(markdownDiv?.innerHTML).toContain("const x = 1");
+    });
 });
