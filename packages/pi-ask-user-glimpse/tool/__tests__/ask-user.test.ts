@@ -269,4 +269,28 @@ describe("askUserHandler", () => {
         expect(title).toContain("The");
         expect(title.length).toBeLessThanOrEqual(60);
     });
+
+    it("normalizes object-style options", async () => {
+        mockPrompt.mockResolvedValue({ kind: "single-select", selection: "Option A" });
+
+        await askUserHandler(
+            {
+                question: "Test?",
+                options: [
+                    { title: "Option A", description: "Desc A", recommended: true },
+                    { title: "Option B", description: "Desc B" },
+                ],
+            },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const html = lastCall[0] as string;
+        expect(html).toContain('"title":"Option A"');
+        expect(html).toContain('"description":"Desc A"');
+        expect(html).toContain('"recommended":true');
+        expect(html).toContain('"title":"Option B"');
+        expect(html).toContain('"description":"Desc B"');
+    });
 });
