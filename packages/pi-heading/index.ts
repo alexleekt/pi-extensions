@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Alex Lee
 
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type {
     ExtensionAPI,
     TurnEndEvent,
@@ -14,7 +15,11 @@ import {
     setModelOverride,
 } from "./llm/picker.js";
 import type { SummarizeResult } from "./llm/summarize.js";
-import { summarize, summarizeAchievement } from "./llm/summarize.js";
+import {
+    extractTextFromMessage,
+    summarize,
+    summarizeAchievement,
+} from "./llm/summarize.js";
 import type { DebugEntry, StreamDebug } from "./state/debug.js";
 import {
     clearDebugLog,
@@ -55,18 +60,7 @@ function baseDebugEntry(
 
 /** Extract text content from an agent message (assistant or tool result). */
 function extractAgentText(msg: AgentMessage): string {
-    const content = (msg as { content?: unknown }).content;
-    if (typeof content === "string") return content;
-    if (Array.isArray(content)) {
-        const parts: string[] = [];
-        for (const part of content) {
-            if (part?.type === "text" && typeof part.text === "string")
-                parts.push(part.text);
-            else if (typeof part === "string") parts.push(part);
-        }
-        return parts.join("");
-    }
-    return "";
+    return extractTextFromMessage(msg as AssistantMessage);
 }
 
 function makeDebugEntry(

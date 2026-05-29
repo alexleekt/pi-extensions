@@ -202,7 +202,7 @@ async function runPrompt(
     };
 }
 
-function extractTextFromMessage(msg: AssistantMessage | undefined): string {
+export function extractTextFromMessage(msg: AssistantMessage | undefined): string {
     if (!msg) return "";
 
     // Extract raw text from various API shapes
