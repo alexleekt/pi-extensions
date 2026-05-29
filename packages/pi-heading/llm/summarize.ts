@@ -3,10 +3,10 @@
 
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { StreamDebug } from "../state/debug.js";
-import { runPrompt, type RunPromptResult } from "./run.js";
+import { type RunPromptResult, runPrompt } from "./run.js";
 
-export type { RunPromptResult } from "./run.js";
 export { extractTextFromMessage } from "./parse.js";
+export type { RunPromptResult } from "./run.js";
 
 export interface SummarizeResult {
     topic: string;

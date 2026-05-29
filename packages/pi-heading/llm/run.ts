@@ -5,19 +5,18 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 import { completeSimple } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { StreamDebug } from "../state/debug.js";
-import { resolveModelId } from "./picker.js";
-import {
-    buildSystemPrompt,
-    readPromptFile,
-    truncateToWords,
-    type PromptFile,
-} from "./prompt.js";
 import {
     cleanLLMOutput,
     extractResultFromJson,
     extractTextFromMessage,
     tryParseJsonResult,
 } from "./parse.js";
+import { resolveModelId } from "./picker.js";
+import {
+    buildSystemPrompt,
+    readPromptFile,
+    truncateToWords,
+} from "./prompt.js";
 
 export interface RunPromptResult {
     text: string;

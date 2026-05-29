@@ -16,7 +16,6 @@ import {
 } from "./state/debug.js";
 // Import real internal modules — we verify through their side effects
 import { clearState, setState } from "./state/store.js";
-import { clearHeading, setHeadingMessage, stopSpinner } from "./ui/widget.js";
 
 // Mock the external LLM dependency so summarize() doesn't make real API calls
 const mockCompleteSimple = mock(() =>
@@ -310,12 +309,18 @@ describe("headingExtension", () => {
     // ── agent_end ────────────────────────────────────────────────
 
     test("agent_end preserves achievement mode when achievement exists", () => {
-        setState("leaf-1", { topic: "Docker", goal: "Fix compose", achievement: "Fixed it" });
+        setState("leaf-1", {
+            topic: "Docker",
+            goal: "Fix compose",
+            achievement: "Fixed it",
+        });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.agent_end[0]({}, ctx);
         expect(ctx.workingVisibleCalls).toContain(true);
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("Fixed it"))).toBe(true);
+        expect(
+            ctx.workingMessageCalls.some((m) => m?.includes("Fixed it")),
+        ).toBe(true);
         // Event bus preserves achievement mode after the agent ends
         expect(
             pi.eventEmissions.some(
@@ -332,7 +337,9 @@ describe("headingExtension", () => {
         const ctx = makeMockCtx();
         pi.handlers.agent_end[0]({}, ctx);
         expect(ctx.workingVisibleCalls).toContain(true);
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("Fix compose"))).toBe(true);
+        expect(
+            ctx.workingMessageCalls.some((m) => m?.includes("Fix compose")),
+        ).toBe(true);
         expect(
             pi.eventEmissions.some(
                 (e) =>
@@ -348,7 +355,13 @@ describe("headingExtension", () => {
         pi.handlers.agent_end[0]({}, ctx);
         expect(ctx.workingVisibleCalls).toContain(true);
         expect(ctx.workingMessageCalls.some((m) => m === "")).toBe(true);
-        expect(pi.eventEmissions.some((e) => e.channel === "heading:state" && (e.data as any).mode === "idle")).toBe(true);
+        expect(
+            pi.eventEmissions.some(
+                (e) =>
+                    e.channel === "heading:state" &&
+                    (e.data as any).mode === "idle",
+            ),
+        ).toBe(true);
     });
 
     // ── session_shutdown ───────────────────────────────────────
@@ -372,7 +385,9 @@ describe("headingExtension", () => {
         expect(ctx.workingMessageCalls[0]).toContain("help with docker");
         await new Promise((r) => setTimeout(r, 50));
         // After summarize completes, the LLM goal replaces the placeholder
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("Docker setup"))).toBe(true);
+        expect(
+            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
+        ).toBe(true);
     });
 
     test("before_agent_start does nothing for empty prompt", () => {
@@ -398,11 +413,19 @@ describe("headingExtension", () => {
         pi.handlers.before_agent_start[0]({ prompt: "second" }, ctx);
         await new Promise((r) => setTimeout(r, 100));
         // Both placeholders should appear, and only the second call's result
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("first"))).toBe(true);
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("second"))).toBe(true);
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("Docker setup"))).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("first"))).toBe(
+            true,
+        );
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("second"))).toBe(
+            true,
+        );
+        expect(
+            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
+        ).toBe(true);
         // The stale first result should NOT appear (only one "Docker setup" from the second call)
-        const dockerSetups = ctx.workingMessageCalls.filter((m) => m?.includes("Docker setup"));
+        const dockerSetups = ctx.workingMessageCalls.filter((m) =>
+            m?.includes("Docker setup"),
+        );
         expect(dockerSetups.length).toBe(1);
     });
 
@@ -439,7 +462,11 @@ describe("headingExtension", () => {
         expect(ctx.workingMessageCalls[0]).toContain("help with docker");
         await new Promise((r) => setTimeout(r, 50));
         // Empty goal should fall back to the prompt, not leave the message blank
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("help with docker"))).toBe(true);
+        expect(
+            ctx.workingMessageCalls.some((m) =>
+                m?.includes("help with docker"),
+            ),
+        ).toBe(true);
     });
 
     test("before_agent_start notifies on summarize error", async () => {
@@ -531,8 +558,12 @@ describe("headingExtension", () => {
         pi.handlers.turn_end[0]({ message: msg, toolResults: [] }, ctx);
         await new Promise((r) => setTimeout(r, 50));
         // Achievement should be shown in the widget with checkmark prefix
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("Docker setup"))).toBe(true);
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("✓"))).toBe(true);
+        expect(
+            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
+        ).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("✓"))).toBe(
+            true,
+        );
     });
 
     test("turn_end keeps working message for intermediate tool-call turns", () => {
@@ -602,7 +633,9 @@ describe("headingExtension", () => {
         await new Promise((r) => setTimeout(r, 100));
         // The old achievement should not have been shown in the widget (gen mismatch)
         // No achievement prefix should appear in the working messages
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("✓"))).toBe(false);
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("✓"))).toBe(
+            false,
+        );
     });
 
     test("turn_end notifies on achievement error", async () => {
@@ -630,7 +663,9 @@ describe("headingExtension", () => {
         pi.handlers.turn_end[0]({ message: { content: "done" } }, ctx);
         await new Promise((r) => setTimeout(r, 50));
         // Achievement should be shown in the widget
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("Docker setup"))).toBe(true);
+        expect(
+            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
+        ).toBe(true);
     });
 
     test("turn_end skips empty achievement text", async () => {
@@ -673,36 +708,40 @@ describe("headingExtension", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         // Use a delayed mock so we can update state mid-flight
-        mockCompleteSimple.mockImplementationOnce(() =>
-            new Promise((resolve) =>
-                setTimeout(() =>
-                    resolve({
-                        role: "assistant",
-                        content: [
-                            { type: "text", text: '{"result": "Updated goal"}' },
-                        ],
-                        api: "openai-completions",
-                        provider: "openai",
-                        model: "test-model",
-                        usage: {
-                            input: 0,
-                            output: 0,
-                            cacheRead: 0,
-                            cacheWrite: 0,
-                            totalTokens: 0,
-                            cost: {
+        mockCompleteSimple.mockImplementationOnce(
+            () =>
+                new Promise((resolve) =>
+                    setTimeout(() =>
+                        resolve({
+                            role: "assistant",
+                            content: [
+                                {
+                                    type: "text",
+                                    text: '{"result": "Updated goal"}',
+                                },
+                            ],
+                            api: "openai-completions",
+                            provider: "openai",
+                            model: "test-model",
+                            usage: {
                                 input: 0,
                                 output: 0,
                                 cacheRead: 0,
                                 cacheWrite: 0,
-                                total: 0,
+                                totalTokens: 0,
+                                cost: {
+                                    input: 0,
+                                    output: 0,
+                                    cacheRead: 0,
+                                    cacheWrite: 0,
+                                    total: 0,
+                                },
                             },
-                        },
-                        stopReason: "stop",
-                        timestamp: Date.now(),
-                    } as any),
+                            stopReason: "stop",
+                            timestamp: Date.now(),
+                        } as any),
+                    ),
                 ),
-            ),
         );
         // Start the turn_end async summarize
         pi.handlers.turn_end[0]({ message: { content: "done" } }, ctx);
@@ -711,7 +750,9 @@ describe("headingExtension", () => {
         setState("leaf-1", { topic: "Docker", goal: "Updated goal" });
         await new Promise((r) => setTimeout(r, 80));
         // The achievement should use the freshly updated goal
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("Updated goal"))).toBe(true);
+        expect(
+            ctx.workingMessageCalls.some((m) => m?.includes("Updated goal")),
+        ).toBe(true);
     });
 
     // ── /heading command ─────────────────────────────────────────
@@ -786,14 +827,16 @@ describe("headingExtension", () => {
 
     test("/heading-model handles model not found after selection", async () => {
         headingExtension(pi as any);
-        const models = [
-            { id: "model-a" },
-            { id: "model-b" },
-        ];
-        const ctx = makeMockCtx({ models, selectResult: "  nonexistent-model" });
+        const models = [{ id: "model-a" }, { id: "model-b" }];
+        const ctx = makeMockCtx({
+            models,
+            selectResult: "  nonexistent-model",
+        });
         await pi.commands["heading-model"].handler("", ctx);
         expect(ctx.notifyCalls.some((n) => n.type === "error")).toBe(true);
-        expect(ctx.notifyCalls.some((n) => n.msg.includes("not found"))).toBe(true);
+        expect(ctx.notifyCalls.some((n) => n.msg.includes("not found"))).toBe(
+            true,
+        );
     });
 
     test("/heading-model warns when auth ok but apiKey is empty", async () => {

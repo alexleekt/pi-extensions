@@ -2,7 +2,13 @@
 // Copyright (c) 2026 Alex Lee
 
 import { describe, expect, test } from "bun:test";
-import { getState, replayBranch, setState, exposeHeading, clearExposure } from "./store.js";
+import {
+    clearExposure,
+    exposeHeading,
+    getState,
+    replayBranch,
+    setState,
+} from "./store.js";
 
 function makeCtx(entries: unknown[]): {
     sessionManager: { getBranch: () => unknown[]; getLeafId: () => string };
@@ -108,7 +114,11 @@ describe("replayBranch", () => {
 
 describe("getState / setState", () => {
     test("round-trip stores and retrieves state", () => {
-        const state = { topic: "Docker", goal: "Fix compose", achievement: "Done" };
+        const state = {
+            topic: "Docker",
+            goal: "Fix compose",
+            achievement: "Done",
+        };
         setState("leaf-2", state);
         expect(getState("leaf-2")).toEqual(state);
     });
@@ -128,7 +138,11 @@ describe("exposeHeading", () => {
                 },
             },
         } as any;
-        exposeHeading(pi, { topic: "Docker", goal: "Fix compose", achievement: "Done" }, "achievement");
+        exposeHeading(
+            pi,
+            { topic: "Docker", goal: "Fix compose", achievement: "Done" },
+            "achievement",
+        );
         expect(emitted.length).toBe(1);
         expect(emitted[0].channel).toBe("heading:state");
         expect(emitted[0].data).toEqual({

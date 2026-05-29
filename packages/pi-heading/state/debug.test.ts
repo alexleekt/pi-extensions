@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import {
+    clearDebugLog,
+    DEBUG_LOG,
+    getDebugLogPath,
+    isDebugEnabled,
     logDebug,
     readDebugLog,
-    clearDebugLog,
     setDebugEnabled,
-    isDebugEnabled,
     setDebugLogPath,
-    getDebugLogPath,
-    DEBUG_LOG,
 } from "./debug.js";
 
 function makeEntry(input: string): {
@@ -171,6 +171,8 @@ describe("debug", () => {
     });
 
     test("DEBUG_LOG constant is under private debug dir", () => {
-        expect(DEBUG_LOG).toContain(".pi/agent/extensions/pi-heading/debug.log");
+        expect(DEBUG_LOG).toContain(
+            ".pi/agent/extensions/pi-heading/debug.log",
+        );
     });
 });

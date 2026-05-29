@@ -28,10 +28,7 @@ export function getModelOverride(dir?: string): string | undefined {
         : undefined;
 }
 
-export function setModelOverride(
-    id: string | undefined,
-    dir?: string,
-): void {
+export function setModelOverride(id: string | undefined, dir?: string): void {
     writeConfig<Config>(dir ?? DEFAULT_CONFIG_DIR, "modelOverride", id);
 }
 

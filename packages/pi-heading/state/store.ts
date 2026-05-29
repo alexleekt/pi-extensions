@@ -61,8 +61,8 @@ export function replayBranch(ctx: ExtensionContext): State | undefined {
         if (entry?.type === "custom" && entry?.customType === STATE_KEY) {
             const payload =
                 typeof entry === "object" && entry !== null
-                    ? ((entry as unknown) as Record<string, unknown>).data ??
-                      ((entry as unknown) as Record<string, unknown>).detail
+                    ? ((entry as unknown as Record<string, unknown>).data ??
+                      (entry as unknown as Record<string, unknown>).detail)
                     : undefined;
             const p = payload as Record<string, unknown> | undefined;
             if (

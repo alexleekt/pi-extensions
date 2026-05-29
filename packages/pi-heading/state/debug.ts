@@ -116,7 +116,10 @@ function rotateLogIfNeeded(): void {
         const lines = raw.trim().split("\n").filter(Boolean);
         const keepFrom = Math.floor(lines.length / 2);
         const trimmed = `${lines.slice(keepFrom).join("\n")}\n`;
-        fs.writeFileSync(_debugLogPath, trimmed, { encoding: "utf8", mode: 0o600 });
+        fs.writeFileSync(_debugLogPath, trimmed, {
+            encoding: "utf8",
+            mode: 0o600,
+        });
     } catch {
         // silent fail
     }
@@ -129,7 +132,10 @@ export function logDebug(entry: DebugEntry): void {
         rotateLogIfNeeded();
         ensureDebugDir();
         const line = `${JSON.stringify(entry)}\n`;
-        fs.appendFileSync(_debugLogPath, line, { encoding: "utf8", mode: 0o600 });
+        fs.appendFileSync(_debugLogPath, line, {
+            encoding: "utf8",
+            mode: 0o600,
+        });
     } catch {
         // silent fail — debug logging must never break the extension
     }

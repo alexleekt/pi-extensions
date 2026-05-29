@@ -5,17 +5,9 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import {
-    cleanLLMOutput,
-    extractTextFromMessage,
-} from "./parse.js";
-import {
-    readPromptFile,
-    truncateToWords,
-} from "./prompt.js";
-import {
-    thinkingOffOpts,
-} from "./run.js";
+import { cleanLLMOutput, extractTextFromMessage } from "./parse.js";
+import { readPromptFile, truncateToWords } from "./prompt.js";
+import { thinkingOffOpts } from "./run.js";
 
 describe("truncateToWords", () => {
     test("returns text unchanged when under limit", () => {
@@ -251,7 +243,9 @@ describe("readPromptFile", () => {
             "utf8",
         );
         const result = readPromptFile("goal", tmpUserDir, tmpDefaultDir);
-        expect(result.instructions).toBe("Some instructions without Message marker");
+        expect(result.instructions).toBe(
+            "Some instructions without Message marker",
+        );
         expect(result.template).toBe("{message}");
     });
 });
@@ -266,11 +260,15 @@ describe("extractTextFromMessage", () => {
     });
 
     test("extracts from .text property", () => {
-        expect(extractTextFromMessage({ text: "hello world" } as any)).toBe("hello world");
+        expect(extractTextFromMessage({ text: "hello world" } as any)).toBe(
+            "hello world",
+        );
     });
 
     test("extracts from .content string", () => {
-        expect(extractTextFromMessage({ content: "hello world" } as any)).toBe("hello world");
+        expect(extractTextFromMessage({ content: "hello world" } as any)).toBe(
+            "hello world",
+        );
     });
 
     test("extracts from .content array with text parts", () => {
@@ -325,9 +323,11 @@ describe("thinkingOffOpts", () => {
         expect(thinkingOffOpts({ api: "anthropic-messages" } as any)).toEqual({
             thinkingEnabled: false,
         });
-        expect(thinkingOffOpts({ api: "google-generative-ai" } as any)).toEqual({
-            thinking: { enabled: false },
-        });
+        expect(thinkingOffOpts({ api: "google-generative-ai" } as any)).toEqual(
+            {
+                thinking: { enabled: false },
+            },
+        );
         expect(thinkingOffOpts({ api: "google-vertex" } as any)).toEqual({
             thinking: { enabled: false },
         });
