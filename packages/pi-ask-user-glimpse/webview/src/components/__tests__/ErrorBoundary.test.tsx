@@ -1,12 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import ErrorBoundary from "../ErrorBoundary";
+import * as glimpseModule from "../../util/glimpse";
 
-const mockSendToGlimpse = vi.fn();
-
-vi.mock("../util/glimpse", () => ({
-    sendToGlimpse: (...args: unknown[]) => mockSendToGlimpse(...args),
-}));
+const mockSendToGlimpse = vi.spyOn(glimpseModule, "sendToGlimpse").mockImplementation(() => {});
 
 function ThrowError() {
     throw new Error("Test error");
@@ -33,6 +30,31 @@ describe("ErrorBoundary", () => {
         expect(screen.getByText("Test error")).toBeInTheDocument();
         consoleSpy.mockRestore();
         boundary.unmount();
+    });
+
+    it("notifies host via sendToGlimpse when error is caught", () => {
+        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        // Instantiate ErrorBoundary directly to call componentDidCatch
+        const boundary = new ErrorBoundary({ children: null });
+        const error = new Error("Host notification error");
+        boundary.componentDidCatch(error);
+        expect(mockSendToGlimpse).toHaveBeenCalledWith({
+            __error: true,
+            message: "Host notification error",
+        });
+        consoleSpy.mockRestore();
+    });
+
+    it("handles sendToGlimpse failure gracefully", () => {
+        const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        mockSendToGlimpse.mockImplementationOnce(() => {
+            throw new Error("Bridge down");
+        });
+        const boundary = new ErrorBoundary({ children: null });
+        const error = new Error("Host notification error");
+        // Should not throw even if sendToGlimpse fails
+        expect(() => boundary.componentDidCatch(error)).not.toThrow();
+        consoleSpy.mockRestore();
     });
 
 });

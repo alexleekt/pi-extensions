@@ -91,6 +91,21 @@ describe("SelectDialog", () => {
             expect(sent.comment).toBe("My comment");
         });
 
+        it("shows Edit comment when comment exists but textarea is hidden", () => {
+            renderWithFooter("single", buildPayload("single"));
+
+            fireEvent.click(screen.getByText("Option A"));
+            fireEvent.click(screen.getByText("Add comment"));
+            const commentTextarea = screen.getByPlaceholderText("Optional comment…");
+            fireEvent.change(commentTextarea, {
+                target: { value: "My comment" },
+            });
+            // Click the Hide comment button to close the textarea
+            fireEvent.click(screen.getByText("Hide comment"));
+
+            expect(screen.getByText("Edit comment")).toBeInTheDocument();
+        });
+
         it("submits freeform when no option selected and freeform allowed", async () => {
             renderWithFooter("single", buildPayload("single"));
 
