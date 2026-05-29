@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Alex Lee
 
 import { describe, expect, test } from "bun:test";
-import { getState, replayBranch } from "./store.js";
+import { getState, replayBranch, setState, exposeHeading, clearExposure } from "./store.js";
 
 function makeCtx(entries: unknown[]): {
     sessionManager: { getBranch: () => unknown[]; getLeafId: () => string };
@@ -103,5 +103,78 @@ describe("replayBranch", () => {
         ]);
         const state = replayBranch(ctx);
         expect(state).toEqual({ topic: "Latest", goal: "Latest goal" });
+    });
+});
+
+describe("getState / setState", () => {
+    test("round-trip stores and retrieves state", () => {
+        const state = { topic: "Docker", goal: "Fix compose", achievement: "Done" };
+        setState("leaf-2", state);
+        expect(getState("leaf-2")).toEqual(state);
+    });
+
+    test("returns undefined for nonexistent leaf", () => {
+        expect(getState("nonexistent")).toBeUndefined();
+    });
+});
+
+describe("exposeHeading", () => {
+    test("emits correct payload with achievement", () => {
+        const emitted: { channel: string; data: unknown }[] = [];
+        const pi = {
+            events: {
+                emit: (channel: string, data: unknown) => {
+                    emitted.push({ channel, data });
+                },
+            },
+        } as any;
+        exposeHeading(pi, { topic: "Docker", goal: "Fix compose", achievement: "Done" }, "achievement");
+        expect(emitted.length).toBe(1);
+        expect(emitted[0].channel).toBe("heading:state");
+        expect(emitted[0].data).toEqual({
+            topic: "Docker",
+            goal: "Fix compose",
+            achievement: "Done",
+            mode: "achievement",
+        });
+    });
+
+    test("emits correct payload without achievement", () => {
+        const emitted: { channel: string; data: unknown }[] = [];
+        const pi = {
+            events: {
+                emit: (channel: string, data: unknown) => {
+                    emitted.push({ channel, data });
+                },
+            },
+        } as any;
+        exposeHeading(pi, { topic: "Docker", goal: "Fix compose" }, "goal");
+        expect(emitted.length).toBe(1);
+        expect(emitted[0].data).toEqual({
+            topic: "Docker",
+            goal: "Fix compose",
+            mode: "goal",
+        });
+    });
+});
+
+describe("clearExposure", () => {
+    test("emits idle payload", () => {
+        const emitted: { channel: string; data: unknown }[] = [];
+        const pi = {
+            events: {
+                emit: (channel: string, data: unknown) => {
+                    emitted.push({ channel, data });
+                },
+            },
+        } as any;
+        clearExposure(pi);
+        expect(emitted.length).toBe(1);
+        expect(emitted[0].channel).toBe("heading:state");
+        expect(emitted[0].data).toEqual({
+            topic: "",
+            goal: "",
+            mode: "idle",
+        });
     });
 });

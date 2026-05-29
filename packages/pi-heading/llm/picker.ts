@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
-import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { readConfig, writeConfig } from "../util/config.js";
 
 export interface ModelContext {
     model?: { id: string };
@@ -11,7 +11,6 @@ export interface ModelContext {
 
 interface Config {
     modelOverride?: string;
-    debug?: boolean;
 }
 
 const DEFAULT_CONFIG_DIR = path.join(
@@ -22,51 +21,18 @@ const DEFAULT_CONFIG_DIR = path.join(
     "pi-heading",
 );
 
-function configPath(dir: string = DEFAULT_CONFIG_DIR): string {
-    return path.join(dir, "config.json");
-}
-
-function readConfig(dir?: string): Config {
-    try {
-        return JSON.parse(fs.readFileSync(configPath(dir), "utf8")) as Config;
-    } catch {
-        return {};
-    }
-}
-
 export function getModelOverride(dir?: string): string | undefined {
-    return readConfig(dir).modelOverride;
+    const cfg = readConfig<Config>(dir ?? DEFAULT_CONFIG_DIR, {});
+    return typeof cfg.modelOverride === "string"
+        ? cfg.modelOverride
+        : undefined;
 }
 
-function writeConfigField<K extends keyof Config>(
-    key: K,
-    value: Config[K],
+export function setModelOverride(
+    id: string | undefined,
     dir?: string,
 ): void {
-    try {
-        fs.mkdirSync(dir ?? DEFAULT_CONFIG_DIR, { recursive: true });
-    } catch {
-        return;
-    }
-    const cfg = readConfig(dir);
-    cfg[key] = value;
-    try {
-        fs.writeFileSync(configPath(dir), JSON.stringify(cfg, null, 2), "utf8");
-    } catch {
-        // ignore
-    }
-}
-
-export function setModelOverride(id: string | undefined, dir?: string): void {
-    writeConfigField("modelOverride", id, dir);
-}
-
-export function getDebugMode(dir?: string): boolean {
-    return readConfig(dir).debug === true;
-}
-
-export function setDebugMode(enabled: boolean, dir?: string): void {
-    writeConfigField("debug", enabled, dir);
+    writeConfig<Config>(dir ?? DEFAULT_CONFIG_DIR, "modelOverride", id);
 }
 
 export function resolveModelId(ctx: ModelContext): string | undefined {

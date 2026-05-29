@@ -5,16 +5,18 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { setDebugMode, setModelOverride } from "./llm/picker.js";
+import { setModelOverride } from "./llm/picker.js";
 import {
     DEBUG_LOG,
     logDebug,
     readDebugLog,
     setDebugEnabled,
+    setDebugLogPath,
+    setDebugMode,
 } from "./state/debug.js";
 // Import real internal modules — we verify through their side effects
-import { setState } from "./state/store.js";
-import { clearHeading, setHeadingMessage } from "./ui/widget.js";
+import { clearState, setState } from "./state/store.js";
+import { clearHeading, setHeadingMessage, stopSpinner } from "./ui/widget.js";
 
 // Mock the external LLM dependency so summarize() doesn't make real API calls
 const mockCompleteSimple = mock(() =>
@@ -192,6 +194,8 @@ describe("headingExtension", () => {
         );
 
         setDebugEnabled(false);
+        // Reset debug log path to default so we always write to the canonical log
+        setDebugLogPath(DEBUG_LOG);
         try {
             fs.unlinkSync(DEBUG_LOG);
         } catch {
@@ -208,6 +212,9 @@ describe("headingExtension", () => {
         // Reset debug mode config
         setDebugMode(false, tmpConfigDir);
         setModelOverride(undefined, tmpConfigDir);
+        // Also clear the default config dir to prevent cross-test pollution
+        setModelOverride(undefined);
+        clearState();
     });
 
     afterEach(() => {
@@ -216,6 +223,10 @@ describe("headingExtension", () => {
         } catch {
             /* ignore */
         }
+        // Clear default config dir pollution from heading-model tests
+        setModelOverride(undefined);
+        // Reset debug log path to default in case another test file changed it
+        setDebugLogPath(DEBUG_LOG);
     });
 
     test("registers 7 hooks and 3 commands", () => {
@@ -304,7 +315,7 @@ describe("headingExtension", () => {
         const ctx = makeMockCtx();
         pi.handlers.agent_end[0]({}, ctx);
         expect(ctx.workingVisibleCalls).toContain(true);
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("Fix compose"))).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("Fixed it"))).toBe(true);
         // Event bus preserves achievement mode after the agent ends
         expect(
             pi.eventEmissions.some(
@@ -386,11 +397,13 @@ describe("headingExtension", () => {
         // Second call bumps to generation 2 and sets placeholder "second"
         pi.handlers.before_agent_start[0]({ prompt: "second" }, ctx);
         await new Promise((r) => setTimeout(r, 100));
-        // Both placeholders + only the second call's result should render
-        expect(ctx.workingMessageCalls.length).toBe(3);
-        expect(ctx.workingMessageCalls[0]).toBe("first");
-        expect(ctx.workingMessageCalls[1]).toBe("second");
-        expect(ctx.workingMessageCalls[2]).toContain("Docker setup");
+        // Both placeholders should appear, and only the second call's result
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("first"))).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("second"))).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("Docker setup"))).toBe(true);
+        // The stale first result should NOT appear (only one "Docker setup" from the second call)
+        const dockerSetups = ctx.workingMessageCalls.filter((m) => m?.includes("Docker setup"));
+        expect(dockerSetups.length).toBe(1);
     });
 
     test("before_agent_start falls back to prompt when goal is empty", async () => {
@@ -450,6 +463,25 @@ describe("headingExtension", () => {
         expect(pi.entries.length).toBeGreaterThan(0);
     });
 
+    test("before_agent_start uses working mode when agent already started", async () => {
+        setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        // Trigger before_agent_start
+        pi.handlers.before_agent_start[0]({ prompt: "help with docker" }, ctx);
+        // Trigger agent_start before async resolves
+        pi.handlers.agent_start[0]({}, ctx);
+        await new Promise((r) => setTimeout(r, 50));
+        // The event should have mode "working" because agent started
+        expect(
+            pi.eventEmissions.some(
+                (e) =>
+                    e.channel === "heading:state" &&
+                    (e.data as any).mode === "working",
+            ),
+        ).toBe(true);
+    });
+
     // ── agent_start ──────────────────────────────────────────────
 
     test("agent_start sets working message with goal and hides native loader", () => {
@@ -490,21 +522,17 @@ describe("headingExtension", () => {
 
     // ── turn_end ───────────────────────────────────────────────
 
-    test("turn_end sends achievement to chat on final turn", async () => {
+    test("turn_end shows achievement in widget on final turn", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         const msg = { content: "I fixed the bug" };
         // Final turn: no tool results
         pi.handlers.turn_end[0]({ message: msg, toolResults: [] }, ctx);
-        // No working message change at turn end
-        expect(ctx.workingMessageCalls.length).toBe(0);
         await new Promise((r) => setTimeout(r, 50));
-        // Achievement should be sent as a chat message
-        expect(pi.sendMessageCalls.length).toBe(1);
-        expect(pi.sendMessageCalls[0].message.content).toContain("Docker setup");
-        expect(pi.sendMessageCalls[0].message.customType).toBe("heading-achievement");
-        expect(pi.sendMessageCalls[0].options.triggerTurn).toBe(false);
+        // Achievement should be shown in the widget with checkmark prefix
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("Docker setup"))).toBe(true);
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("✓"))).toBe(true);
     });
 
     test("turn_end keeps working message for intermediate tool-call turns", () => {
@@ -521,8 +549,8 @@ describe("headingExtension", () => {
             },
             ctx,
         );
-        // Working message should still be the goal text set by agent_start
-        expect(ctx.workingMessageCalls).toEqual(["Fix compose"]);
+        // Working message should still be the goal text set by agent_start (with spinner prefix)
+        expect(ctx.workingMessageCalls[0]).toMatch(/^⠋ Fix compose$/);
     });
 
     test("turn_end skips async summarize for intermediate tool-call turns", async () => {
@@ -572,9 +600,9 @@ describe("headingExtension", () => {
         // 3. New user message bumps generation
         pi.handlers.before_agent_start[0]({ prompt: "second" }, ctx);
         await new Promise((r) => setTimeout(r, 100));
-        // The old achievement should not have been sent to chat (gen mismatch)
-        // Only one sendMessage call from the non-stale turn_end if any
-        expect(pi.sendMessageCalls.length).toBe(0);
+        // The old achievement should not have been shown in the widget (gen mismatch)
+        // No achievement prefix should appear in the working messages
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("✓"))).toBe(false);
     });
 
     test("turn_end notifies on achievement error", async () => {
@@ -591,25 +619,18 @@ describe("headingExtension", () => {
                 n.msg.includes("Achievement summarize failed"),
             ),
         ).toBe(true);
-        // No chat message should be sent on error
-        expect(pi.sendMessageCalls.length).toBe(0);
+        // No widget update on error
+        expect(ctx.workingMessageCalls.length).toBe(0);
     });
 
-    test("turn_end notifies when sendMessage itself throws", async () => {
+    test("turn_end updates widget with achievement on success", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
-        // Override sendMessage to throw after the summarize succeeds
-        pi.sendMessage = async () => {
-            throw new Error("sendMessage failed");
-        };
         pi.handlers.turn_end[0]({ message: { content: "done" } }, ctx);
         await new Promise((r) => setTimeout(r, 50));
-        expect(
-            ctx.notifyCalls.some((n) =>
-                n.msg.includes("Achievement summarize failed"),
-            ),
-        ).toBe(true);
+        // Achievement should be shown in the widget
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("Docker setup"))).toBe(true);
     });
 
     test("turn_end skips empty achievement text", async () => {
@@ -643,8 +664,8 @@ describe("headingExtension", () => {
         const ctx = makeMockCtx();
         pi.handlers.turn_end[0]({ message: { content: "done" } }, ctx);
         await new Promise((r) => setTimeout(r, 50));
-        // No chat message should be sent for empty achievement
-        expect(pi.sendMessageCalls.length).toBe(0);
+        // No widget update for empty achievement
+        expect(ctx.workingMessageCalls.length).toBe(0);
     });
 
     test("turn_end reads fresh state after concurrent state update", async () => {
@@ -690,9 +711,7 @@ describe("headingExtension", () => {
         setState("leaf-1", { topic: "Docker", goal: "Updated goal" });
         await new Promise((r) => setTimeout(r, 80));
         // The achievement should use the freshly updated goal
-        const lastSend = pi.sendMessageCalls.at(-1);
-        expect(lastSend).toBeDefined();
-        expect(lastSend?.message?.content).toContain("Updated goal");
+        expect(ctx.workingMessageCalls.some((m) => m?.includes("Updated goal"))).toBe(true);
     });
 
     // ── /heading command ─────────────────────────────────────────
@@ -765,6 +784,30 @@ describe("headingExtension", () => {
         expect(ctx.notifyCalls.some((n) => n.type === "error")).toBe(true);
     });
 
+    test("/heading-model handles model not found after selection", async () => {
+        headingExtension(pi as any);
+        const models = [
+            { id: "model-a" },
+            { id: "model-b" },
+        ];
+        const ctx = makeMockCtx({ models, selectResult: "  nonexistent-model" });
+        await pi.commands["heading-model"].handler("", ctx);
+        expect(ctx.notifyCalls.some((n) => n.type === "error")).toBe(true);
+        expect(ctx.notifyCalls.some((n) => n.msg.includes("not found"))).toBe(true);
+    });
+
+    test("/heading-model warns when auth ok but apiKey is empty", async () => {
+        headingExtension(pi as any);
+        const models = [{ id: "model-a" }];
+        const ctx = makeMockCtx({
+            models,
+            selectResult: "  model-a",
+            auth: { ok: true, apiKey: "" },
+        });
+        await pi.commands["heading-model"].handler("", ctx);
+        expect(ctx.notifyCalls.some((n) => n.type === "warning")).toBe(true);
+    });
+
     // ── /heading-debug command ─────────────────────────────────
 
     test("/heading-debug on enables debug", async () => {
@@ -834,5 +877,36 @@ describe("headingExtension", () => {
         expect(
             ctx.notifyCalls.some((n) => n.msg.includes("No debug entries")),
         ).toBe(true);
+    });
+
+    test("/heading-debug formats entries with error, stream, and achievement", async () => {
+        setDebugEnabled(true);
+        logDebug({
+            t: "2026-05-20T12:00:00Z",
+            input: "test",
+            prompt: "p",
+            fullTopicPrompt: "",
+            fullGoalPrompt: "",
+            topicResponse: "",
+            goalResponse: "",
+            rawTopic: "",
+            rawGoal: "",
+            stableTopic: "",
+            finalGoal: "",
+            topicSystemPrompt: "",
+            goalSystemPrompt: "",
+            error: "model down",
+            goalStream: { extractedText: "hello world", errorEvent: "timeout" },
+            achievementResponse: "Fixed the bug",
+        } as any);
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        await pi.commands["heading-debug"].handler("", ctx);
+        const notifyMsg = ctx.notifyCalls[0]?.msg ?? "";
+        expect(notifyMsg).toContain("❌");
+        expect(notifyMsg).toContain("model down");
+        expect(notifyMsg).toContain("📡");
+        expect(notifyMsg).toContain("✓");
+        expect(notifyMsg).toContain("Fixed the bug");
     });
 });

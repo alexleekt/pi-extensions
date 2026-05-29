@@ -5,21 +5,7 @@ import type {
     ExtensionAPI,
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import type { WidgetMode } from "../ui/widget.js";
-
-export interface State {
-    topic: string;
-    goal: string;
-    /** Post-turn achievement summary — what the agent accomplished in its last turn. */
-    achievement?: string;
-}
-
-export interface HeadingExposure {
-    topic: string;
-    goal: string;
-    achievement?: string;
-    mode: WidgetMode;
-}
+import type { HeadingExposure, State, WidgetMode } from "../types.js";
 
 const STATE_KEY = "heading";
 
@@ -34,6 +20,11 @@ export function setState(leafId: string, state: State): void {
     memory.set(leafId, state);
 }
 
+/** Clear all in-memory state (useful for testing). */
+export function clearState(): void {
+    memory.clear();
+}
+
 /** Broadcast heading state to the shared event bus so other extensions can react. */
 export function exposeHeading(
     pi: ExtensionAPI,
@@ -45,7 +36,7 @@ export function exposeHeading(
         goal: state.goal,
         achievement: state.achievement,
         mode,
-    } as HeadingExposure);
+    } satisfies HeadingExposure);
 }
 
 /** Clear exposure when the session ends or no state is available. */
@@ -54,7 +45,7 @@ export function clearExposure(pi: ExtensionAPI): void {
         topic: "",
         goal: "",
         mode: "idle",
-    } as HeadingExposure);
+    } satisfies HeadingExposure);
 }
 
 /** Replay previous recap entries for the current branch. */
@@ -69,8 +60,10 @@ export function replayBranch(ctx: ExtensionContext): State | undefined {
         const entry = branch[i];
         if (entry?.type === "custom" && entry?.customType === STATE_KEY) {
             const payload =
-                (entry as { data?: unknown; detail?: unknown }).data ??
-                (entry as { data?: unknown; detail?: unknown }).detail;
+                typeof entry === "object" && entry !== null
+                    ? ((entry as unknown) as Record<string, unknown>).data ??
+                      ((entry as unknown) as Record<string, unknown>).detail
+                    : undefined;
             const p = payload as Record<string, unknown> | undefined;
             if (
                 p &&
@@ -80,7 +73,10 @@ export function replayBranch(ctx: ExtensionContext): State | undefined {
                 const state: State = {
                     topic: p.topic,
                     goal: p.goal,
-                    achievement: p.achievement as string | undefined,
+                    achievement:
+                        typeof p.achievement === "string"
+                            ? p.achievement
+                            : undefined,
                 };
                 memory.set(leafId, state);
                 return state;

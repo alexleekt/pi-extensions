@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
-import { beforeAll, describe, expect, mock, test } from "bun:test";
+import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
+import { setModelOverride } from "./picker.js";
 import type { SummarizeResult } from "./summarize.js";
 
 const mockCompleteSimple = mock(() =>
@@ -40,7 +41,12 @@ beforeAll(() => {
 const mockCtx = {
     model: { id: "test-model" },
     modelRegistry: {
-        getAvailable: () => [{ id: "test-model", api: "openai" }],
+        getAvailable: () => [
+            { id: "test-model", api: "openai" },
+            { id: "model-a", api: "openai" },
+            { id: "model-b", api: "openai" },
+            { id: "anthropic.claude-haiku-4-5", api: "anthropic" },
+        ],
         getApiKeyAndHeaders: async () => ({
             ok: true,
             apiKey: "fake-key",
@@ -61,6 +67,11 @@ const mockCtx = {
 
 describe("summarize pipeline", () => {
     let summarize: (ctx: unknown, message: string) => Promise<SummarizeResult>;
+
+    beforeEach(() => {
+        // Clear any model override from the default config dir to prevent cross-test pollution
+        setModelOverride(undefined);
+    });
 
     beforeAll(async () => {
         const mod = await import("./summarize.js");
