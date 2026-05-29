@@ -16,6 +16,10 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { PROTECTED_ABBREVIATIONS } from "./constants/abbreviations.js";
 import type { AnimationLevel, ThemeMode } from "./shared/ask-user.js";
 import {
+    loadAskUserPrompt,
+    loadYoloMandate,
+} from "./shared/prompt-loader.js";
+import {
     type AskUserMetadata,
     type AskUserParams,
     askUserHandler,
@@ -25,21 +29,6 @@ import {
 let _pi: ExtensionAPI | undefined;
 
 /* ── Style constants ── */
-
-const YOLO_MANDATE = `
-## Tool Usage Mandate — Auto-injected by pi-ask-user-glimpse (YOLO Style)
-
-You are in YOLO style. Do NOT ask the user for input or confirmation.
-Go with your best recommendation and proceed immediately.
-
-Only use \`ask_user\` if the action would cause irreversible harm,
-data loss, security compromise, or violate explicit hard constraints.
-
-Rules:
-- Do NOT use \`ask_user\` for routine decisions or clarifications.
-- Make the call and keep moving.
-- If you must use \`ask_user\`, list options from most recommended to least recommended.
-`;
 
 type StyleMode = "plain" | "yolo";
 
@@ -490,40 +479,14 @@ function buildDebugParams(mode: string): AskUserParams | null {
     }
 }
 
-const TOOL_DESCRIPTION = [
-    "Ask the user a question with optional multiple-choice answers.",
-    "Use this to gather information interactively. Ask exactly one focused question per call.",
-    "Before calling, gather context with tools (read/web/ref) and pass a short summary via the context field.",
-    "The context panel supports Mermaid diagrams (flowcharts, sequence diagrams, etc.).",
-    "For richer visualizations, use contextFormat: 'html' with the built-in pi charting helpers:",
-    "  pi.table(['Feature','A','B'], [['Auth','OAuth','SAML']], {highlightColumn:1}) — comparison tables;",
-    "  pi.barChart('#chart', [{label:'A',value:30},{label:'B',value:80}], {highlightIndex:1}) — bar charts;",
-    "  pi.prosCons('#pc', ['Fast','Simple'], ['Expensive','Locked'], {}) — trade-offs;",
-    "  pi.metrics('#m', [{label:'Uptime',value:'99.9%',change:'+0.1%',trend:'up'}]) — KPI cards;",
-    "  pi.pieChart('#pie', [{label:'X',value:30},{label:'Y',value:70}], {donut:true}) — distributions;",
-    "  pi.timeline('#t', [{date:'Q1',title:'Plan',status:'complete'},{date:'Q2',title:'Build',status:'current'}]) — roadmaps.",
-    "All helpers auto-theme to light/dark mode.",
-].join(" ");
+const askUserPrompt = loadAskUserPrompt();
 
 const askUserTool = defineTool({
     name: "ask_user",
     label: "Ask User",
-    description: TOOL_DESCRIPTION,
-    promptSnippet:
-        "Ask the user one focused question with optional multiple-choice answers to gather information interactively",
-    promptGuidelines: [
-        "Always use ask_user instead of guessing when user input would improve the answer.",
-        "Keep the question field short and focused (ideally one sentence). Put background, examples, or elaboration in the context field.",
-        "Include Mermaid diagrams in the context field when visualizing architecture, data flows, or decision trees would help the user understand the question.",
-        "Use contextFormat: 'html' for rich visualizations (comparison tables, bar charts, pros/cons lists, metric cards, timelines, and layouts) that help the user understand trade-offs and make faster decisions. The iframe inherits the wrapper's CSS variables for automatic theme consistency.",
-        "When comparing 3+ options, render a comparison table with pi.table(headers, rows, {highlightColumn: recommendedIndex}).",
-        "When showing quantitative data or performance metrics, use pi.barChart() or pi.metrics() to visualize the numbers.",
-        "When weighing trade-offs, use pi.prosCons() to show a side-by-side comparison.",
-        "Pass a concise question and, when applicable, a list of options with short titles and optional longer descriptions.",
-        "List options from most recommended to least recommended.",
-        "Set allowMultiple: true when more than one choice is valid.",
-        "Set allowFreeform: true (default) when the user might want to answer in their own words.",
-    ],
+    description: askUserPrompt.description,
+    promptSnippet: askUserPrompt.snippet,
+    promptGuidelines: askUserPrompt.guidelines,
     parameters: Type.Object({
         question: Type.String({
             description:
@@ -690,7 +653,8 @@ export default function (pi: ExtensionAPI) {
         const styleMode = getStyleMode(ctx.sessionManager.getEntries());
 
         if (styleMode === "yolo") {
-            return { systemPrompt: event.systemPrompt + YOLO_MANDATE };
+            const yoloMandate = loadYoloMandate();
+            return { systemPrompt: event.systemPrompt + "\n" + yoloMandate };
         }
         // "plain" → no injection
     });
@@ -807,6 +771,67 @@ export default function (pi: ExtensionAPI) {
                 },
                 { triggerTurn: false },
             );
+        },
+    });
+
+    pi.registerCommand("ask-user-config", {
+        description: "Configure ask_user prompt file paths",
+        handler: async (_args, ctx) => {
+            const { readAskUserSettings, writeAskUserSettings } = await import(
+                "./shared/settings.js"
+            );
+            const { getPromptOverrideStatus } = await import(
+                "./shared/prompt-loader.js"
+            );
+            const settings = readAskUserSettings();
+            const status = getPromptOverrideStatus();
+
+            const choice = await ctx.ui.select(
+                "ask_user prompt file configuration:",
+                [
+                    "Set ask-user prompt file",
+                    "Set yolo mandate file",
+                    "Clear all overrides",
+                    "View current config",
+                    "Done",
+                ],
+            );
+            if (!choice) return;
+
+            const handleInput = async (
+                label: string,
+                key: "askUserPrompt" | "yoloMandatePrompt",
+            ): Promise<void> => {
+                const current = settings[key] || "";
+                const newPath = await ctx.ui.input(label, current);
+                if (newPath === null || newPath === undefined) return;
+                const trimmed = newPath.trim();
+                if (trimmed) {
+                    writeAskUserSettings({ ...settings, [key]: trimmed });
+                    ctx.ui.notify(`${key} set to ${trimmed}`, "info");
+                } else if (current) {
+                    writeAskUserSettings({ ...settings, [key]: undefined });
+                    ctx.ui.notify(`${key} cleared`, "info");
+                }
+            };
+
+            if (choice === "Set ask-user prompt file") {
+                await handleInput("Path to ask-user.md", "askUserPrompt");
+            } else if (choice === "Set yolo mandate file") {
+                await handleInput("Path to yolo-mandate.md", "yoloMandatePrompt");
+            } else if (choice === "Clear all overrides") {
+                writeAskUserSettings({});
+                ctx.ui.notify("All overrides cleared", "info");
+            } else if (choice === "View current config") {
+                const lines = [
+                    "ask_user prompt configuration:",
+                    `  askUserPrompt:     ${settings.askUserPrompt || "(default)"}`,
+                    `  yoloMandatePrompt: ${settings.yoloMandatePrompt || "(default)"}`,
+                    `  askUser:           ${status.askUser}`,
+                    `  yoloMandate:       ${status.yoloMandate}`,
+                ];
+                ctx.ui.notify(lines.join("\n"), "info");
+            }
         },
     });
 }

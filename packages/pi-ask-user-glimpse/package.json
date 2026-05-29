@@ -36,6 +36,7 @@
         "shared",
         "types",
         "dist",
+        "prompts",
         "README.md",
         "CHANGELOG.md",
         "CONTRIBUTING.md",
