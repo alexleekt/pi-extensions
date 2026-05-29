@@ -13,7 +13,8 @@ type AnswerValue = string | string[];
 
 function isAnswered(answer: AnswerValue | undefined): boolean {
     if (answer === undefined) return false;
-    if (Array.isArray(answer)) return answer.some((a) => String(a).trim().length > 0);
+    if (Array.isArray(answer))
+        return answer.some((a) => String(a).trim().length > 0);
     return String(answer).trim().length > 0;
 }
 
@@ -79,7 +80,13 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         isAnswered(answers[q.title]),
     ).length;
 
-    const { isSubmitting, showCancelConfirm, setShowCancelConfirm, handleCancel, handleDiscard } = useBaseDialog({
+    const {
+        isSubmitting,
+        showCancelConfirm,
+        setShowCancelConfirm,
+        handleCancel,
+        handleDiscard,
+    } = useBaseDialog({
         payload,
         isDirty,
         onSubmit: handleSubmit,
@@ -91,16 +98,23 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         setAnswers((prev) => ({ ...prev, [qTitle]: value }));
     }, []);
 
-    const toggleMultiAnswer = useCallback((qTitle: string, optTitle: string) => {
-        setAnswers((prev) => {
-            const current = prev[qTitle];
-            const arr = Array.isArray(current) ? current : current ? [current] : [];
-            const next = arr.includes(optTitle)
-                ? arr.filter((t) => t !== optTitle)
-                : [...arr, optTitle];
-            return { ...prev, [qTitle]: next };
-        });
-    }, []);
+    const toggleMultiAnswer = useCallback(
+        (qTitle: string, optTitle: string) => {
+            setAnswers((prev) => {
+                const current = prev[qTitle];
+                const arr = Array.isArray(current)
+                    ? current
+                    : current
+                      ? [current]
+                      : [];
+                const next = arr.includes(optTitle)
+                    ? arr.filter((t) => t !== optTitle)
+                    : [...arr, optTitle];
+                return { ...prev, [qTitle]: next };
+            });
+        },
+        [],
+    );
 
     return (
         <div className="flex h-full flex-col">
@@ -124,19 +138,37 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                             <QuestionCard
                                 question={q}
                                 answer={answers[q.title]}
-                                onSelect={(title) => setSingleAnswer(q.title, title)}
-                                onToggleMulti={(title) => toggleMultiAnswer(q.title, title)}
-                                onSetText={(text) => setSingleAnswer(q.title, text)}
+                                onSelect={(title) =>
+                                    setSingleAnswer(q.title, title)
+                                }
+                                onToggleMulti={(title) =>
+                                    toggleMultiAnswer(q.title, title)
+                                }
+                                onSetText={(text) =>
+                                    setSingleAnswer(q.title, text)
+                                }
                                 comment={comments[q.title] ?? ""}
                                 showComment={showCommentFor === q.title}
-                                onToggleComment={() =>
-                                    setShowCommentFor((prev) =>
-                                        prev === q.title ? null : q.title,
-                                    )
+                                onToggleComment={
+                                    payload.allowComment
+                                        ? () =>
+                                              setShowCommentFor((prev) =>
+                                                  prev === q.title
+                                                      ? null
+                                                      : q.title,
+                                              )
+                                        : undefined
                                 }
-                                onCommentChange={(text) =>
-                                    setComments((prev) => ({ ...prev, [q.title]: text }))
+                                onCommentChange={
+                                    payload.allowComment
+                                        ? (text) =>
+                                              setComments((prev) => ({
+                                                  ...prev,
+                                                  [q.title]: text,
+                                              }))
+                                        : undefined
                                 }
+                                allowComment={payload.allowComment}
                             />
                         </div>
                     ))}

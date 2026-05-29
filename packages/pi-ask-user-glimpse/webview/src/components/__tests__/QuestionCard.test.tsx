@@ -1,5 +1,5 @@
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
 import QuestionCard from "../QuestionCard";
 
 const mockOptions = [
@@ -58,7 +58,11 @@ describe("QuestionCard", () => {
         const onToggleMulti = vi.fn();
         render(
             <QuestionCard
-                question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                question={{
+                    title: "Question 1",
+                    options: mockOptions,
+                    allowMultiple: true,
+                }}
                 answer={undefined}
                 onSelect={vi.fn()}
                 onToggleMulti={onToggleMulti}
@@ -87,7 +91,11 @@ describe("QuestionCard", () => {
     it("shows selected state for multi-selected options", () => {
         render(
             <QuestionCard
-                question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                question={{
+                    title: "Question 1",
+                    options: mockOptions,
+                    allowMultiple: true,
+                }}
                 answer={["Option A", "Option B"]}
                 onSelect={vi.fn()}
                 onToggleMulti={vi.fn()}
@@ -105,7 +113,13 @@ describe("QuestionCard", () => {
             <QuestionCard
                 question={{
                     title: "Question 1",
-                    options: [{ title: "Option A", description: "Desc", recommended: true }],
+                    options: [
+                        {
+                            title: "Option A",
+                            description: "Desc",
+                            recommended: true,
+                        },
+                    ],
                 }}
                 answer={undefined}
                 onSelect={vi.fn()}
@@ -116,7 +130,7 @@ describe("QuestionCard", () => {
         expect(screen.getByText("Recommended")).toBeInTheDocument();
     });
 
-    it("renders Add comment button", () => {
+    it("renders Add comment button when allowComment is true", () => {
         render(
             <QuestionCard
                 question={{ title: "Question 1", options: mockOptions }}
@@ -124,11 +138,28 @@ describe("QuestionCard", () => {
                 onSelect={vi.fn()}
                 onToggleMulti={vi.fn()}
                 onSetText={vi.fn()}
+                allowComment={true}
                 onToggleComment={vi.fn()}
                 onCommentChange={vi.fn()}
             />,
         );
         expect(screen.getByText("Add comment")).toBeInTheDocument();
+    });
+
+    it("hides Add comment button when allowComment is false", () => {
+        render(
+            <QuestionCard
+                question={{ title: "Question 1", options: mockOptions }}
+                answer={undefined}
+                onSelect={vi.fn()}
+                onToggleMulti={vi.fn()}
+                onSetText={vi.fn()}
+                allowComment={false}
+                onToggleComment={vi.fn()}
+                onCommentChange={vi.fn()}
+            />,
+        );
+        expect(screen.queryByText("Add comment")).not.toBeInTheDocument();
     });
 
     it("calls onToggleComment when Add comment is clicked", () => {
@@ -140,6 +171,7 @@ describe("QuestionCard", () => {
                 onSelect={vi.fn()}
                 onToggleMulti={vi.fn()}
                 onSetText={vi.fn()}
+                allowComment={true}
                 onToggleComment={onToggleComment}
                 onCommentChange={vi.fn()}
             />,
@@ -156,6 +188,7 @@ describe("QuestionCard", () => {
                 onSelect={vi.fn()}
                 onToggleMulti={vi.fn()}
                 onSetText={vi.fn()}
+                allowComment={true}
                 comment="Existing comment"
                 onToggleComment={vi.fn()}
                 onCommentChange={vi.fn()}
@@ -172,6 +205,7 @@ describe("QuestionCard", () => {
                 onSelect={vi.fn()}
                 onToggleMulti={vi.fn()}
                 onSetText={vi.fn()}
+                allowComment={true}
                 showComment={true}
                 comment="My comment"
                 onToggleComment={vi.fn()}
@@ -192,6 +226,7 @@ describe("QuestionCard", () => {
                 onSelect={vi.fn()}
                 onToggleMulti={vi.fn()}
                 onSetText={vi.fn()}
+                allowComment={true}
                 showComment={true}
                 comment=""
                 onToggleComment={vi.fn()}
@@ -375,7 +410,11 @@ describe("QuestionCard", () => {
             const onToggleMulti = vi.fn();
             render(
                 <QuestionCard
-                    question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                    question={{
+                        title: "Question 1",
+                        options: mockOptions,
+                        allowMultiple: true,
+                    }}
                     answer={undefined}
                     onSelect={vi.fn()}
                     onToggleMulti={onToggleMulti}
@@ -392,7 +431,11 @@ describe("QuestionCard", () => {
             const onToggleMulti = vi.fn();
             render(
                 <QuestionCard
-                    question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                    question={{
+                        title: "Question 1",
+                        options: mockOptions,
+                        allowMultiple: true,
+                    }}
                     answer={undefined}
                     onSelect={vi.fn()}
                     onToggleMulti={onToggleMulti}
@@ -457,7 +500,11 @@ describe("QuestionCard", () => {
             const onToggleMulti = vi.fn();
             render(
                 <QuestionCard
-                    question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                    question={{
+                        title: "Question 1",
+                        options: mockOptions,
+                        allowMultiple: true,
+                    }}
                     answer={undefined}
                     onSelect={vi.fn()}
                     onToggleMulti={onToggleMulti}
@@ -506,7 +553,11 @@ describe("QuestionCard", () => {
             const onToggleMulti = vi.fn();
             render(
                 <QuestionCard
-                    question={{ title: "Question 1", options: mockOptions, allowMultiple: true }}
+                    question={{
+                        title: "Question 1",
+                        options: mockOptions,
+                        allowMultiple: true,
+                    }}
                     answer={undefined}
                     onSelect={vi.fn()}
                     onToggleMulti={onToggleMulti}

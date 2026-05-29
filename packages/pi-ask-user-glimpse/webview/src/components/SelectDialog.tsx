@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FREEFORM_OPTION_TITLE, type AskUserPayload } from "../../../shared/ask-user";
+import {
+    type AskUserPayload,
+    FREEFORM_OPTION_TITLE,
+} from "../../../shared/ask-user";
 import { useBaseDialog } from "../hooks/useBaseDialog";
 import { sendToGlimpse } from "../util/glimpse";
 import CancelConfirmModal from "./CancelConfirmModal";
-import { CheckIcon, CommentIcon, RadioIcon, isSelectAllOption } from "./icons";
+import { CheckIcon, CommentIcon, isSelectAllOption, RadioIcon } from "./icons";
 import MarkdownPreview from "./MarkdownPreview";
 import OptionCard from "./OptionCard";
 
@@ -23,7 +26,9 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
     const freeformRef = useRef<HTMLButtonElement | null>(null);
 
     const hasFreeform = payload.allowFreeform;
-    const maxIndex = hasFreeform ? payload.options.length : payload.options.length - 1;
+    const maxIndex = hasFreeform
+        ? payload.options.length
+        : payload.options.length - 1;
 
     const selectAllOption = useMemo(
         () => payload.options.find((opt) => isSelectAllOption(opt.title)),
@@ -38,6 +43,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         activeIndex: -1,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
+        allowComment: payload.allowComment,
         selectAllOption: undefined as typeof selectAllOption,
         mode,
     });
@@ -49,37 +55,41 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         activeIndex,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
+        allowComment: payload.allowComment,
         selectAllOption,
         mode,
     };
 
-    const toggle = useCallback((title: string, index?: number) => {
-        const s = stateRef.current;
-        if (index !== undefined) {
-            setActiveIndex(index);
-        }
-        if (s.selectAllOption && title === s.selectAllOption.title) {
-            const regular = s.options
-                .filter((opt) => !isSelectAllOption(opt.title))
-                .map((opt) => opt.title);
-            if (isSingle) {
-                setSelected(s.selectAllOption.title);
-            } else {
-                setSelectedSet(new Set(regular));
+    const toggle = useCallback(
+        (title: string, index?: number) => {
+            const s = stateRef.current;
+            if (index !== undefined) {
+                setActiveIndex(index);
             }
-            return;
-        }
-        if (isSingle) {
-            setSelected(title);
-        } else {
-            setSelectedSet((prev) => {
-                const next = new Set(prev);
-                if (next.has(title)) next.delete(title);
-                else next.add(title);
-                return next;
-            });
-        }
-    }, [isSingle]);
+            if (s.selectAllOption && title === s.selectAllOption.title) {
+                const regular = s.options
+                    .filter((opt) => !isSelectAllOption(opt.title))
+                    .map((opt) => opt.title);
+                if (isSingle) {
+                    setSelected(s.selectAllOption.title);
+                } else {
+                    setSelectedSet(new Set(regular));
+                }
+                return;
+            }
+            if (isSingle) {
+                setSelected(title);
+            } else {
+                setSelectedSet((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(title)) next.delete(title);
+                    else next.add(title);
+                    return next;
+                });
+            }
+        },
+        [isSingle],
+    );
 
     const handleFreeform = useCallback(() => {
         toggle(FREEFORM_OPTION_TITLE, payload.options.length);
@@ -110,13 +120,19 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
             if (s.allowFreeform && selection === null) {
                 send({ kind: "freeform", text: "" });
             } else {
-                send({ kind: "selection", selections: selection ? [selection] : [] });
+                send({
+                    kind: "selection",
+                    selections: selection ? [selection] : [],
+                });
             }
         } else {
             const hasFreeform = s.selectedSet.has(FREEFORM_OPTION_TITLE);
             const hasSelection = s.selectedSet.size > 0;
             if (hasFreeform) {
-                send({ kind: "selection", selections: Array.from(s.selectedSet) });
+                send({
+                    kind: "selection",
+                    selections: Array.from(s.selectedSet),
+                });
                 return;
             }
             if (!hasSelection && s.allowFreeform) {
@@ -131,13 +147,21 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         ? selected !== null || comment.trim() !== ""
         : selectedSet.size > 0 || comment.trim() !== "";
 
-    const { showCancelConfirm, setShowCancelConfirm, handleCancel, handleDiscard, handleSubmit: baseHandleSubmit } = useBaseDialog({
+    const {
+        showCancelConfirm,
+        setShowCancelConfirm,
+        handleCancel,
+        handleDiscard,
+        handleSubmit: baseHandleSubmit,
+    } = useBaseDialog({
         payload,
         isDirty,
         onSubmit: handleSubmit,
         isCommentOpen: showComment,
         onCloseComment: () => setShowComment(false),
-        submitDisabled: !hasFreeform && (isSingle ? selected === null : selectedSet.size === 0),
+        submitDisabled:
+            !hasFreeform &&
+            (isSingle ? selected === null : selectedSet.size === 0),
     });
 
     useEffect(() => {
@@ -177,7 +201,9 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                     }
                     setActiveIndex(idx);
                     optionRefs.current[idx]?.focus();
-                    optionRefs.current[idx]?.scrollIntoView({ block: "nearest" });
+                    optionRefs.current[idx]?.scrollIntoView({
+                        block: "nearest",
+                    });
                 }
                 return;
             }
@@ -193,16 +219,28 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                 return;
             }
 
+            if (e.key === "c" || e.key === "C") {
+                if (s.allowComment) {
+                    e.preventDefault();
+                    setShowComment((prev) => !prev);
+                }
+                return;
+            }
+
             if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setActiveIndex((prev) => {
                     const next = Math.min(prev + 1, maxIndex);
                     if (next < s.options.length) {
                         optionRefs.current[next]?.focus();
-                        optionRefs.current[next]?.scrollIntoView({ block: "nearest" });
+                        optionRefs.current[next]?.scrollIntoView({
+                            block: "nearest",
+                        });
                     } else if (s.allowFreeform && next === s.options.length) {
                         freeformRef.current?.focus();
-                        freeformRef.current?.scrollIntoView({ block: "nearest" });
+                        freeformRef.current?.scrollIntoView({
+                            block: "nearest",
+                        });
                     }
                     return next;
                 });
@@ -212,10 +250,14 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                     const next = Math.max(prev - 1, 0);
                     if (next < s.options.length) {
                         optionRefs.current[next]?.focus();
-                        optionRefs.current[next]?.scrollIntoView({ block: "nearest" });
+                        optionRefs.current[next]?.scrollIntoView({
+                            block: "nearest",
+                        });
                     } else if (s.allowFreeform && next === s.options.length) {
                         freeformRef.current?.focus();
-                        freeformRef.current?.scrollIntoView({ block: "nearest" });
+                        freeformRef.current?.scrollIntoView({
+                            block: "nearest",
+                        });
                     }
                     return next;
                 });
@@ -248,7 +290,10 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                         return;
                     }
                     // Fallback: submit the active option
-                    if (s.activeIndex >= 0 && s.activeIndex < s.options.length) {
+                    if (
+                        s.activeIndex >= 0 &&
+                        s.activeIndex < s.options.length
+                    ) {
                         e.preventDefault();
                         const opt = s.options[s.activeIndex];
                         stateRef.current.selected = opt.title;
@@ -279,8 +324,13 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                             {selectedSet.size} selected
                         </div>
                         {/* Live region for screen readers to announce selection changes */}
-                        <div aria-live="polite" aria-atomic="true" className="sr-only">
-                            {selectedSet.size} option{selectedSet.size === 1 ? "" : "s"} selected
+                        <div
+                            aria-live="polite"
+                            aria-atomic="true"
+                            className="sr-only"
+                        >
+                            {selectedSet.size} option
+                            {selectedSet.size === 1 ? "" : "s"} selected
                         </div>
                         {selectedSet.size > 0 && (
                             <button
@@ -297,7 +347,9 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                         <button
                             onClick={() => {
                                 const allRegular = payload.options
-                                    .filter((opt) => !isSelectAllOption(opt.title))
+                                    .filter(
+                                        (opt) => !isSelectAllOption(opt.title),
+                                    )
                                     .map((opt) => opt.title);
                                 setSelectedSet(new Set(allRegular));
                             }}
@@ -315,7 +367,12 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                     </div>
                 )}
 
-                <div className="space-y-2" role="listbox" aria-label="Options" aria-multiselectable={!isSingle}>
+                <div
+                    className="space-y-2"
+                    role="listbox"
+                    aria-label="Options"
+                    aria-multiselectable={!isSingle}
+                >
                     {payload.options.length > 0 ? (
                         payload.options.map((opt, idx) => (
                             <OptionCard
@@ -326,7 +383,11 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                                 title={opt.title}
                                 description={opt.description}
                                 index={idx}
-                                isSelected={isSingle ? selected === opt.title : selectedSet.has(opt.title)}
+                                isSelected={
+                                    isSingle
+                                        ? selected === opt.title
+                                        : selectedSet.has(opt.title)
+                                }
                                 isActive={activeIndex === idx}
                                 mode={mode}
                                 onClick={() => toggle(opt.title, idx)}
@@ -339,50 +400,74 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
                             No options available.
                             {payload.allowFreeform && (
-                                <span> Use "My answer isn't listed above" below to submit your own.</span>
+                                <span>
+                                    {" "}
+                                    Use "My answer isn't listed above" below to
+                                    submit your own.
+                                </span>
                             )}
                         </div>
                     )}
                     {hasFreeform && (
                         <button
                             ref={freeformRef}
-                            tabIndex={activeIndex === payload.options.length ? 0 : -1}
+                            tabIndex={
+                                activeIndex === payload.options.length ? 0 : -1
+                            }
                             onClick={handleFreeform}
                             role="option"
-                            aria-selected={isSingle ? selected === FREEFORM_OPTION_TITLE : selectedSet.has(FREEFORM_OPTION_TITLE)}
+                            aria-selected={
+                                isSingle
+                                    ? selected === FREEFORM_OPTION_TITLE
+                                    : selectedSet.has(FREEFORM_OPTION_TITLE)
+                            }
                             className={`mt-4 flex w-full items-start gap-3 rounded-lg border p-3 text-left text-sm transition-colors ${
-                                (isSingle ? selected === FREEFORM_OPTION_TITLE : selectedSet.has(FREEFORM_OPTION_TITLE))
+                                (
+                                    isSingle
+                                        ? selected === FREEFORM_OPTION_TITLE
+                                        : selectedSet.has(FREEFORM_OPTION_TITLE)
+                                )
                                     ? "border-primary bg-primary/5"
                                     : "border-dashed border-border text-muted-foreground hover:bg-accent"
                             } ${activeIndex === payload.options.length ? "ring-2 ring-ring" : ""}`}
                         >
                             {isSingle ? (
-                                <RadioIcon checked={selected === FREEFORM_OPTION_TITLE} />
+                                <RadioIcon
+                                    checked={selected === FREEFORM_OPTION_TITLE}
+                                />
                             ) : (
-                                <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-                                    selectedSet.has(FREEFORM_OPTION_TITLE)
-                                        ? "bg-primary text-primary-foreground"
-                                        : "border border-border"
-                                }`}>
-                                    {selectedSet.has(FREEFORM_OPTION_TITLE) && <CheckIcon checked={true} />}
+                                <div
+                                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
+                                        selectedSet.has(FREEFORM_OPTION_TITLE)
+                                            ? "bg-primary text-primary-foreground"
+                                            : "border border-border"
+                                    }`}
+                                >
+                                    {selectedSet.has(FREEFORM_OPTION_TITLE) && (
+                                        <CheckIcon checked={true} />
+                                    )}
                                 </div>
                             )}
                             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
                                 -
                             </span>
-                            <span className="font-medium">{FREEFORM_OPTION_TITLE}</span>
+                            <span className="font-medium">
+                                {FREEFORM_OPTION_TITLE}
+                            </span>
                         </button>
                     )}
                 </div>
             </div>
 
-            <div className="shrink-0 border-t border-border px-4 py-3">
+            <div className="shrink-0 px-4 py-3">
                 {payload.allowComment && (
                     <div>
                         <button
+                            type="button"
                             onClick={() => setShowComment((s) => !s)}
                             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                             aria-expanded={showComment}
+                            aria-controls="select-comment-textarea"
                         >
                             <CommentIcon />
                             {showComment
@@ -394,12 +479,18 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                         {showComment && (
                             <>
                                 <textarea
+                                    id="select-comment-textarea"
+                                    aria-label="Additional comment"
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}
                                     placeholder="Optional comment…"
+                                    maxLength={1000}
                                     className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
                                     rows={3}
                                 />
+                                <div className="mt-1 text-right text-xs text-muted-foreground">
+                                    {comment.length}/1000
+                                </div>
                                 <MarkdownPreview text={comment} />
                             </>
                         )}

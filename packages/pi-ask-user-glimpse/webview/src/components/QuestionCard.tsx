@@ -27,6 +27,7 @@ interface QuestionCardProps {
     showComment?: boolean;
     onToggleComment?: () => void;
     onCommentChange?: (text: string) => void;
+    allowComment?: boolean;
 }
 
 export default function QuestionCard({
@@ -39,6 +40,7 @@ export default function QuestionCard({
     showComment = false,
     onToggleComment,
     onCommentChange,
+    allowComment,
 }: QuestionCardProps) {
     const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -47,51 +49,60 @@ export default function QuestionCard({
         : answer !== undefined && answer !== "";
     const isRequired = true; // questionnaire questions are always required for now
 
-    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-        const maxIndex = question.options.length - 1;
+    const handleKeyDown = useCallback(
+        (e: React.KeyboardEvent<HTMLDivElement>) => {
+            const maxIndex = question.options.length - 1;
 
-        if (e.key >= "1" && e.key <= "9") {
-            const idx = parseInt(e.key, 10) - 1;
-            if (idx >= 0 && idx <= maxIndex) {
+            if (e.key >= "1" && e.key <= "9") {
+                const idx = parseInt(e.key, 10) - 1;
+                if (idx >= 0 && idx <= maxIndex) {
+                    e.preventDefault();
+                    setActiveIndex(idx);
+                    optionRefs.current[idx]?.focus();
+                    const opt = question.options[idx];
+                    if (question.allowMultiple) {
+                        onToggleMulti(opt.title);
+                    } else {
+                        onSelect(opt.title);
+                    }
+                }
+                return;
+            }
+
+            if (e.key === "ArrowDown") {
                 e.preventDefault();
-                setActiveIndex(idx);
-                optionRefs.current[idx]?.focus();
-                const opt = question.options[idx];
-                if (question.allowMultiple) {
-                    onToggleMulti(opt.title);
-                } else {
-                    onSelect(opt.title);
+                setActiveIndex((prev) => {
+                    const next = Math.min(prev + 1, maxIndex);
+                    optionRefs.current[next]?.focus();
+                    return next;
+                });
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActiveIndex((prev) => {
+                    const next = Math.max(prev - 1, 0);
+                    optionRefs.current[next]?.focus();
+                    return next;
+                });
+            } else if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                const opt = question.options[activeIndex];
+                if (opt) {
+                    if (question.allowMultiple) {
+                        onToggleMulti(opt.title);
+                    } else {
+                        onSelect(opt.title);
+                    }
                 }
             }
-            return;
-        }
-
-        if (e.key === "ArrowDown") {
-            e.preventDefault();
-            setActiveIndex((prev) => {
-                const next = Math.min(prev + 1, maxIndex);
-                optionRefs.current[next]?.focus();
-                return next;
-            });
-        } else if (e.key === "ArrowUp") {
-            e.preventDefault();
-            setActiveIndex((prev) => {
-                const next = Math.max(prev - 1, 0);
-                optionRefs.current[next]?.focus();
-                return next;
-            });
-        } else if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            const opt = question.options[activeIndex];
-            if (opt) {
-                if (question.allowMultiple) {
-                    onToggleMulti(opt.title);
-                } else {
-                    onSelect(opt.title);
-                }
-            }
-        }
-    }, [question.options, question.allowMultiple, activeIndex, onSelect, onToggleMulti]);
+        },
+        [
+            question.options,
+            question.allowMultiple,
+            activeIndex,
+            onSelect,
+            onToggleMulti,
+        ],
+    );
 
     return (
         <div className="border-b border-border last:border-b-0 py-4">
@@ -104,11 +115,19 @@ export default function QuestionCard({
                 )}
             </div>
             {question.description && (
-                <RichText text={question.description} className="mb-3 text-sm text-muted-foreground" />
+                <RichText
+                    text={question.description}
+                    className="mb-3 text-sm text-muted-foreground"
+                />
             )}
 
             {question.options && question.options.length > 0 ? (
-                <div className="space-y-2" role="listbox" aria-label={question.title} onKeyDown={handleKeyDown}>
+                <div
+                    className="space-y-2"
+                    role="listbox"
+                    aria-label={question.title}
+                    onKeyDown={handleKeyDown}
+                >
                     {question.options.map((opt, optIdx) => {
                         const arr = Array.isArray(answer)
                             ? answer
@@ -127,7 +146,9 @@ export default function QuestionCard({
                                 index={optIdx}
                                 isSelected={isSelected}
                                 isActive={activeIndex === optIdx}
-                                mode={question.allowMultiple ? "multi" : "single"}
+                                mode={
+                                    question.allowMultiple ? "multi" : "single"
+                                }
                                 onClick={() => {
                                     setActiveIndex(optIdx);
                                     if (question.allowMultiple) {
@@ -159,12 +180,14 @@ export default function QuestionCard({
                 </div>
             )}
 
-            {onToggleComment && onCommentChange && (
+            {allowComment && onToggleComment && onCommentChange && (
                 <div className="mt-2">
                     <button
+                        type="button"
                         onClick={onToggleComment}
                         className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                         aria-expanded={showComment}
+                        aria-controls={`question-comment-${question.title}`}
                     >
                         <CommentIcon />
                         {showComment
@@ -176,12 +199,20 @@ export default function QuestionCard({
                     {showComment && (
                         <>
                             <textarea
+                                id={`question-comment-${question.title}`}
+                                aria-label={`Additional comment for ${question.title}`}
                                 value={comment}
-                                onChange={(e) => onCommentChange(e.target.value)}
+                                onChange={(e) =>
+                                    onCommentChange(e.target.value)
+                                }
                                 placeholder="Optional comment…"
+                                maxLength={1000}
                                 className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring resize-none"
                                 rows={3}
                             />
+                            <div className="mt-1 text-right text-xs text-muted-foreground">
+                                {comment.length}/1000
+                            </div>
                             <MarkdownPreview text={comment} />
                         </>
                     )}
