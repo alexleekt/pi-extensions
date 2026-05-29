@@ -142,9 +142,6 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
         return () => window.removeEventListener("keydown", handleKeyDown, true);
     }, [open, allOptions, focusedIndex, closeAndReturnFocus, setTheme, setAnimationLevel]);
 
-    const isSelected = (opt: FlatOption) =>
-        opt.type === "theme" ? opt.value === theme : opt.value === animationLevel;
-
     return (
         <div className="relative">
             <button
