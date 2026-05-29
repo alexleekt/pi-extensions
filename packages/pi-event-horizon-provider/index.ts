@@ -368,7 +368,7 @@ export default async function (pi: ExtensionAPI) {
         pi.registerProvider(providerName, {
             name: `Event Horizon (${name})`,
             baseUrl: `${baseUrl}/v1`,
-            apiKey: "EVENTHORIZON_API_KEY",
+            apiKey: "dummy",  // proxy handles auth internally; not used
             api: "openai-completions",
             models: [
                 {
