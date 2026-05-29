@@ -238,7 +238,7 @@ describe("headingExtension", () => {
 
     // ── session_start ────────────────────────────────────────────
 
-    test("session_start replays goal even when achievement exists", async () => {
+    test("session_start replays achievement mode when achievement exists", async () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx({
             branch: [
@@ -256,6 +256,14 @@ describe("headingExtension", () => {
         await pi.handlers.session_start[0]({}, ctx);
         expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
         expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
+        // Event bus preserves achievement mode across sessions
+        expect(
+            pi.eventEmissions.some(
+                (e) =>
+                    e.channel === "heading:state" &&
+                    (e.data as any).mode === "achievement",
+            ),
+        ).toBe(true);
     });
 
     test("session_start replays goal when no achievement", async () => {
@@ -290,15 +298,21 @@ describe("headingExtension", () => {
 
     // ── agent_end ────────────────────────────────────────────────
 
-    test("agent_end keeps working message visible with goal", () => {
+    test("agent_end preserves achievement mode when achievement exists", () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose", achievement: "Fixed it" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.agent_end[0]({}, ctx);
         expect(ctx.workingVisibleCalls).toContain(true);
         expect(ctx.workingMessageCalls.some((m) => m?.includes("Fix compose"))).toBe(true);
-        // Event bus should match the working message (goal mode, not idle)
-        expect(pi.eventEmissions.some((e) => e.channel === "heading:state" && (e.data as any).mode === "goal")).toBe(true);
+        // Event bus preserves achievement mode after the agent ends
+        expect(
+            pi.eventEmissions.some(
+                (e) =>
+                    e.channel === "heading:state" &&
+                    (e.data as any).mode === "achievement",
+            ),
+        ).toBe(true);
     });
 
     test("agent_end keeps working message visible with goal when no achievement", () => {
@@ -308,7 +322,13 @@ describe("headingExtension", () => {
         pi.handlers.agent_end[0]({}, ctx);
         expect(ctx.workingVisibleCalls).toContain(true);
         expect(ctx.workingMessageCalls.some((m) => m?.includes("Fix compose"))).toBe(true);
-        expect(pi.eventEmissions.some((e) => e.channel === "heading:state" && (e.data as any).mode === "goal")).toBe(true);
+        expect(
+            pi.eventEmissions.some(
+                (e) =>
+                    e.channel === "heading:state" &&
+                    (e.data as any).mode === "goal",
+            ),
+        ).toBe(true);
     });
 
     test("agent_end clears everything when no state", () => {
@@ -529,6 +549,106 @@ describe("headingExtension", () => {
         ).toBe(true);
         // No chat message should be sent on error
         expect(pi.sendMessageCalls.length).toBe(0);
+    });
+
+    test("turn_end notifies when sendMessage itself throws", async () => {
+        setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        // Override sendMessage to throw after the summarize succeeds
+        pi.sendMessage = async () => {
+            throw new Error("sendMessage failed");
+        };
+        pi.handlers.turn_end[0]({ message: { content: "done" } }, ctx);
+        await new Promise((r) => setTimeout(r, 50));
+        expect(
+            ctx.notifyCalls.some((n) =>
+                n.msg.includes("Achievement summarize failed"),
+            ),
+        ).toBe(true);
+    });
+
+    test("turn_end skips empty achievement text", async () => {
+        setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
+        mockCompleteSimple.mockImplementation(() =>
+            Promise.resolve({
+                role: "assistant",
+                content: [{ type: "text", text: '{"result": "   "}' }],
+                api: "openai-completions",
+                provider: "openai",
+                model: "test-model",
+                usage: {
+                    input: 0,
+                    output: 0,
+                    cacheRead: 0,
+                    cacheWrite: 0,
+                    totalTokens: 0,
+                    cost: {
+                        input: 0,
+                        output: 0,
+                        cacheRead: 0,
+                        cacheWrite: 0,
+                        total: 0,
+                    },
+                },
+                stopReason: "stop",
+                timestamp: Date.now(),
+            } as any),
+        );
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        pi.handlers.turn_end[0]({ message: { content: "done" } }, ctx);
+        await new Promise((r) => setTimeout(r, 50));
+        // No chat message should be sent for empty achievement
+        expect(pi.sendMessageCalls.length).toBe(0);
+    });
+
+    test("turn_end reads fresh state after concurrent state update", async () => {
+        setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        // Use a delayed mock so we can update state mid-flight
+        mockCompleteSimple.mockImplementationOnce(() =>
+            new Promise((resolve) =>
+                setTimeout(() =>
+                    resolve({
+                        role: "assistant",
+                        content: [
+                            { type: "text", text: '{"result": "Updated goal"}' },
+                        ],
+                        api: "openai-completions",
+                        provider: "openai",
+                        model: "test-model",
+                        usage: {
+                            input: 0,
+                            output: 0,
+                            cacheRead: 0,
+                            cacheWrite: 0,
+                            totalTokens: 0,
+                            cost: {
+                                input: 0,
+                                output: 0,
+                                cacheRead: 0,
+                                cacheWrite: 0,
+                                total: 0,
+                            },
+                        },
+                        stopReason: "stop",
+                        timestamp: Date.now(),
+                    } as any),
+                ),
+            ),
+        );
+        // Start the turn_end async summarize
+        pi.handlers.turn_end[0]({ message: { content: "done" } }, ctx);
+        // While the async block is running, update the state directly
+        // (e.g., a concurrent /heading command or another turn's summarize)
+        setState("leaf-1", { topic: "Docker", goal: "Updated goal" });
+        await new Promise((r) => setTimeout(r, 80));
+        // The achievement should use the freshly updated goal
+        const lastSend = pi.sendMessageCalls.at(-1);
+        expect(lastSend).toBeDefined();
+        expect(lastSend?.message?.content).toContain("Updated goal");
     });
 
     // ── /heading command ─────────────────────────────────────────

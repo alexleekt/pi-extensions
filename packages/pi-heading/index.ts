@@ -160,8 +160,9 @@ export default function (pi: ExtensionAPI) {
         agentStartedForCurrentTurn = false;
         const replayed = replayBranch(ctx);
         if (replayed?.goal) {
-            setHeadingMessage(ctx, replayed.goal, "goal");
-            exposeHeading(pi, replayed, "goal");
+            const mode = replayed.achievement ? "achievement" : "goal";
+            setHeadingMessage(ctx, replayed.goal, mode);
+            exposeHeading(pi, replayed, mode);
         } else {
             clearHeading(ctx);
             clearExposure(pi);
@@ -176,8 +177,9 @@ export default function (pi: ExtensionAPI) {
         const leafId = ctx.sessionManager.getLeafId();
         const state = leafId ? getState(leafId) : undefined;
         if (state?.goal) {
-            setHeadingMessage(ctx, state.goal, "goal");
-            exposeHeading(pi, state, "goal");
+            const mode = state.achievement ? "achievement" : "goal";
+            setHeadingMessage(ctx, state.goal, mode);
+            exposeHeading(pi, state, mode);
         } else {
             clearHeading(ctx);
             clearExposure(pi);
