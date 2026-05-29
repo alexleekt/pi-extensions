@@ -119,4 +119,19 @@ describe("SettingsProvider", () => {
         fireEvent.click(screen.getByTestId("set-light"));
         expect(document.documentElement.classList.contains("dark")).toBe(false);
     });
+
+    it("handles matchMedia errors gracefully", () => {
+        const originalMatchMedia = window.matchMedia;
+        window.matchMedia = () => {
+            throw new Error("matchMedia not supported");
+        };
+        // Should not throw during render
+        render(
+            <SettingsProvider initialTheme="system">
+                <TestConsumer />
+            </SettingsProvider>,
+        );
+        expect(screen.getByTestId("resolved")).toHaveTextContent("light");
+        window.matchMedia = originalMatchMedia;
+    });
 });
