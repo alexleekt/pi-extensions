@@ -29,7 +29,7 @@ Test scripts must use the **same escaping** as production code in `tool/ask-user
 `highlightMatch()` must escape BOTH display text and query before producing HTML. Never use raw `.replace()` with user input into `dangerouslySetInnerHTML`.
 
 ### Sanitizer audits
-When adding new rich content support (video, audio, etc.), audit `sanitizeHtml()` first. It blocks `script`, `img`, `iframe`, `object`, `embed`, `form`, `svg`, and strips `javascript:` / `data:` URLs.
+When adding new rich content support (video, audio, etc.), audit `DOMPurify` configuration in `webview/src/util/markdown.ts` first. It uses strict `ALLOWED_TAGS` and `ALLOWED_ATTR` lists, blocks `script`, `img`, `iframe`, `object`, `embed`, `form`, `svg`, and strips `javascript:` / `data:` URLs. Post-sanitization, link `href` attributes are rewritten with `rel="noopener noreferrer"` and `target="_blank"`.
 
 ### MultiSelect submit
 The submit handler must block when `selected.size === 0`. The search `query` is NOT a valid submission.

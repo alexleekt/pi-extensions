@@ -49,7 +49,7 @@ JSON.stringify(payload)
 `highlightMatch()` in `webview/src/util/html.ts` must escape both display text and search query before producing HTML. Never pass raw user input into `dangerouslySetInnerHTML`.
 
 ### ContextPanel sanitization
-`sanitizeHtml()` blocks dangerous tags (`script`, `img`, `iframe`, `object`, `embed`, `form`, `svg`, etc.) and strips `javascript:` / `data:` URLs. Audit the sanitizer when adding new rich content support.
+`webview/src/util/markdown.ts` uses **DOMPurify** with strict `ALLOWED_TAGS` and `ALLOWED_ATTR` lists. It blocks dangerous tags (`script`, `img`, `iframe`, `object`, `embed`, `form`, `svg`, etc.) and strips `javascript:` / `data:` URLs. Post-sanitization, link `href` attributes are rewritten with `rel="noopener noreferrer"` and `target="_blank"`. Audit the sanitizer when adding new rich content support.
 
 ## Before Submitting
 
