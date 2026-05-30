@@ -253,7 +253,7 @@ export default function ThemeSelector({ buttonClassName }: ThemeSelectorProps) {
                     }
                 } else {
                     setMode(opt.value as ThemeMode);
-                    setOpen(false);
+                    // Mode buttons do not close the dropdown
                 }
             }
         };
@@ -362,7 +362,7 @@ export default function ThemeSelector({ buttonClassName }: ThemeSelectorProps) {
                                             onClick={() => {
                                                 if (disabled) return;
                                                 setMode(opt.value);
-                                                setOpen(false);
+                                                // Mode buttons do not close the dropdown
                                             }}
                                             className={`flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs transition-colors border ${
                                                 disabled
