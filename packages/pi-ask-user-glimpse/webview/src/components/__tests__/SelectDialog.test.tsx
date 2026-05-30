@@ -9,6 +9,10 @@ const mockSendCancelled = vi.fn();
 vi.mock("../../util/glimpse", () => ({
     sendToGlimpse: (...args: unknown[]) => mockSendToGlimpse(...args),
     sendCancelled: () => mockSendCancelled(),
+    sendCancelledSafe: () => {
+        mockSendCancelled();
+        return true;
+    },
 }));
 
 function buildPayload(mode: "single" | "multi", overrides = {}) {

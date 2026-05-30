@@ -80,6 +80,9 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         isAnswered(answers[q.title]),
     ).length;
 
+    const allAnswered = questions.every((q) => isAnswered(answers[q.title]));
+    const submitDisabled = payload.allowSkip === false && !allAnswered;
+
     const {
         isSubmitting,
         showCancelConfirm,
@@ -92,6 +95,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         onSubmit: handleSubmit,
         isCommentOpen: !!showCommentFor,
         onCloseComment: () => setShowCommentFor(null),
+        submitDisabled,
     });
 
     const setSingleAnswer = useCallback((qTitle: string, value: string) => {

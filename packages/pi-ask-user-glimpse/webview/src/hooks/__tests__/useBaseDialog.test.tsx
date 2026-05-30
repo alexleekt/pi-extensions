@@ -7,6 +7,10 @@ const mockSendCancelled = vi.fn();
 
 vi.mock("../../util/glimpse", () => ({
     sendCancelled: () => mockSendCancelled(),
+    sendCancelledSafe: () => {
+        mockSendCancelled();
+        return true;
+    },
 }));
 
 vi.mock("../useDialogKeys", () => ({

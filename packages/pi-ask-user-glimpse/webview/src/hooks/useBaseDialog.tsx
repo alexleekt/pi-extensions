@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
-import { sendCancelled } from "../util/glimpse";
+import { sendCancelledSafe } from "../util/glimpse";
 import { useDialogKeys } from "./useDialogKeys";
 import DialogFooter from "../components/DialogFooter";
 import GlobalKeyboardHint from "../components/GlobalKeyboardHint";
@@ -46,14 +46,18 @@ export function useBaseDialog({
             return;
         }
         hasSent.current = true;
-        sendCancelled();
+        if (!sendCancelledSafe()) {
+            hasSent.current = false;
+        }
     }, [isDirty, isSubmitting]);
 
     const handleDiscard = useCallback(() => {
         if (hasSent.current) return;
         hasSent.current = true;
         setShowCancelConfirm(false);
-        sendCancelled();
+        if (!sendCancelledSafe()) {
+            hasSent.current = false;
+        }
     }, []);
 
     const handleSubmit = useCallback(() => {

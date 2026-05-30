@@ -192,7 +192,28 @@ export async function askUserHandler(
             windowOptions.followCursor = true;
         }
 
-        const rawResult = (await prompt(html, { ...windowOptions, timeout: 120000 })) as unknown;
+        let aborted = false;
+        const onAbort = () => {
+            aborted = true;
+        };
+        signal?.addEventListener("abort", onAbort);
+
+        const rawResult = (await prompt(html, { ...windowOptions })) as unknown;
+
+        signal?.removeEventListener("abort", onAbort);
+
+        if (aborted) {
+            return {
+                content: [{ type: "text" as const, text: "Cancelled" }],
+                details: {
+                    question: params.question,
+                    options: normalizedOptions,
+                    response: null,
+                    cancelled: true,
+                },
+            };
+        }
+
         if (rawResult === null || (typeof rawResult === "object" && rawResult !== null && (rawResult as Record<string, unknown>).__cancelled === true)) {
             cancelled = true;
             result = null;
@@ -204,8 +225,12 @@ export async function askUserHandler(
                     animationLevel: result.__animationLevel as string | undefined,
                 });
             }
+        } else {
+            // Primitive or unexpected return value — treat as no response
+            result = null;
+            cancelled = false;
         }
-    } catch (_err) {
+    } catch (err) {
         // Glimpse unavailable — fast-exit and warn once
         if (!_warnedGlimpseUnavailable) {
             _warnedGlimpseUnavailable = true;
@@ -224,7 +249,7 @@ export async function askUserHandler(
             ],
             details: {
                 question: params.question,
-                options: normalizedOptions.map((o) => o.title),
+                options: normalizedOptions,
                 response: null,
                 cancelled: true,
                 error: "No UI available",

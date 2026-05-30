@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { sendCancelled } from "../util/glimpse";
+import { sendCancelledSafe } from "../util/glimpse";
 
 interface UseDialogKeysOptions {
     /** Called when user presses Escape (after optional comment-close check). */
@@ -95,7 +95,7 @@ export function useDialogKeys(options: UseDialogKeysOptions) {
                 if (s.onCancel) {
                     s.onCancel();
                 } else {
-                    sendCancelled();
+                    sendCancelledSafe();
                 }
                 return;
             }

@@ -204,7 +204,10 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        expect(result.details.options).toEqual(["A", "B"]);
+        expect(result.details.options).toEqual([
+            { title: "A" },
+            { title: "B" },
+        ]);
     });
 
     it("verifies signal abort returns early without calling prompt", async () => {

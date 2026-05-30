@@ -6,6 +6,10 @@ const mockSendCancelled = vi.fn();
 
 vi.mock("../../util/glimpse", () => ({
     sendCancelled: () => mockSendCancelled(),
+    sendCancelledSafe: () => {
+        mockSendCancelled();
+        return true;
+    },
 }));
 
 function fireWindowKeyDown(key: string, options: { ctrlKey?: boolean; metaKey?: boolean; target?: EventTarget } = {}) {

@@ -6,6 +6,7 @@ import { FooterContext } from "./components/FooterContext";
 import Freeform from "./components/Freeform";
 import Questionnaire from "./components/Questionnaire";
 import SelectDialog from "./components/SelectDialog";
+import { sendToGlimpseSafe } from "./util/glimpse";
 
 function getPayload(): AskUserPayload {
     const raw = (window as unknown as Record<string, unknown>)
@@ -51,10 +52,12 @@ export default function App() {
     try {
         payload = getPayload();
     } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        sendToGlimpseSafe({ __error: true, message: errorMessage });
         return (
             <div className="flex h-screen items-center justify-center p-4">
                 <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
-                    {err instanceof Error ? err.message : String(err)}
+                    {errorMessage}
                 </div>
             </div>
         );

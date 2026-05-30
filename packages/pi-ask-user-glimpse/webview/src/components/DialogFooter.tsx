@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { sendCancelled } from "../util/glimpse";
+import { sendCancelledSafe } from "../util/glimpse";
 
 interface DialogFooterProps {
     /** Whether a submission is already in flight. */
@@ -39,7 +39,13 @@ export default function DialogFooter({
                 <div className="flex-1 min-w-0">{hint}</div>
                 <div className="flex shrink-0 items-center gap-2">
                     <button
-                        onClick={onCancel ?? sendCancelled}
+                        onClick={() => {
+                            if (onCancel) {
+                                onCancel();
+                            } else {
+                                sendCancelledSafe();
+                            }
+                        }}
                         disabled={isSubmitting}
                         className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50 disabled:opacity-40"
                     >

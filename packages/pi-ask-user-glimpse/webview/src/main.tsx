@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { SettingsProvider } from "./util/settings";
+import { sendToGlimpseSafe } from "./util/glimpse";
 import "./index.generated.css";
 
 const raw = (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__;
@@ -27,8 +28,10 @@ if (!rootEl) {
 }
 
 if (!payload) {
+    const errorMessage = "Invalid payload: missing or unrecognized type field";
     document.body.innerHTML = '<div style="padding:20px;color:red">Error: Invalid ask_user payload</div>';
-    throw new Error("Invalid payload: missing or unrecognized type field");
+    sendToGlimpseSafe({ __error: true, message: errorMessage });
+    throw new Error(errorMessage);
 }
 
 ReactDOM.createRoot(rootEl).render(
