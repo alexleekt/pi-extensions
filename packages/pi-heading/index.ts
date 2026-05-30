@@ -29,6 +29,8 @@ export default function (pi: ExtensionAPI) {
     const sharedState: SharedState = {
         turnGeneration: 0,
         agentStartedForCurrentTurn: false,
+        agentEndGeneration: 0,
+        currentPlaceholder: undefined,
     };
 
     // ── Event handlers ─────────────────────────────────────────────

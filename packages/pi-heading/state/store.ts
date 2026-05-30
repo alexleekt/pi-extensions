@@ -20,23 +20,47 @@ export function setState(leafId: string, state: State): void {
     memory.set(leafId, state);
 }
 
+/** Delete a single leaf's in-memory state. */
+export function deleteState(leafId: string): void {
+    memory.delete(leafId);
+}
+
+/** Remove a single leaf's state from memory. */
+export function deleteState(leafId: string): void {
+    memory.delete(leafId);
+}
+
 /** Clear all in-memory state (useful for testing). */
 export function clearState(): void {
     memory.clear();
 }
 
-/** Broadcast heading state to the shared event bus so other extensions can react. */
+let lastEmitted: HeadingExposure | undefined;
+
+/** Broadcast heading state to the shared event bus so other extensions can react.
+ *  Skips duplicate emissions to reduce event-bus noise during multi-turn chains. */
 export function exposeHeading(
     pi: ExtensionAPI,
     state: State,
     mode: WidgetMode,
 ): void {
-    pi.events.emit("heading:state", {
+    const payload: HeadingExposure = {
         topic: state.topic,
         goal: state.goal,
         achievement: state.achievement,
         mode,
-    } satisfies HeadingExposure);
+    };
+    if (
+        lastEmitted &&
+        lastEmitted.topic === payload.topic &&
+        lastEmitted.goal === payload.goal &&
+        lastEmitted.achievement === payload.achievement &&
+        lastEmitted.mode === payload.mode
+    ) {
+        return;
+    }
+    lastEmitted = payload;
+    pi.events.emit("heading:state", payload);
 }
 
 /** Clear exposure when the session ends or no state is available. */

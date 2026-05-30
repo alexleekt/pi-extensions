@@ -5,12 +5,20 @@ import type {
     ExtensionAPI,
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { clearExposure, exposeHeading, replayBranch } from "../state/store.js";
+import { clearExposure, deleteState, exposeHeading, replayBranch } from "../state/store.js";
 import { clearHeading, setHeadingMessage } from "../ui/widget.js";
 
 export interface SharedState {
     turnGeneration: number;
     agentStartedForCurrentTurn: boolean;
+    agentEndGeneration: number;
+    currentPlaceholder: string | undefined;
+    lastExposed?: {
+        topic: string;
+        goal: string;
+        achievement?: string;
+        mode: string;
+    };
 }
 
 export function handleSessionStart(
@@ -22,6 +30,9 @@ export function handleSessionStart(
     if (!ctx.hasUI) return;
     sharedState.turnGeneration = 0;
     sharedState.agentStartedForCurrentTurn = false;
+    sharedState.agentEndGeneration = 0;
+    sharedState.currentPlaceholder = undefined;
+    const leafId = ctx.sessionManager.getLeafId();
     const replayed = replayBranch(ctx);
     if (replayed?.goal) {
         const mode = replayed.achievement ? "achievement" : "goal";
@@ -30,6 +41,7 @@ export function handleSessionStart(
     } else {
         clearHeading(ctx);
         clearExposure(pi);
+        if (leafId) deleteState(leafId);
     }
 }
 
@@ -40,6 +52,5 @@ export function handleSessionShutdown(
 ): void {
     if (!ctx.hasUI) return;
     clearHeading(ctx);
-    ctx.ui.setWorkingVisible(true); // restore default for next session
     clearExposure(pi);
 }

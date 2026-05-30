@@ -26,21 +26,35 @@ export function handleTurnStart(
     _event: unknown,
     ctx: ExtensionContext,
     pi: ExtensionAPI,
-    _sharedState: SharedState,
+    sharedState: SharedState,
 ): void {
     if (!ctx.hasUI) return;
 
-    // Suppress Pi's native "Working" loader between tool-call turns
-    // (per ADR 0002 — restored at agent_end, not turn_end).
-    ctx.ui.setWorkingVisible(false);
-
     const leafId = ctx.sessionManager.getLeafId();
     const state = leafId ? getState(leafId) : undefined;
-    if (state?.goal) {
+    // If a placeholder from the current turn is active, don't overwrite it
+    // with stale state from a previous turn.
+    if (sharedState.currentPlaceholder) {
+        setHeadingMessage(ctx, sharedState.currentPlaceholder, "working");
+    } else if (state?.goal) {
         setHeadingMessage(ctx, state.goal, "working");
-        exposeHeading(pi, state, "working");
-    } else {
-        clearHeading(ctx);
+        // De-duplicate event bus emissions — only emit if state changed
+        const last = sharedState.lastExposed;
+        if (
+            !last ||
+            last.topic !== state.topic ||
+            last.goal !== state.goal ||
+            last.achievement !== state.achievement ||
+            last.mode !== "working"
+        ) {
+            exposeHeading(pi, state, "working");
+            sharedState.lastExposed = {
+                topic: state.topic,
+                goal: state.goal,
+                achievement: state.achievement,
+                mode: "working",
+            };
+        }
     }
 }
 

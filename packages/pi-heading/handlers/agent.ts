@@ -27,12 +27,10 @@ export function handleAgentEnd(
 ): void {
     if (!ctx.hasUI) return;
     sharedState.agentStartedForCurrentTurn = false;
+    sharedState.agentEndGeneration++;
+    sharedState.currentPlaceholder = undefined;
     const leafId = ctx.sessionManager.getLeafId();
     const state = leafId ? getState(leafId) : undefined;
-    // Restore Pi's native loader first, then set our custom message.
-    // This prevents setWorkingVisible(true) from resetting the message
-    // text back to the platform default "Working".
-    ctx.ui.setWorkingVisible(true); // ensure working indicator stays visible
     if (state?.goal) {
         const mode = state.achievement ? "achievement" : "goal";
         const text = state.achievement ?? state.goal;
@@ -53,17 +51,15 @@ export function handleAgentStart(
     if (!ctx.hasUI) return;
     sharedState.agentStartedForCurrentTurn = true;
 
-    // Suppress Pi's native "Working" loader so our widget spinner is the
-    // only visible progress indicator (per ADR 0002).
-    ctx.ui.setWorkingVisible(false);
-
     const leafId = ctx.sessionManager.getLeafId();
     const state = leafId ? getState(leafId) : undefined;
-    if (state?.goal) {
+    // If a placeholder from the current turn is active, don't overwrite it
+    // with stale state from a previous turn.
+    if (sharedState.currentPlaceholder) {
+        setHeadingMessage(ctx, sharedState.currentPlaceholder, "working");
+    } else if (state?.goal) {
         setHeadingMessage(ctx, state.goal, "working");
         exposeHeading(pi, state, "working");
-    } else {
-        clearHeading(ctx);
     }
 }
 
@@ -77,6 +73,7 @@ export function handleBeforeAgentStart(
     if (!prompt || !ctx.hasUI) return;
 
     const myGeneration = ++sharedState.turnGeneration;
+    const myAgentEndGeneration = sharedState.agentEndGeneration;
     sharedState.agentStartedForCurrentTurn = false;
 
     const leafId = ctx.sessionManager.getLeafId();
@@ -84,6 +81,7 @@ export function handleBeforeAgentStart(
     // Set an immediate placeholder so the user never sees the platform
     // default "Working" while the async summarize is in progress.
     const placeholder = prompt.length > 57 ? `${prompt.slice(0, 57)}…` : prompt;
+    sharedState.currentPlaceholder = placeholder;
     setHeadingMessage(ctx, placeholder, "working");
 
     // Fire-and-forget: do not await summarize — we must not block the agent
@@ -91,12 +89,15 @@ export function handleBeforeAgentStart(
         try {
             const result = await summarize(ctx, prompt);
             if (myGeneration !== sharedState.turnGeneration) return; // stale turn
+            // If agent_end already fired for this turn, don't clobber the final display.
+            if (myAgentEndGeneration !== sharedState.agentEndGeneration) return;
 
             const existing = leafId ? getState(leafId) : undefined;
 
             if (!result.goal.trim()) {
                 // LLM returned an empty goal — keep the user's prompt as
                 // the working message instead of leaving it blank.
+                sharedState.currentPlaceholder = undefined;
                 setHeadingMessage(ctx, placeholder, "working");
                 logDebug(
                     makeDebugEntry(prompt, result, existing, ctx.model?.id),
@@ -122,6 +123,7 @@ export function handleBeforeAgentStart(
                 }
             }
 
+            sharedState.currentPlaceholder = undefined;
             const mode = sharedState.agentStartedForCurrentTurn
                 ? "working"
                 : "goal";
@@ -132,6 +134,7 @@ export function handleBeforeAgentStart(
             );
         } catch (err) {
             if (myGeneration !== sharedState.turnGeneration) return; // stale turn
+            if (myAgentEndGeneration !== sharedState.agentEndGeneration) return;
             const msg = (err as Error).message ?? String(err);
             ctx.ui.notify(`[pi-heading] Summarize failed: ${msg}`, "error");
             const existing = leafId ? getState(leafId) : undefined;
