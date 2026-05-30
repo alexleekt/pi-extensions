@@ -23,6 +23,8 @@ const HEADING_PROMPT_GUIDELINES = [
     "Use the heading tool with action: 'skill' to retrieve the full heading skill documentation.",
 ];
 
+type HeadingAction = "get" | "skill";
+
 export function registerHeadingTool(pi: ExtensionAPI): void {
     pi.registerTool({
         name: "heading",
@@ -40,7 +42,7 @@ export function registerHeadingTool(pi: ExtensionAPI): void {
             }),
         }),
         execute: async (_toolCallId, params, _signal, _onUpdate, ctx) =>
-            headingToolExecute(params, ctx),
+            headingToolExecute(params as { action: HeadingAction }, ctx),
         renderCall: (args: { action: string }, theme: Theme) => {
             return new Text(
                 theme.fg("toolTitle", theme.bold("heading ")) +
@@ -50,15 +52,16 @@ export function registerHeadingTool(pi: ExtensionAPI): void {
             );
         },
         renderResult: (result) => {
-            const text =
-                result.content.find((c) => c.type === "text")?.text ?? "";
+            const text = Array.isArray(result.content)
+                ? result.content.find((c) => c?.type === "text")?.text ?? ""
+                : "";
             return new Text(text, 0, 0);
         },
     });
 }
 
 async function headingToolExecute(
-    params: { action: string },
+    params: { action: HeadingAction },
     ctx: ExtensionContext,
 ): Promise<AgentToolResult<unknown>> {
     if (params.action === "skill") {

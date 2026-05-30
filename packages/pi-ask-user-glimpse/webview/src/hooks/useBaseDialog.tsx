@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { sendCancelledSafe } from "../util/glimpse";
 import { useDialogKeys } from "./useDialogKeys";
@@ -25,6 +25,8 @@ interface UseBaseDialogReturn {
     handleSubmit: () => void;
 }
 
+const SUBMIT_TIMEOUT_MS = 5000;
+
 export function useBaseDialog({
     payload,
     isDirty,
@@ -39,6 +41,16 @@ export function useBaseDialog({
     /** Synchronous guard — prevents any double-send (submit or cancel) in the same event loop tick.
      *  React state is batched and async; a ref is the only reliable guard for rapid events. */
     const hasSent = useRef(false);
+
+    // Watchdog: reset isSubmitting if the host doesn't close the webview
+    useEffect(() => {
+        if (!isSubmitting) return;
+        const timer = setTimeout(() => {
+            setIsSubmitting(false);
+            hasSent.current = false;
+        }, SUBMIT_TIMEOUT_MS);
+        return () => clearTimeout(timer);
+    }, [isSubmitting]);
 
     const handleCancel = useCallback(() => {
         if (hasSent.current || isSubmitting) return;

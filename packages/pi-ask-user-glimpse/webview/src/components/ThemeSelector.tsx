@@ -7,6 +7,7 @@ import {
     getThemeDisplayName,
     getThemeFamilyById,
     getVariantForMode,
+    hasDarkLightPairing,
     type ThemeDefinition,
 } from "../themes";
 
@@ -58,7 +59,7 @@ function ThemeSwatch({ themeDef, isDark }: { themeDef: ThemeDefinition; isDark: 
     );
 }
 
-interface SettingsButtonProps {
+interface ThemeSelectorProps {
     buttonClassName?: string;
 }
 
@@ -69,10 +70,9 @@ interface FlatOption {
     label: string;
 }
 
-export default function SettingsButton({ buttonClassName }: SettingsButtonProps) {
+export default function ThemeSelector({ buttonClassName }: ThemeSelectorProps) {
     const {
         themeFamily,
-        themeId,
         mode,
         resolvedMode,
         setThemeFamily,
@@ -143,19 +143,44 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
         triggerRef.current?.focus();
     }, [endPreview]);
 
+    // Check if a mode button is disabled (theme doesn't support mode switching)
+    const isModeDisabled = useCallback((modeValue: string) => {
+        const currentDef = getThemeFamilyById(themeFamily);
+        if (!currentDef) return false;
+        return !hasDarkLightPairing(currentDef);
+    }, [themeFamily]);
+
+    // Find the next focusable index, skipping disabled mode buttons
+    const findNextFocusable = useCallback((start: number, direction: 1 | -1) => {
+        let idx = start;
+        const len = allOptions.length;
+        for (let i = 0; i < len; i++) {
+            idx = (idx + direction + len) % len;
+            const opt = allOptions[idx];
+            if (opt?.type === "theme") return idx;
+            if (opt?.type === "mode" && !isModeDisabled(opt.value)) return idx;
+        }
+        return start;
+    }, [allOptions, isModeDisabled]);
+
     // When opening, focus the currently selected mode or theme
     useEffect(() => {
         if (!open) return;
         let idx = allOptions.findIndex((o) =>
             o.type === "mode" ? o.value === mode : o.value === themeFamily,
         );
+        // Skip disabled mode buttons
+        const opt = allOptions[idx];
+        if (opt?.type === "mode" && isModeDisabled(opt.value)) {
+            idx = findNextFocusable(idx, 1);
+        }
         if (idx === -1) idx = 0;
         setFocusedIndex(idx);
         const id = requestAnimationFrame(() => {
             optionRefs.current[idx]?.focus();
         });
         return () => cancelAnimationFrame(id);
-    }, [open, allOptions, mode, themeFamily]);
+    }, [open, allOptions, mode, themeFamily, isModeDisabled, findNextFocusable]);
 
     // Keyboard navigation
     useEffect(() => {
@@ -170,10 +195,9 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
             if (e.key === "Tab") {
                 e.preventDefault();
                 e.stopImmediatePropagation();
+                const direction = e.shiftKey ? -1 : 1;
                 setFocusedIndex((prev) => {
-                    const next = e.shiftKey
-                        ? Math.max(prev - 1, 0)
-                        : Math.min(prev + 1, allOptions.length - 1);
+                    const next = findNextFocusable(prev, direction as 1 | -1);
                     optionRefs.current[next]?.focus();
                     return next;
                 });
@@ -183,7 +207,7 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                 e.preventDefault();
                 e.stopImmediatePropagation();
                 setFocusedIndex((prev) => {
-                    const next = Math.min(prev + 1, allOptions.length - 1);
+                    const next = findNextFocusable(prev, 1);
                     optionRefs.current[next]?.focus();
                     return next;
                 });
@@ -191,25 +215,33 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                 e.preventDefault();
                 e.stopImmediatePropagation();
                 setFocusedIndex((prev) => {
-                    const next = Math.max(prev - 1, 0);
+                    const next = findNextFocusable(prev, -1);
                     optionRefs.current[next]?.focus();
                     return next;
                 });
             } else if (e.key === "Home") {
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                setFocusedIndex(0);
-                optionRefs.current[0]?.focus();
+                const next = allOptions.findIndex((o) => o.type === "theme" || !isModeDisabled(o.value));
+                const first = next >= 0 ? next : 0;
+                setFocusedIndex(first);
+                optionRefs.current[first]?.focus();
             } else if (e.key === "End") {
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                setFocusedIndex(allOptions.length - 1);
-                optionRefs.current[allOptions.length - 1]?.focus();
+                let last = allOptions.length - 1;
+                while (last >= 0 && allOptions[last]?.type === "mode" && isModeDisabled(allOptions[last].value)) {
+                    last--;
+                }
+                if (last < 0) last = allOptions.length - 1;
+                setFocusedIndex(last);
+                optionRefs.current[last]?.focus();
             } else if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 e.stopImmediatePropagation();
                 const opt = allOptions[focusedIndex];
                 if (!opt) return;
+                if (opt.type === "mode" && isModeDisabled(opt.value)) return;
                 if (opt.type === "theme") {
                     const def = allThemes.find((d) => d.id === opt.value);
                     if (def) {
@@ -227,10 +259,12 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
         };
         window.addEventListener("keydown", handleKeyDown, true);
         return () => window.removeEventListener("keydown", handleKeyDown, true);
-    }, [open, allOptions, focusedIndex, closeAndReturnFocus, setThemeFamily, setMode, allThemes, resolvedMode]);
+    }, [open, allOptions, focusedIndex, closeAndReturnFocus, setThemeFamily, setMode, allThemes, resolvedMode, isModeDisabled, findNextFocusable]);
 
     const renderThemeTile = (def: ThemeDefinition, idx: number) => {
         const selected = def.id === themeFamily;
+        const supportsModeSwitching = hasDarkLightPairing(def);
+        const hasSingleVariant = !supportsModeSwitching;
         return (
             <button
                 ref={(el) => {
@@ -258,9 +292,11 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                 className={`flex items-center gap-2 rounded-md p-1.5 text-xs transition-colors ${
                     selected
                         ? "bg-primary/10 text-primary font-medium ring-1 ring-primary"
-                        : "text-foreground hover:bg-accent"
+                        : hasSingleVariant
+                            ? "text-muted-foreground opacity-60 cursor-pointer"
+                            : "text-foreground hover:bg-accent"
                 }`}
-                title={def.displayName}
+                title={hasSingleVariant ? `${def.displayName} — does not support mode switching` : def.displayName}
             >
                 <ThemeSwatch themeDef={def} isDark={resolvedMode === "dark"} />
                 <span className="text-left leading-tight">
@@ -308,6 +344,9 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                             <div className="flex gap-1">
                                 {modeOptions.map((opt, idx) => {
                                     const selected = opt.value === mode;
+                                    const currentDef = getThemeFamilyById(themeFamily);
+                                    const supportsModeSwitching = currentDef ? hasDarkLightPairing(currentDef) : false;
+                                    const disabled = !supportsModeSwitching;
                                     return (
                                         <button
                                             ref={(el) => {
@@ -316,27 +355,23 @@ export default function SettingsButton({ buttonClassName }: SettingsButtonProps)
                                             key={opt.value}
                                             role="menuitemradio"
                                             aria-checked={selected}
-                                            tabIndex={focusedIndex === idx ? 0 : -1}
+                                            aria-disabled={disabled}
+                                            tabIndex={disabled ? -1 : focusedIndex === idx ? 0 : -1}
                                             data-type="mode"
-                                            onFocus={() => {
-                                                cancelDelayedEndPreview();
-                                                previewMode(opt.value);
-                                            }}
-                                            onBlur={() => delayedEndPreview()}
-                                            onMouseEnter={() => {
-                                                cancelDelayedEndPreview();
-                                                previewMode(opt.value);
-                                            }}
-                                            onMouseLeave={() => delayedEndPreview()}
+                                            disabled={disabled}
                                             onClick={() => {
+                                                if (disabled) return;
                                                 setMode(opt.value);
                                                 setOpen(false);
                                             }}
-                                            className={`flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs transition-colors border cursor-pointer ${
-                                                selected
-                                                    ? "bg-primary/15 text-primary font-medium border-primary/50"
-                                                    : "text-foreground hover:bg-accent border-transparent"
+                                            className={`flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs transition-colors border ${
+                                                disabled
+                                                    ? "opacity-50 cursor-not-allowed text-muted-foreground border-transparent"
+                                                    : selected
+                                                        ? "bg-primary/15 text-primary font-medium border-primary/50 cursor-pointer"
+                                                        : "text-foreground hover:bg-accent border-transparent cursor-pointer"
                                             }`}
+                                            title={disabled ? "This palette does not support mode switching" : undefined}
                                         >
                                             <ModeIcon mode={opt.value} />
                                             {opt.label}

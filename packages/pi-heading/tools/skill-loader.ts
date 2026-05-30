@@ -21,9 +21,9 @@ The session heading tracks the current goal and is visible in the UI.
 - Always check the heading before planning multi-step actions.
 `;
 
-export function getHeadingSkillDocument(): string {
+export function getHeadingSkillDocument(baseDir?: string): string {
     try {
-        const skillPath = path.join(__dirname, "..", "prompts", "skill.md");
+        const skillPath = path.join(baseDir ?? path.join(__dirname, ".."), "prompts", "skill.md");
         return fs.readFileSync(skillPath, "utf8");
     } catch {
         return FALLBACK_SKILL;

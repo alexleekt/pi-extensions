@@ -15,7 +15,7 @@ import {
     setDebugMode,
 } from "./state/debug.js";
 // Import real internal modules — we verify through their side effects
-import { clearState, setState } from "./state/store.js";
+import { clearState, deleteState, getState, setState } from "./state/store.js";
 
 // Mock the external LLM dependency so summarize() doesn't make real API calls
 const mockCompleteSimple = mock(() =>
@@ -1162,5 +1162,77 @@ describe("headingExtension", () => {
         expect(notifyMsg).toContain("📡");
         expect(notifyMsg).toContain("✓");
         expect(notifyMsg).toContain("Fixed the bug");
+    });
+
+    // ── Message renderer ─────────────────────────────────────────
+
+    test("heading-achievement message renderer formats with goal", () => {
+        headingExtension(pi as any);
+        const renderer = pi.messageRenderers.get("heading-achievement");
+        expect(renderer).toBeDefined();
+        const theme = {
+            fg: (style: string, text: string) => `[${style}:${text}]`,
+        };
+        const result = renderer(
+            {
+                content: "Fixed the bug",
+                details: { goal: "Fix compose" },
+            },
+            {},
+            theme,
+        );
+        expect(result.text).toContain("[accent:[Fix compose]]");
+        expect(result.text).toContain("[success:✓ Fixed the bug]");
+    });
+
+    test("heading-achievement message renderer formats without goal", () => {
+        headingExtension(pi as any);
+        const renderer = pi.messageRenderers.get("heading-achievement");
+        expect(renderer).toBeDefined();
+        const theme = {
+            fg: (style: string, text: string) => `[${style}:${text}]`,
+        };
+        const result = renderer(
+            {
+                content: [{ type: "text", text: "Fixed the bug" }],
+            },
+            {},
+            theme,
+        );
+        expect(result.text).toBe("[success:✓ Fixed the bug]");
+    });
+
+    // ── session_start deleteState branch ─────────────────────────
+
+    test("session_start deletes state when no replay and old state exists", async () => {
+        setState("leaf-1", { topic: "Old", goal: "Old goal" });
+        headingExtension(pi as any);
+        const ctx = makeMockCtx({ branch: [] });
+        await pi.handlers.session_start[0]({}, ctx);
+        // State should be cleared
+        const stateAfter = getState("leaf-1");
+        expect(stateAfter).toBeUndefined();
+    });
+
+    // ── turn_end debug logging for intermediate tool turns ─────
+
+    test("turn_end logs debug entry for intermediate tool turn with text", async () => {
+        setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        setDebugEnabled(true);
+        const tmpLog = path.join(tmpConfigDir, "debug.log");
+        setDebugLogPath(tmpLog);
+        pi.handlers.turn_end[0](
+            {
+                message: { content: [{ type: "text", text: "Let me search" }] },
+                toolResults: [{ role: "tool", content: "result" }],
+            },
+            ctx,
+        );
+        await new Promise((r) => setTimeout(r, 50));
+        const entries = readDebugLog(1);
+        expect(entries.length).toBe(1);
+        expect(entries[0].error).toContain("skipped-achievement");
     });
 });

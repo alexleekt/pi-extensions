@@ -1,82 +1,12 @@
 /**
  * Catppuccin theme definition.
  *
- * Uses the official @catppuccin/palette npm package.
+ * Hardcoded palette values — no external dependency.
  * Supports all 4 variants: Latte, Frappé, Macchiato, Mocha.
  */
 
 import type { ThemeDefinition } from "./types";
 
-// The palette package is imported dynamically at runtime to avoid
-// bundling the entire 800KB palette file if we only need a few colors.
-// We import just the specific variant colors we need.
-let _paletteModule: any = null;
-
-async function getPalette() {
-    if (!_paletteModule) {
-        _paletteModule = await import("@catppuccin/palette");
-    }
-    return _paletteModule;
-}
-
-/**
- * Build a Catppuccin variant from the official palette.
- * This is called once at module init time.
- */
-export async function buildCatppuccinTheme(): Promise<ThemeDefinition> {
-    const palette = await getPalette();
-    const variants = ["latte", "frappe", "macchiato", "mocha"] as const;
-
-    const themeVariants = variants.map((variantKey) => {
-        const v = palette.default[variantKey];
-        const colors = v.colors;
-
-        return {
-            id: `catppuccin-${variantKey}`,
-            name: v.name,
-            isDark: v.dark,
-            palette: Object.fromEntries(
-                Object.entries(colors).map(([key, color]: [string, any]) => [
-                    key,
-                    { name: color.name, hex: color.hex },
-                ]),
-            ),
-            tokens: {
-                background: colors.base.hex,
-                foreground: colors.text.hex,
-                card: colors.surface0.hex,
-                "card-foreground": colors.text.hex,
-                popover: colors.surface0.hex,
-                "popover-foreground": colors.text.hex,
-                primary: colors.mauve.hex,
-                "primary-foreground": colors.base.hex,
-                secondary: colors.surface1.hex,
-                "secondary-foreground": colors.text.hex,
-                muted: colors.surface0.hex,
-                "muted-foreground": colors.subtext0.hex,
-                accent: colors.blue.hex,
-                "accent-foreground": colors.base.hex,
-                destructive: colors.red.hex,
-                "destructive-foreground": colors.base.hex,
-                border: colors.surface1.hex,
-                input: colors.surface1.hex,
-                ring: colors.mauve.hex,
-                radius: "0.5rem",
-            },
-        };
-    });
-
-    return {
-        id: "catppuccin",
-        displayName: "Catppuccin",
-        description: "Soothing pastel theme with 4 variants",
-        defaultVariant: "catppuccin-mocha",
-        variants: themeVariants,
-    };
-}
-
-// Synchronous fallback: if we can't load the palette, use hardcoded values.
-// This ensures the module always exports a valid ThemeDefinition.
 export const catppuccin: ThemeDefinition = {
     id: "catppuccin",
     displayName: "Catppuccin",

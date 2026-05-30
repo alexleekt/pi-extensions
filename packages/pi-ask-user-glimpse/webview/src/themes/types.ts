@@ -56,43 +56,10 @@ export interface ThemeDefinition {
 }
 
 /** Theme family identifier (e.g., "nord", "catppuccin") */
-export type ThemeFamilyId =
-    | "default"
-    | "catppuccin"
-    | "nord"
-    | "tokyo-night"
-    | "dracula"
-    | "one-dark"
-    | "ayu"
-    | "github"
-    | "night-owl"
-    | "houston";
+export type ThemeFamilyId = string;
 
 /** Concrete theme variant identifier (e.g., "nord-dark", "catppuccin-mocha") */
-export type ThemeId =
-    | "light"
-    | "dark"
-    | "catppuccin-latte"
-    | "catppuccin-frappe"
-    | "catppuccin-macchiato"
-    | "catppuccin-mocha"
-    | "nord-dark"
-    | "nord-light"
-    | "tokyo-night"
-    | "tokyo-night-storm"
-    | "tokyo-night-light"
-    | "dracula"
-    | "dracula-light"
-    | "one-dark"
-    | "one-light"
-    | "ayu-dark"
-    | "ayu-light"
-    | "github-dark"
-    | "github-light"
-    | "night-owl"
-    | "night-owl-light"
-    | "houston"
-    | "houston-light";
+export type ThemeId = string;
 
 /** Theme mode: light/dark/system */
 export type ThemeMode = "light" | "dark" | "system";
@@ -109,3 +76,27 @@ export interface ThemeConfig {
     name: ThemeId;
     mode: ThemeMode;
 }
+
+/** Standard CSS variable names used by the theme system */
+export const THEME_CSS_VARS = [
+    "background",
+    "foreground",
+    "card",
+    "card-foreground",
+    "popover",
+    "popover-foreground",
+    "primary",
+    "primary-foreground",
+    "secondary",
+    "secondary-foreground",
+    "muted",
+    "muted-foreground",
+    "accent",
+    "accent-foreground",
+    "destructive",
+    "destructive-foreground",
+    "border",
+    "input",
+    "ring",
+    "radius",
+] as const;

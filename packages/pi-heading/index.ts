@@ -42,15 +42,20 @@ export default function (pi: ExtensionAPI) {
     registerHeadingTool(pi);
 
     // ── Message renderer for achievement blocks ──────────────────────
+    interface HeadingAchievementMessage {
+        content: string | Array<{ type: string; text?: string }>;
+        details?: { goal?: string };
+    }
     pi.registerMessageRenderer(
         "heading-achievement",
         (message, _options, theme) => {
+            const msg = message as HeadingAchievementMessage;
             const text =
-                typeof message.content === "string"
-                    ? message.content
-                    : (message.content?.find((c) => c.type === "text")?.text ??
+                typeof msg.content === "string"
+                    ? msg.content
+                    : (msg.content?.find((c) => c.type === "text")?.text ??
                       "");
-            const goal = (message as any).details?.goal;
+            const goal = msg.details?.goal;
             const display = goal
                 ? `${theme.fg("accent", `[${goal}]`)} ${theme.fg("success", `✓ ${text}`)}`
                 : theme.fg("success", `✓ ${text}`);

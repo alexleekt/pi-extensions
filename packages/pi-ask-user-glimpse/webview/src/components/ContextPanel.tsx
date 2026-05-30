@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PI_CHARTS_LIBRARY } from "../util/pi-charts.js";
 import { renderMarkdownInline, sanitizeHtml } from "../util/markdown.js";
 import { useSettings } from "../util/settings.js";
-import SettingsButton from "./SettingsButton";
+import { THEME_CSS_VARS } from "../themes/types.js";
+import ThemeSelector from "./ThemeSelector";
 
 /** Sanitize raw HTML context before injecting into sandboxed iframe.
  *  Uses the same DOMPurify config as markdown pipeline for consistency.
@@ -58,14 +59,7 @@ function getCurrentThemeCssVars(): Record<string, string> {
     const root = document.documentElement;
     const computed = getComputedStyle(root);
     const vars: Record<string, string> = {};
-    const names = [
-        "background", "foreground", "card", "card-foreground",
-        "popover", "popover-foreground", "primary", "primary-foreground",
-        "secondary", "secondary-foreground", "muted", "muted-foreground",
-        "accent", "accent-foreground", "destructive", "destructive-foreground",
-        "border", "input", "ring", "radius",
-    ];
-    for (const name of names) {
+    for (const name of THEME_CSS_VARS) {
         vars[name] = computed.getPropertyValue(`--${name}`).trim();
     }
     return vars;
@@ -91,9 +85,8 @@ const IFRAME_CSS = `body {
 }`;
 
 const IFRAME_SCRIPT = `window.addEventListener("message", function(e) {
-    // Sandbox without allow-same-origin gives this iframe an opaque ("null") origin,
-    // so the parent’s origin will never match window.location.origin. We accept any
-    // origin because this is a locked-down sandboxed iframe with no network access.
+    // Only accept messages from the parent window.
+    if (e.source !== window.parent) return;
     if (e.data?.type === "THEME_CHANGED") {
         // Update CSS variables dynamically
         var root = document.documentElement;
@@ -231,7 +224,7 @@ export default function ContextPanel({
                             />
                         </div>
                         <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                            <SettingsButton />
+                            <ThemeSelector />
                         </div>
                     </div>
                 </div>
