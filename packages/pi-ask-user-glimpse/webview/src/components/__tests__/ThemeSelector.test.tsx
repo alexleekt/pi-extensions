@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import SettingsButton from "../SettingsButton";
+import ThemeSelector from "../ThemeSelector";
 import { SettingsProvider } from "../../util/settings";
 
 const mockState = vi.hoisted(() => {
@@ -48,11 +48,11 @@ beforeEach(() => {
     mockState.setMode.mockClear();
 });
 
-describe("SettingsButton", () => {
+describe("ThemeSelector", () => {
     it("renders the palette trigger", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         expect(screen.getByTitle("Color palette")).toBeInTheDocument();
@@ -61,7 +61,7 @@ describe("SettingsButton", () => {
     it("opens dropdown on click", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -72,7 +72,7 @@ describe("SettingsButton", () => {
     it("closes dropdown on Escape and returns focus to trigger", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         const trigger = screen.getByTitle("Color palette");
@@ -86,7 +86,7 @@ describe("SettingsButton", () => {
     it("shows all themes with dark/light pairs", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -108,7 +108,7 @@ describe("SettingsButton", () => {
     it("mode selection updates dropdown", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -122,7 +122,7 @@ describe("SettingsButton", () => {
     it("theme selection updates dropdown", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -136,7 +136,7 @@ describe("SettingsButton", () => {
     it("ArrowDown navigates options in dropdown", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -153,7 +153,7 @@ describe("SettingsButton", () => {
     it("ArrowUp navigates options in dropdown", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -170,7 +170,7 @@ describe("SettingsButton", () => {
     it("Home key jumps to first option", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -186,7 +186,7 @@ describe("SettingsButton", () => {
     it("End key jumps to last option", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -202,7 +202,7 @@ describe("SettingsButton", () => {
     it("Enter selects option in dropdown", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -220,7 +220,7 @@ describe("SettingsButton", () => {
     it("Space selects option in dropdown", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -238,7 +238,7 @@ describe("SettingsButton", () => {
     it("Tab cycles forward through options in dropdown", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -254,7 +254,7 @@ describe("SettingsButton", () => {
     it("Shift+Tab cycles backward through options in dropdown", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -271,7 +271,7 @@ describe("SettingsButton", () => {
     it("dropdown closes when clicking outside", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));
@@ -286,7 +286,7 @@ describe("SettingsButton", () => {
     it("aria-checked updates when selection changes", () => {
         render(
             <SettingsProvider>
-                <SettingsButton />
+                <ThemeSelector />
             </SettingsProvider>,
         );
         fireEvent.click(screen.getByTitle("Color palette"));

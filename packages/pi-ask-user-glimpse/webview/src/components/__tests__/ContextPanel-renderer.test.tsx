@@ -10,7 +10,7 @@ vi.mock("../../util/pi-charts.js", () => ({
     PI_CHARTS_LIBRARY: "",
 }));
 
-vi.mock("../SettingsButton", () => ({
+vi.mock("../ThemeSelector", () => ({
     default: () => <div data-testid="settings-button" />,
 }));
 

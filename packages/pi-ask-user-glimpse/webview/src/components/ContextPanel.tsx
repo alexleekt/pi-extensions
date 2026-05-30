@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PI_CHARTS_LIBRARY } from "../util/pi-charts.js";
 import { renderMarkdownInline, sanitizeHtml } from "../util/markdown.js";
 import { useSettings } from "../util/settings.js";
-import SettingsButton from "./SettingsButton";
+import ThemeSelector from "./ThemeSelector";
 
 /** Sanitize raw HTML context before injecting into sandboxed iframe.
  *  Uses the same DOMPurify config as markdown pipeline for consistency.
@@ -231,7 +231,7 @@ export default function ContextPanel({
                             />
                         </div>
                         <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                            <SettingsButton />
+                            <ThemeSelector />
                         </div>
                     </div>
                 </div>
