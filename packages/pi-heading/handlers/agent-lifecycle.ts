@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Alex Lee
 
 import type {
+    BeforeAgentStartEventResult,
     ExtensionAPI,
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
@@ -17,7 +18,7 @@ import {
 } from "../state/store.js";
 import { clearHeading, setHeadingMessage } from "../ui/indicator.js";
 import { makeDebugEntry, makeDebugEntryError } from "./debug.js";
-import type { SharedState } from "./session.js";
+import type { SharedState } from "./session-lifecycle.js";
 
 export function handleAgentEnd(
     _event: unknown,
@@ -73,11 +74,11 @@ export function handleAgentStart(
 }
 
 export function handleBeforeAgentStart(
-    event: { prompt?: string },
+    event: { prompt?: string; systemPrompt: string },
     ctx: ExtensionContext,
     pi: ExtensionAPI,
     sharedState: SharedState,
-): void {
+): BeforeAgentStartEventResult | void {
     const prompt = event.prompt?.trim();
     if (!prompt || !ctx.hasUI) return;
 
@@ -86,6 +87,12 @@ export function handleBeforeAgentStart(
     sharedState.agentStartedForCurrentTurn = false;
 
     const leafId = ctx.sessionManager.getLeafId();
+
+    // Inject current goal into system prompt so the LLM sees it as context.
+    const existing = leafId ? getState(leafId) : undefined;
+    const systemPrompt = existing?.goal
+        ? `${event.systemPrompt}\n\n## Session Focus\nCurrent goal: ${existing.goal}. Stay focused on this goal. If the user shifts topic, acknowledge the shift and update the heading.`
+        : undefined;
 
     // Set an immediate placeholder so the user never sees the platform
     // default "Working" while the async summarize is in progress.
@@ -104,10 +111,30 @@ export function handleBeforeAgentStart(
             const existing = leafId ? getState(leafId) : undefined;
 
             if (!result.goal.trim()) {
-                // LLM returned an empty goal — keep the user's prompt as
-                // the working message instead of leaving it blank.
+                // LLM returned an empty goal — promote the placeholder to the
+                // actual goal so the heading is never blank.
+                const fallbackGoal = placeholder;
+                const state = {
+                    topic: existing?.topic ?? "General",
+                    goal: fallbackGoal,
+                    achievement: existing?.achievement,
+                };
+                if (leafId) {
+                    setState(leafId, state);
+                    if (
+                        existing?.topic !== state.topic ||
+                        existing?.goal !== state.goal ||
+                        existing?.achievement !== state.achievement
+                    ) {
+                        persistState(pi, state);
+                    }
+                }
                 sharedState.currentPlaceholder = undefined;
-                setHeadingMessage(ctx, placeholder, "working");
+                const mode = sharedState.agentStartedForCurrentTurn
+                    ? "working"
+                    : "goal";
+                setHeadingMessage(ctx, fallbackGoal, mode);
+                exposeHeading(pi, state, mode);
                 logDebug(
                     makeDebugEntry(prompt, result, existing, ctx.model?.id),
                 );
@@ -150,4 +177,6 @@ export function handleBeforeAgentStart(
             logDebug(makeDebugEntryError(prompt, existing, msg, ctx.model?.id));
         }
     })();
+
+    return systemPrompt ? { systemPrompt } : undefined;
 }

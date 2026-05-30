@@ -6,6 +6,17 @@ import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { setModelOverride } from "./picker.js";
 import type { SummarizeResult } from "./summarize.js";
 
+let summarizeAchievement: (
+    ctx: unknown,
+    assistantText: string,
+    goal?: string,
+) => Promise<{
+    text: string;
+    fullPrompt: string;
+    systemPrompt: string;
+    debug: unknown;
+}>;
+
 const mockCompleteSimple = mock(() =>
     Promise.resolve({
         role: "assistant",
@@ -76,6 +87,7 @@ describe("summarize pipeline", () => {
     beforeAll(async () => {
         const mod = await import("./summarize.js");
         summarize = mod.summarize;
+        summarizeAchievement = mod.summarizeAchievement;
     });
 
     test("returns topic and goal from final message text", async () => {
@@ -543,5 +555,91 @@ describe("summarize pipeline", () => {
 
         expect(result.topic).toBe("Docker setup");
         expect(result.goal).toBe("Fix compose");
+    });
+
+    test("injects response_format: json_object via onPayload callback", async () => {
+        const onPayloadCallbacks: Array<(payload: unknown) => unknown> = [];
+        mockCompleteSimple.mockImplementation(
+            (_model: unknown, _context: unknown, opts: any) => {
+                if (opts?.onPayload) {
+                    onPayloadCallbacks.push(opts.onPayload);
+                }
+                return Promise.resolve({
+                    role: "assistant",
+                    content: [{ type: "text", text: '{"result": "test"}' }],
+                    api: "openai-completions",
+                    provider: "openai",
+                    model: "test-model",
+                    usage: {
+                        input: 0,
+                        output: 0,
+                        cacheRead: 0,
+                        cacheWrite: 0,
+                        totalTokens: 0,
+                        cost: {
+                            input: 0,
+                            output: 0,
+                            cacheRead: 0,
+                            cacheWrite: 0,
+                            total: 0,
+                        },
+                    },
+                    stopReason: "stop",
+                    timestamp: Date.now(),
+                });
+            },
+        );
+
+        await summarize(mockCtx, "test");
+        expect(onPayloadCallbacks.length).toBe(2);
+        for (const cb of onPayloadCallbacks) {
+            const modified = cb({ model: "test" });
+            expect(modified).toEqual({
+                model: "test",
+                response_format: { type: "json_object" },
+            });
+        }
+    });
+
+    test("summarizeAchievement returns achievement text", async () => {
+        mockCompleteSimple.mockImplementation(() => {
+            return Promise.resolve({
+                role: "assistant",
+                content: [
+                    {
+                        type: "text",
+                        text: '{"result": "Fixed the JWT bug"}',
+                    },
+                ],
+                api: "openai-completions",
+                provider: "openai",
+                model: "test-model",
+                usage: {
+                    input: 0,
+                    output: 0,
+                    cacheRead: 0,
+                    cacheWrite: 0,
+                    totalTokens: 0,
+                    cost: {
+                        input: 0,
+                        output: 0,
+                        cacheRead: 0,
+                        cacheWrite: 0,
+                        total: 0,
+                    },
+                },
+                stopReason: "stop",
+                timestamp: Date.now(),
+            });
+        });
+
+        const result = await summarizeAchievement(
+            mockCtx,
+            "I fixed the JWT authentication bug in the middleware.",
+            "Fix JWT middleware",
+        );
+        expect(result.text).toBe("Fixed the JWT bug");
+        expect(result.systemPrompt).toContain("accomplished");
+        expect(result.fullPrompt).toContain("JWT middleware");
     });
 });

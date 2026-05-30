@@ -4,8 +4,10 @@
 import { describe, expect, test } from "bun:test";
 import {
     clearExposure,
+    deleteState,
     exposeHeading,
     getState,
+    persistState,
     replayBranch,
     setState,
 } from "./store.js";
@@ -190,5 +192,86 @@ describe("clearExposure", () => {
             goal: "",
             mode: "idle",
         });
+    });
+});
+
+describe("deleteState", () => {
+    test("removes a leaf from in-memory store", () => {
+        setState("leaf-del", { topic: "X", goal: "Y" });
+        expect(getState("leaf-del")).toEqual({ topic: "X", goal: "Y" });
+        deleteState("leaf-del");
+        expect(getState("leaf-del")).toBeUndefined();
+    });
+
+    test("is a no-op for nonexistent leaf", () => {
+        expect(() => deleteState("nonexistent")).not.toThrow();
+    });
+});
+
+describe("persistState", () => {
+    test("calls appendEntry with correct key and state", () => {
+        const entries: { key: string; data: unknown }[] = [];
+        const pi = {
+            appendEntry: (key: string, data: unknown) => {
+                entries.push({ key, data });
+            },
+            events: {
+                emit: () => {},
+            },
+        } as any;
+        const state = { topic: "Docker", goal: "Fix compose" };
+        persistState(pi, state);
+        expect(entries.length).toBe(1);
+        expect(entries[0].key).toBe("heading");
+        expect(entries[0].data).toEqual(state);
+    });
+});
+
+describe("exposeHeading deduplication", () => {
+    test("skips duplicate emissions with identical payload", () => {
+        const emitted: { channel: string; data: unknown }[] = [];
+        const pi = {
+            events: {
+                emit: (channel: string, data: unknown) => {
+                    emitted.push({ channel, data });
+                },
+            },
+        } as any;
+        const state = { topic: "Docker", goal: "Fix compose" };
+        exposeHeading(pi, state, "goal");
+        exposeHeading(pi, state, "goal");
+        expect(emitted.length).toBe(1);
+    });
+
+    test("emits again when payload changes", () => {
+        const emitted: { channel: string; data: unknown }[] = [];
+        const pi = {
+            events: {
+                emit: (channel: string, data: unknown) => {
+                    emitted.push({ channel, data });
+                },
+            },
+        } as any;
+        // Use a separate pi to clear lastEmitted without polluting our emitted array
+        clearExposure({ events: { emit: () => {} } } as any);
+        exposeHeading(pi, { topic: "Docker", goal: "Fix compose" }, "goal");
+        exposeHeading(pi, { topic: "Docker", goal: "Fix compose" }, "working");
+        expect(emitted.length).toBe(2);
+    });
+
+    test("clears dedup state after clearExposure", () => {
+        const emitted: { channel: string; data: unknown }[] = [];
+        const pi = {
+            events: {
+                emit: (channel: string, data: unknown) => {
+                    emitted.push({ channel, data });
+                },
+            },
+        } as any;
+        const state = { topic: "Docker", goal: "Fix compose" };
+        exposeHeading(pi, state, "goal");
+        clearExposure(pi);
+        exposeHeading(pi, state, "goal");
+        expect(emitted.length).toBe(3);
     });
 });

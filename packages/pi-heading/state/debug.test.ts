@@ -111,13 +111,13 @@ describe("debug", () => {
         expect(readDebugLog(10)).toEqual([]);
     });
 
-    test("readDebugLog handles malformed JSON by returning empty array", () => {
+    test("readDebugLog skips malformed JSON lines and returns valid entries", () => {
         setDebugEnabled(true);
         fs.writeFileSync(tmpLog, "not json\n", "utf8");
         logDebug(makeEntry("valid"));
         const entries = readDebugLog(10);
-        // Current behavior: one bad line causes entire read to fail
-        expect(entries).toEqual([]);
+        expect(entries.length).toBe(1);
+        expect(entries[0].input).toBe("valid");
     });
 
     test("clearDebugLog removes file", () => {

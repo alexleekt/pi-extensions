@@ -146,7 +146,14 @@ export function readDebugLog(n: number = 20): DebugEntry[] {
     try {
         const raw = fs.readFileSync(_debugLogPath, "utf8");
         const lines = raw.trim().split("\n").filter(Boolean);
-        const entries = lines.map((l) => JSON.parse(l) as DebugEntry);
+        const entries: DebugEntry[] = [];
+        for (const line of lines) {
+            try {
+                entries.push(JSON.parse(line) as DebugEntry);
+            } catch {
+                // skip malformed lines
+            }
+        }
         const limit = Number.isFinite(n) && n > 0 ? Math.floor(n) : 20;
         return entries.slice(-limit).reverse();
     } catch {

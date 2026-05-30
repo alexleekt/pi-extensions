@@ -20,7 +20,7 @@ import {
     makeDebugEntryAchievement,
     makeDebugEntryError,
 } from "./debug.js";
-import type { SharedState } from "./session.js";
+import type { SharedState } from "./session-lifecycle.js";
 
 export function handleTurnStart(
     _event: unknown,
@@ -56,6 +56,31 @@ export function handleTurnStart(
             };
         }
     }
+
+    // Staleness warning: log once when heading hasn't changed for many turns
+    if (sharedState.stalenessTracker.isStale(5) && !sharedState.staleLogged) {
+        sharedState.staleLogged = true;
+        logDebug({
+            t: new Date().toISOString(),
+            input: "",
+            prompt: "",
+            topicResponse: "",
+            goalResponse: "",
+            achievementResponse: "",
+            rawTopic: "",
+            rawGoal: "",
+            rawAchievement: "",
+            stableTopic: "",
+            finalGoal: "",
+            finalAchievement: "",
+            error: `heading-stale: unchanged for ${sharedState.stalenessTracker.getTurnsSinceUpdate()} turns`,
+            modelId: "",
+        } as any);
+    }
+    // Reset stale flag when heading is no longer stale
+    if (!sharedState.stalenessTracker.isStale(5)) {
+        sharedState.staleLogged = false;
+    }
 }
 
 export function handleTurnEnd(
@@ -72,6 +97,9 @@ export function handleTurnEnd(
     const hasToolResults = event.toolResults && event.toolResults.length > 0;
 
     const assistantText = extractAgentText(event.message);
+
+    // Track staleness at the end of every turn
+    sharedState.stalenessTracker.onTurnEnd(existing?.goal);
 
     if (hasToolResults) {
         if (assistantText.trim()) {

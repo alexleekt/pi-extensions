@@ -5,7 +5,13 @@ import type {
     ExtensionAPI,
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { clearExposure, deleteState, exposeHeading, replayBranch } from "../state/store.js";
+import { HeadingStalenessTracker } from "../state/tracker.js";
+import {
+    clearExposure,
+    deleteState,
+    exposeHeading,
+    replayBranch,
+} from "../state/store.js";
 import { clearHeading, setHeadingMessage } from "../ui/indicator.js";
 
 export interface SharedState {
@@ -19,6 +25,8 @@ export interface SharedState {
         achievement?: string;
         mode: string;
     };
+    staleLogged: boolean;
+    stalenessTracker: HeadingStalenessTracker;
 }
 
 export function handleSessionStart(
@@ -33,6 +41,8 @@ export function handleSessionStart(
     sharedState.agentEndGeneration = 0;
     sharedState.currentPlaceholder = undefined;
     sharedState.lastExposed = undefined;
+    sharedState.staleLogged = false;
+    sharedState.stalenessTracker.reset();
     const leafId = ctx.sessionManager.getLeafId();
     const replayed = replayBranch(ctx);
     if (replayed?.goal) {
