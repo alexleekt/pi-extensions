@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Removed `setWorkingVisible` suppression** — `setWorkingVisible(false)` was hiding the entire working row, making the widget invisible. The widget spinner now coexists with Pi's native loader.
+- **Placeholder survival** — `agent_start` and `turn_start` no longer clear the heading when no state exists, preserving the `before_agent_start` placeholder during the async summarize gap.
+- **Cross-session state leak** — `session_start` now clears stale in-memory state so old goals don't resurrect.
+- **Post-`agent_end` race** — `before_agent_start` async callbacks that complete after `agent_end` no longer revert the widget from achievement mode back to goal mode.
+- **Event-bus deduplication** — `exposeHeading` now skips duplicate emissions to reduce noise during multi-turn tool-call chains.
+
+### Added
+
+- Regression tests for placeholder survival through `agent_start` and `turn_start`.
+- Smoke test verifying no handler calls `setWorkingVisible`.
+- Session-boundary test ensuring stale in-memory state is cleared.
+
 ## [0.1.2] - 2026-05-27
 
 ### Changed

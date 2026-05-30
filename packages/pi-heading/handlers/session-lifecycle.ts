@@ -6,7 +6,7 @@ import type {
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { clearExposure, deleteState, exposeHeading, replayBranch } from "../state/store.js";
-import { clearHeading, setHeadingMessage } from "../ui/widget.js";
+import { clearHeading, setHeadingMessage } from "../ui/indicator.js";
 
 export interface SharedState {
     turnGeneration: number;
@@ -32,6 +32,7 @@ export function handleSessionStart(
     sharedState.agentStartedForCurrentTurn = false;
     sharedState.agentEndGeneration = 0;
     sharedState.currentPlaceholder = undefined;
+    sharedState.lastExposed = undefined;
     const leafId = ctx.sessionManager.getLeafId();
     const replayed = replayBranch(ctx);
     if (replayed?.goal) {

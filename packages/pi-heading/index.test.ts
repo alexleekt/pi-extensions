@@ -65,6 +65,7 @@ function makeMockPi() {
     const entries: any[] = [];
     const eventEmissions: { channel: string; data: unknown }[] = [];
     const sendMessageCalls: any[] = [];
+    const messageRenderers: Map<string, any> = new Map();
 
     return {
         handlers,
@@ -72,12 +73,16 @@ function makeMockPi() {
         entries,
         eventEmissions,
         sendMessageCalls,
+        messageRenderers,
         on: (event: string, handler: any) => {
             if (!handlers[event]) handlers[event] = [];
             handlers[event].push(handler);
         },
         registerCommand: (name: string, config: any) => {
             commands[name] = config;
+        },
+        registerMessageRenderer: (customType: string, renderer: any) => {
+            messageRenderers.set(customType, renderer);
         },
         appendEntry: (key: string, data: any) => {
             entries.push({ key, data });
@@ -117,13 +122,11 @@ function makeMockCtx(
     } = opts;
 
     const notifyCalls: any[] = [];
-    const workingVisibleCalls: boolean[] = [];
     const workingMessageCalls: (string | undefined)[] = [];
 
     return {
         hasUI,
         notifyCalls,
-        workingVisibleCalls,
         workingMessageCalls,
         sessionManager: {
             getLeafId: () => leafId,
@@ -137,9 +140,6 @@ function makeMockCtx(
         ui: {
             notify: (msg: string, type?: string) => {
                 notifyCalls.push({ msg, type });
-            },
-            setWorkingVisible: (visible: boolean) => {
-                workingVisibleCalls.push(visible);
             },
             setWorkingMessage: (msg?: string) => {
                 workingMessageCalls.push(msg);
@@ -256,8 +256,7 @@ describe("headingExtension", () => {
         pi.handlers.turn_start[0]({}, ctx);
         pi.handlers.agent_end[0]({}, ctx);
         pi.handlers.session_shutdown[0]({}, ctx);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     // ── session_start ────────────────────────────────────────────
 
@@ -287,8 +286,7 @@ describe("headingExtension", () => {
                     (e.data as any).mode === "achievement",
             ),
         ).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("session_start replays goal when no achievement", async () => {
         headingExtension(pi as any);
@@ -304,16 +302,14 @@ describe("headingExtension", () => {
         await pi.handlers.session_start[0]({}, ctx);
         expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
         expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("session_start clears heading when no replay", async () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         await pi.handlers.session_start[0]({}, ctx);
         expect(ctx.workingMessageCalls.some((m) => m === "")).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("session_start does nothing when hasUI is false", async () => {
         headingExtension(pi as any);
@@ -333,8 +329,9 @@ describe("headingExtension", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.agent_end[0]({}, ctx);
+        // Working message shows goal, achievement sent as custom message
         expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Fixed it")),
+            ctx.workingMessageCalls.some((m) => m?.includes("Fix compose")),
         ).toBe(true);
         // Event bus preserves achievement mode after the agent ends
         expect(
@@ -344,8 +341,7 @@ describe("headingExtension", () => {
                     (e.data as any).mode === "achievement",
             ),
         ).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("agent_end keeps working message visible with goal when no achievement", () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
@@ -362,8 +358,7 @@ describe("headingExtension", () => {
                     (e.data as any).mode === "goal",
             ),
         ).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("agent_end clears everything when no state", () => {
         headingExtension(pi as any);
@@ -377,8 +372,7 @@ describe("headingExtension", () => {
                     (e.data as any).mode === "idle",
             ),
         ).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     // ── session_shutdown ───────────────────────────────────────
 
@@ -394,8 +388,7 @@ describe("headingExtension", () => {
                     (e.data as any).mode === "idle",
             ),
         ).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("session_start resets sharedState and clears stale in-memory state", async () => {
         headingExtension(pi as any);
@@ -425,8 +418,7 @@ describe("headingExtension", () => {
         expect(
             ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
         ).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("before_agent_start does nothing for empty prompt", () => {
         headingExtension(pi as any);
@@ -465,8 +457,7 @@ describe("headingExtension", () => {
             m?.includes("Docker setup"),
         );
         expect(dockerSetups.length).toBe(1);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("before_agent_start falls back to prompt when goal is empty", async () => {
         mockCompleteSimple.mockImplementation(() =>
@@ -506,8 +497,7 @@ describe("headingExtension", () => {
                 m?.includes("help with docker"),
             ),
         ).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("before_agent_start notifies on summarize error", async () => {
         mockCompleteSimple.mockImplementation(() =>
@@ -519,8 +509,7 @@ describe("headingExtension", () => {
         await new Promise((r) => setTimeout(r, 50));
         expect(ctx.notifyCalls.length).toBeGreaterThan(0);
         expect(ctx.notifyCalls[0].msg).toContain("Summarize failed");
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("before_agent_start persists state when topic or goal changes", async () => {
         setState("leaf-1", { topic: "Old", goal: "Old goal" });
@@ -529,8 +518,7 @@ describe("headingExtension", () => {
         pi.handlers.before_agent_start[0]({ prompt: "help" }, ctx);
         await new Promise((r) => setTimeout(r, 50));
         expect(pi.entries.length).toBeGreaterThan(0);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("before_agent_start uses working mode when agent already started", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
@@ -549,8 +537,7 @@ describe("headingExtension", () => {
                     (e.data as any).mode === "working",
             ),
         ).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("before_agent_start async does not revert widget after agent_end", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
@@ -578,8 +565,7 @@ describe("headingExtension", () => {
         pi.handlers.agent_start[0]({}, ctx);
         expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
         expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("agent_start does nothing when hasUI is false", () => {
         headingExtension(pi as any);
@@ -606,7 +592,26 @@ describe("headingExtension", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.agent_start[0]({}, ctx);
-        expect(ctx.workingVisibleCalls).toEqual([]);
+            });
+
+    test("agent_start does not overwrite current placeholder with stale goal", () => {
+        // Pre-populate state from a previous turn
+        setState("leaf-1", { topic: "Old", goal: "Old goal" });
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        // 1. User sends a new message — before_agent_start sets new placeholder
+        pi.handlers.before_agent_start[0]({ prompt: "new task" }, ctx);
+        // Placeholder should be the new prompt, not the old goal
+        expect(ctx.workingMessageCalls[0]).toContain("new task");
+
+        // 2. Agent starts — old state exists, but the placeholder is current
+        pi.handlers.agent_start[0]({}, ctx);
+
+        // 3. The widget should stay on the current placeholder, not revert to stale goal
+        const lastMessage =
+            ctx.workingMessageCalls[ctx.workingMessageCalls.length - 1];
+        expect(lastMessage).not.toContain("Old goal");
+        expect(lastMessage).toContain("new task");
     });
 
     // ── turn_start ─────────────────────────────────────────────
@@ -618,8 +623,7 @@ describe("headingExtension", () => {
         pi.handlers.turn_start[0]({}, ctx);
         expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
         expect(ctx.workingMessageCalls[0]).toContain("Fix compose");
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("turn_start does nothing when hasUI is false", () => {
         headingExtension(pi as any);
@@ -645,8 +649,7 @@ describe("headingExtension", () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.turn_start[0]({}, ctx);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     // ── turn_end ───────────────────────────────────────────────
 
@@ -658,15 +661,11 @@ describe("headingExtension", () => {
         // Final turn: no tool results
         pi.handlers.turn_end[0]({ message: msg, toolResults: [] }, ctx);
         await new Promise((r) => setTimeout(r, 50));
-        // Achievement should be shown in the widget with checkmark prefix
+        // Achievement sent as custom message; working message shows goal
         expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
+            ctx.workingMessageCalls.some((m) => m?.includes("Fix compose")),
         ).toBe(true);
-        expect(ctx.workingMessageCalls.some((m) => m?.includes("✓"))).toBe(
-            true,
-        );
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("turn_end keeps working message for intermediate tool-call turns", () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
@@ -682,10 +681,9 @@ describe("headingExtension", () => {
             },
             ctx,
         );
-        // Working message should still be the goal text set by agent_start (with spinner prefix)
-        expect(ctx.workingMessageCalls[0]).toMatch(/^⠋ Fix compose$/);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+        // Working message should still be the goal text set by agent_start
+        expect(ctx.workingMessageCalls[0]).toBe("Fix compose");
+            });
 
     test("turn_end skips async summarize for intermediate tool-call turns", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
@@ -702,8 +700,7 @@ describe("headingExtension", () => {
         await new Promise((r) => setTimeout(r, 50));
         // No API call should have been made for achievement summarize
         expect(mockCompleteSimple.mock.calls.length).toBe(0);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("turn_end does nothing when hasUI is false", () => {
         headingExtension(pi as any);
@@ -735,13 +732,12 @@ describe("headingExtension", () => {
         // 3. New user message bumps generation
         pi.handlers.before_agent_start[0]({ prompt: "second" }, ctx);
         await new Promise((r) => setTimeout(r, 100));
-        // The old achievement should not have been shown in the widget (gen mismatch)
+        // The old achievement should not have been sent (gen mismatch)
         // No achievement prefix should appear in the working messages
         expect(ctx.workingMessageCalls.some((m) => m?.includes("✓"))).toBe(
             false,
         );
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("turn_end notifies on achievement error", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
@@ -759,20 +755,23 @@ describe("headingExtension", () => {
         ).toBe(true);
         // No widget update on error
         expect(ctx.workingMessageCalls.length).toBe(0);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
-    test("turn_end updates widget with achievement on success", async () => {
+    test("turn_end sends achievement as custom message on success", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         pi.handlers.turn_end[0]({ message: { content: "done" } }, ctx);
         await new Promise((r) => setTimeout(r, 50));
-        // Achievement should be shown in the widget
+        // Achievement sent as custom message; working message shows goal
         expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
+            ctx.workingMessageCalls.some((m) => m?.includes("Fix compose")),
         ).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
+        expect(
+            pi.sendMessageCalls.some(
+                (c) => c.message.customType === "heading-achievement",
+            ),
+        ).toBe(true);
     });
 
     test("turn_end skips empty achievement text", async () => {
@@ -808,8 +807,7 @@ describe("headingExtension", () => {
         await new Promise((r) => setTimeout(r, 50));
         // No widget update for empty achievement
         expect(ctx.workingMessageCalls.length).toBe(0);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("turn_end reads fresh state after concurrent state update", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
@@ -861,8 +859,7 @@ describe("headingExtension", () => {
         expect(
             ctx.workingMessageCalls.some((m) => m?.includes("Updated goal")),
         ).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     // ── /heading command ─────────────────────────────────────────
 
@@ -876,8 +873,7 @@ describe("headingExtension", () => {
         expect(ctx.notifyCalls.some((n) => n.msg.includes("Heading set"))).toBe(
             true,
         );
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("/heading command does nothing for empty input", async () => {
         headingExtension(pi as any);
@@ -970,16 +966,14 @@ describe("headingExtension", () => {
         // The command writes to the default config dir, not tmpConfigDir.
         // Verify through the notification instead.
         expect(ctx.notifyCalls.some((n) => n.msg.includes("ON"))).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("/heading-debug off disables debug", async () => {
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         await pi.commands["heading-debug"].handler("off", ctx);
         expect(ctx.notifyCalls.some((n) => n.msg.includes("OFF"))).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("/heading-debug clear wipes log", async () => {
         // Seed the log
@@ -1002,8 +996,7 @@ describe("headingExtension", () => {
         const ctx = makeMockCtx();
         await pi.commands["heading-debug"].handler("clear", ctx);
         expect(readDebugLog(1).length).toBe(0);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("/heading-debug shows last entries when no arg", async () => {
         setDebugEnabled(true);
@@ -1024,8 +1017,7 @@ describe("headingExtension", () => {
         const ctx = makeMockCtx();
         await pi.commands["heading-debug"].handler("", ctx);
         expect(ctx.notifyCalls.length).toBeGreaterThan(0);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("/heading-debug shows status when log is empty", async () => {
         headingExtension(pi as any);
@@ -1034,8 +1026,7 @@ describe("headingExtension", () => {
         expect(
             ctx.notifyCalls.some((n) => n.msg.includes("No debug entries")),
         ).toBe(true);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("/heading-debug formats entries with error, stream, and achievement", async () => {
         setDebugEnabled(true);
@@ -1066,8 +1057,7 @@ describe("headingExtension", () => {
         expect(notifyMsg).toContain("📡");
         expect(notifyMsg).toContain("✓");
         expect(notifyMsg).toContain("Fixed the bug");
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 
     test("no handler calls setWorkingVisible", () => {
         headingExtension(pi as any);
@@ -1079,6 +1069,5 @@ describe("headingExtension", () => {
         pi.handlers.turn_start[0]({}, ctx);
         pi.handlers.agent_end[0]({}, ctx);
         pi.handlers.session_shutdown[0]({}, ctx);
-        expect(ctx.workingVisibleCalls).toEqual([]);
-    });
+            });
 });

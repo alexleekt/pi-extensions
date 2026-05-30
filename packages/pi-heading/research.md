@@ -2,15 +2,15 @@
 
 ## Summary
 
-The pi-heading extension is built on the Pi coding agent platform using TypeScript and Bun. It uses `ctx.ui.setWorkingMessage()` (not `setWidget`) to display plain text in the UI. The README documents animated spinner phases (▸, ⠋, ✓) but the current code renders only plain text — the prefixes were removed during a `setWidget` → `setWorkingMessage` migration. The project uses a custom prompt evaluation framework (`@alexleekt/pi-shared/prompt-eval`) and employs `response_format: json_object` for structured LLM output. Tests use Bun's native test runner (`bun:test`).
+The pi-heading extension is built on the Pi coding agent platform using TypeScript and Bun. It uses `ctx.ui.setWorkingMessage()` (not `setWidget`) to display plain text in the UI. The `ui/widget.ts` implementation uses `▸`, `✓`, and `⠋` spinner prefixes via `setHeadingMessage()` — the `setWidget` → `setWorkingMessage` migration initially removed prefixes but they were restored in a later refactor. The project uses a custom prompt evaluation framework (`@alexleekt/pi-shared/prompt-eval`) and employs `response_format: json_object` for structured LLM output. Tests use Bun's native test runner (`bun:test`).
 
 ---
 
 ## Critical Findings
 
-1. **`setWidget` → `setWorkingMessage` migration removed phase prefixes** — The code comment in `ui/widget.ts` explicitly states: "All active modes (goal, working, achievement) render identically since the setWidget → setWorkingMessage migration removed prefixes." The `setHeadingMessage` function now calls `ctx.ui.setWorkingMessage(trimmed)` with no prefix logic. This is the root cause of the "not showing progress" issue — the README promises `▸`, `⠋`, `✓` prefixes but the code delivers plain text. [Source: ui/widget.ts]
+1. **`setWidget` → `setWorkingMessage` migration restored phase prefixes** — The `ui/widget.ts` implementation now uses `▸` for goal, `✓` for achievement, and `⠋` Braille spinner for working mode. The `setHeadingMessage` function prepends the appropriate prefix before calling `ctx.ui.setWorkingMessage()`. The `startSpinner()` function sets up a `setInterval` loop to animate the Braille frames every 80ms. [Source: ui/widget.ts]
 
-2. **`setWorkingMessage` does not support animation or prefixes** — The current Pi coding agent API (`ctx.ui.setWorkingMessage`) is a plain-text working message setter. It does not support Braille spinner animation or prefix characters. The older `setWidget` API (referenced in README architecture diagrams) appears to have been deprecated or replaced. The sibling project `pi-ask-user-glimpse` uses `glimpseui` WebView dialogs instead of any widget/working-message API. [Source: ui/widget.ts, pi-ask-user-glimpse/index.ts]
+2. **`setWorkingMessage` supports animation via repeated calls** — The Pi coding agent API (`ctx.ui.setWorkingMessage`) is a plain-text setter, but animation is achieved by calling it repeatedly with a `setInterval` loop. The `startSpinner()` function cycles through Braille characters (`⠋`, `⠙`, `⠹`, `⠸`, `⠼`, `⠴`, `⠦`, `⠧`, `⠇`, `⠏`) and updates the working message every 80ms. [Source: ui/widget.ts]
 
 3. **Test runner uses `bun:test` natively** — The project uses Bun's built-in test runner (`import { describe, expect, test } from "bun:test"`). This is the current recommended pattern for Bun + TypeScript. No Jest, Vitest, or other test framework is needed. Tests are colocated with source files (`*.test.ts`). [Source: package.json, llm/summarize.test.ts]
 
@@ -22,9 +22,9 @@ The pi-heading extension is built on the Pi coding agent platform using TypeScri
 
 ## Warnings
 
-1. **README/Architecture mismatch** — The README and architecture diagram describe `setWidget("▸ {goal}")` and `setWidget("⠋ {goal}")` but the actual code uses `setWorkingMessage` with no prefixes. This is a documentation bug that will confuse users and developers. [Source: README.md, ui/widget.ts]
+1. **README/Architecture accuracy** — The README and architecture diagram describe `setHeadingMessage(ctx, goal, "goal")` with `▸` prefix and `setHeadingMessage(ctx, goal, "working")` with `⠋` spinner. The actual code in `ui/widget.ts` correctly implements these prefixes and the spinner animation. The `setWorkingMessage` API is used as the underlying text setter, with prefixes and animation managed by `pi-heading` itself. [Source: README.md, ui/widget.ts]
 
-2. **No Braille spinner animation** — The working phase (`agent_start`, `turn_start`) is supposed to show an animated Braille spinner (`⠋`). The current code only shows plain text. The `setWorkingMessage` API does not support animation. To restore animation, the extension would need to either: (a) reintroduce `setWidget` if it still exists, (b) use a different API like `glimpseui` for a custom widget, or (c) implement spinner animation via repeated `setWorkingMessage` calls with a timer. [Source: ui/widget.ts, index.ts]
+2. **Braille spinner animation** — The working phase (`agent_start`, `turn_start`) shows an animated Braille spinner via `startSpinner()` which uses `setInterval` to cycle through Braille characters every 80ms. The `setWorkingMessage` API is called repeatedly by the interval callback. This is the approach documented in the ROADMAP as "Plain-text animation via setInterval + setWorkingMessage()". [Source: ui/widget.ts, index.ts]
 
 3. **Bun test runner has limited ecosystem** — While `bun:test` is fast and native, it lacks some features of Vitest/Jest (e.g., snapshot testing, extensive mocking utilities, coverage reporting). The project has no coverage tool configured. [Source: package.json]
 

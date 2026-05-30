@@ -30,7 +30,7 @@ A single line above your editor, updated after every message you send:
 
 No borders. No panels. No ghosting. Just context.
 
-> **Note:** Pi's built-in "Working…" loader is suppressed while the widget spinner is active, so there's only one motion source on screen at a time. Restored between turns.
+> **Note:** The widget spinner runs alongside Pi's built-in loader. Both may be visible during agent execution.
 
 ## Features
 
@@ -268,10 +268,10 @@ sequenceDiagram
 **Key points:**
 - `session_start` — restores heading from previous branch session (▸ or ✓)
 - `before_agent_start` — triggers goal summarization (fire-and-forget)
-- `agent_start` — starts the working spinner (⠋), suppresses Pi's default loader
+- `agent_start` — starts the working spinner (⠋)
 - `turn_start` — restarts the spinner between tool-call turns (same agent run)
 - `turn_end` — stops spinner, shows completion prefix (✓), triggers achievement summarization
-- `agent_end` — restores Pi's default loader for the next agent run
+- `agent_end` — shows the final goal or achievement
 - `session_shutdown` — clears the widget
 
 ## No ghosting — how?

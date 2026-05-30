@@ -2,22 +2,23 @@
 // Copyright (c) 2026 Alex Lee
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import {
     handleAgentEnd,
     handleAgentStart,
     handleBeforeAgentStart,
-} from "./handlers/agent.js";
+} from "./handlers/agent-lifecycle.js";
 import {
     handleHeading,
     handleHeadingDebug,
     handleHeadingModel,
-} from "./handlers/commands.js";
+} from "./handlers/slash-commands.js";
 import {
     handleSessionShutdown,
     handleSessionStart,
     type SharedState,
-} from "./handlers/session.js";
-import { handleTurnEnd, handleTurnStart } from "./handlers/turn.js";
+} from "./handlers/session-lifecycle.js";
+import { handleTurnEnd, handleTurnStart } from "./handlers/turn-lifecycle.js";
 import { getDebugMode, setDebugEnabled } from "./state/debug.js";
 
 export default function (pi: ExtensionAPI) {
@@ -32,6 +33,14 @@ export default function (pi: ExtensionAPI) {
         agentEndGeneration: 0,
         currentPlaceholder: undefined,
     };
+
+    // ── Message renderer for achievement blocks ──────────────────────
+    pi.registerMessageRenderer("heading-achievement", (message, _options, theme) => {
+        const text = typeof message.content === "string"
+            ? message.content
+            : message.content?.find((c) => c.type === "text")?.text ?? "";
+        return new Text(theme.fg("success", `✓ ${text}`));
+    });
 
     // ── Event handlers ─────────────────────────────────────────────
     pi.on("session_start", (_event, ctx) =>

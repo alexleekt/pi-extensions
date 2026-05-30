@@ -25,11 +25,6 @@ export function deleteState(leafId: string): void {
     memory.delete(leafId);
 }
 
-/** Remove a single leaf's state from memory. */
-export function deleteState(leafId: string): void {
-    memory.delete(leafId);
-}
-
 /** Clear all in-memory state (useful for testing). */
 export function clearState(): void {
     memory.clear();
@@ -70,6 +65,7 @@ export function clearExposure(pi: ExtensionAPI): void {
         goal: "",
         mode: "idle",
     } satisfies HeadingExposure);
+    lastEmitted = undefined;
 }
 
 /** Replay previous recap entries for the current branch. */

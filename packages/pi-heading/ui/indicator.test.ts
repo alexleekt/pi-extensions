@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
-import { afterEach, describe, expect, test } from "bun:test";
-import { clearHeading, setHeadingMessage, stopSpinner } from "./widget.js";
+import { describe, expect, test } from "bun:test";
+import { clearHeading, setHeadingMessage } from "./indicator.js";
 
 function createMockCtx() {
     const workingMessages: (string | undefined)[] = [];
@@ -16,10 +16,6 @@ function createMockCtx() {
     } as any;
 }
 
-afterEach(() => {
-    stopSpinner();
-});
-
 describe("setHeadingMessage", () => {
     test("renders goal by default", () => {
         const ctx = createMockCtx();
@@ -27,10 +23,10 @@ describe("setHeadingMessage", () => {
         expect(ctx._workingMessages).toEqual(["▸ Fix the bug"]);
     });
 
-    test("renders text in achievement mode", () => {
+    test("renders text in achievement mode as goal", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Bug is fixed", "achievement");
-        expect(ctx._workingMessages).toEqual(["✓ Bug is fixed"]);
+        expect(ctx._workingMessages).toEqual(["▸ Bug is fixed"]);
     });
 
     test("renders text in goal mode", () => {
@@ -39,11 +35,10 @@ describe("setHeadingMessage", () => {
         expect(ctx._workingMessages).toEqual(["▸ Fix the bug"]);
     });
 
-    test("renders working with first spinner frame", () => {
+    test("renders text in working mode without prefix", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Working on it", "working");
-        expect(ctx._workingMessages[0]).toBe("⠋ Working on it");
-        clearHeading(ctx);
+        expect(ctx._workingMessages).toEqual(["Working on it"]);
     });
 
     test("clears working message when text is empty", () => {

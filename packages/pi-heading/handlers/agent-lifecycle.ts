@@ -15,7 +15,7 @@ import {
     persistState,
     setState,
 } from "../state/store.js";
-import { clearHeading, setHeadingMessage } from "../ui/widget.js";
+import { clearHeading, setHeadingMessage } from "../ui/indicator.js";
 import { makeDebugEntry, makeDebugEntryError } from "./debug.js";
 import type { SharedState } from "./session.js";
 
@@ -32,10 +32,19 @@ export function handleAgentEnd(
     const leafId = ctx.sessionManager.getLeafId();
     const state = leafId ? getState(leafId) : undefined;
     if (state?.goal) {
-        const mode = state.achievement ? "achievement" : "goal";
-        const text = state.achievement ?? state.goal;
-        setHeadingMessage(ctx, text, mode);
-        exposeHeading(pi, state, mode);
+        setHeadingMessage(ctx, state.goal, "goal");
+        exposeHeading(pi, state, state.achievement ? "achievement" : "goal");
+        if (state.achievement) {
+            pi.sendMessage(
+                {
+                    customType: "heading-achievement",
+                    content: state.achievement,
+                    display: true,
+                    details: { goal: state.goal },
+                },
+                { triggerTurn: false },
+            );
+        }
     } else {
         clearHeading(ctx);
         clearExposure(pi);

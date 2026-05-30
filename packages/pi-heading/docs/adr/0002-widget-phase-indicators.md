@@ -22,7 +22,7 @@ Add three visual prefixes to the widget line, driven by Pi lifecycle events:
 ### Rules
 1. **Animation is plain-text only.** Braille characters `⠋⠙⠹⠸⠼⠴⠦⠧` rotated at ~120ms. No pi-tui `Component`, no `Box`, no background color.
 2. **Animation runs during the entire agent execution.** The spinner starts at `agent_start` and restarts at every `turn_start` between tool-call turns. It stops at each `turn_end` to show the completion prefix (`✓`). It does not run during LLM summarization (which is async fire-and-forget).
-3. **Suppress Pi's native loader.** When the widget spinner is active, `ctx.ui.setWorkingVisible(false)` hides Pi's built-in "Working..." row. Restored at `agent_end` (not `turn_end`) via `setWorkingVisible(true)` — restoring at `turn_end` would recreate the loader between tool-call turns because `isStreaming` is still true.
+3. **~~Suppress Pi's native loader.~~** ❌ *Superseded 2026-05-29.* The Pi SDK's `setWorkingVisible(false)` hides the **entire** working loader row, not just the native "Working" label. This made our custom `setWorkingMessage()` text invisible. The widget now coexists with Pi's native loader instead of suppressing it. See commit `27dfc17`.
 
 ## Consequences
 

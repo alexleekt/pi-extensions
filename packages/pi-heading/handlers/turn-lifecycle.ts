@@ -14,7 +14,7 @@ import {
     persistState,
     setState,
 } from "../state/store.js";
-import { clearHeading, setHeadingMessage } from "../ui/widget.js";
+import { clearHeading, setHeadingMessage } from "../ui/indicator.js";
 import {
     extractAgentText,
     makeDebugEntryAchievement,
@@ -136,8 +136,17 @@ export function handleTurnEnd(
                     persistState(pi, state);
                 }
             }
-            setHeadingMessage(ctx, achievement, "achievement");
+            setHeadingMessage(ctx, state.goal, "goal");
             exposeHeading(pi, state, "achievement");
+            pi.sendMessage(
+                {
+                    customType: "heading-achievement",
+                    content: achievement,
+                    display: true,
+                    details: { goal: state.goal },
+                },
+                { triggerTurn: false },
+            );
             logDebug(
                 makeDebugEntryAchievement(
                     assistantText,

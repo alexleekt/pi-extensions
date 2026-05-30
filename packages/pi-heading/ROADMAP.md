@@ -8,8 +8,10 @@
 - [x] `✓` completion prefix for achievement
 - [x] Plain-text animation via `setInterval` + `setWidget()` — no pi-tui components
 - [x] Turn-generation guard prevents stale async renders from overwriting active turns
-- [x] Suppress Pi's default `setWorkingVisible()` loader while widget spinner is active
-- [x] Restore Pi's loader at `agent_end` (not `turn_end`, to avoid recreating it between tool-call turns)
+- [ ] ~~Suppress Pi's default `setWorkingVisible()` loader while widget spinner is active~~
+  - *Removed 2026-05-29:* `setWorkingVisible(false)` hides the entire working row, making the widget invisible. The widget now coexists with Pi's native loader.
+- [ ] ~~Restore Pi's loader at `agent_end` (not `turn_end`, to avoid recreating it between tool-call turns)~~
+  - *Removed 2026-05-29:* Same reason as above.
 - [x] Restart spinner at `turn_start` between tool-call turns (same agent run)
 
 ### Achievement alignment (✓ done)

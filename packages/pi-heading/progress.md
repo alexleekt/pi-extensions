@@ -1,29 +1,27 @@
 # Progress
 
 ## Status
-Completed
+Complete
 
 ## Tasks
-- [x] Move 5 review scratchpad files to `docs/reviews/2026-05-28/`
-- [x] P0 bug fixes: B6, B7, B8, W1
-  - B6: `agentEndGeneration` counter prevents post-agent_end async clobber
-  - B7: `currentPlaceholder` cache prevents stale state from overwriting placeholder
-  - B8: `deleteState()` clears in-memory store on session_start when no replay
-  - W1: `lastExposed` cache deduplicates event bus emissions in turn_start
+- P0 code fixes implemented (B6, B7, B8, W1)
+- P0 test coverage fixes implemented (B5, B9, B10)
+- P1 documentation fixes implemented (B1, B2, B3, B4, W2)
 
 ## Files Changed
-- `handlers/agent.ts` — B6 + B7 fixes
-- `handlers/session.ts` — B8 fix + SharedState interface updates
-- `handlers/turn.ts` — B7 + W1 fixes
-- `state/store.ts` — added `deleteState()` export
-- `index.ts` — sharedState initialization for new fields
-- `index.test.ts` — updated/added tests for new behavior
-- Moved: 5 review scratchpad files → `docs/reviews/2026-05-28/`
+- `packages/pi-heading/handlers/agent.ts` — agentEndGeneration guard, currentPlaceholder cache
+- `packages/pi-heading/handlers/turn.ts` — currentPlaceholder check, lastExposed deduplication
+- `packages/pi-heading/handlers/session.ts` — deleteState on no replay, reset sharedState fields
+- `packages/pi-heading/index.test.ts` — 9 new tests + workingVisibleCalls assertions
+- `packages/pi-heading/CHANGELOG.md` — [Unreleased] entry
+- `packages/pi-heading/README.md` — removed suppression claims
+- `packages/pi-heading/ROADMAP.md` — unchecked removed features
+- `packages/pi-heading/docs/adr/0002-widget-phase-indicators.md` — superseded note
+- `packages/pi-heading/research.md` — updated prefix/spinner description
+- `packages/pi-heading/state/store.ts` — added deleteState export
 
 ## Test Results
-151 pass, 0 fail, 266 expect() calls
+155 pass, 0 fail, 285 expect() calls
 
 ## Notes
-- All `setWorkingVisible` calls removed in prior commit (27dfc17)
-- Current fix addresses the race conditions and UX regressions introduced by that removal
-- `currentPlaceholder` is cleared by: agent_end, async completion, or new before_agent_start
+All council review findings addressed. The `setWorkingVisible(false)` removal was the correct fix — Pi SDK hides the entire row, not just the native label.

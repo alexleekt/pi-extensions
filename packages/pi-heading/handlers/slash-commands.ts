@@ -20,7 +20,7 @@ import {
     persistState,
     setState,
 } from "../state/store.js";
-import { setHeadingMessage } from "../ui/widget.js";
+import { setHeadingMessage } from "../ui/indicator.js";
 
 export async function handleHeading(
     _args: string,
