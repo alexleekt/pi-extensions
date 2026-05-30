@@ -1,20 +1,23 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, act } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import SettingsButton from "../SettingsButton";
 import { SettingsProvider } from "../../util/settings";
 
 const mockState = vi.hoisted(() => {
     const state = {
-        theme: "system" as const,
-        animationLevel: "all" as const,
+        themeFamily: "default" as const,
+        themeId: "dark" as const,
+        mode: "dark" as const,
     };
     return {
-        get theme() { return state.theme; },
-        set theme(v: string) { state.theme = v as any; },
-        get animationLevel() { return state.animationLevel; },
-        set animationLevel(v: string) { state.animationLevel = v as any; },
-        setTheme: vi.fn((v: string) => { state.theme = v as any; }),
-        setAnimationLevel: vi.fn((v: string) => { state.animationLevel = v as any; }),
+        get themeFamily() { return state.themeFamily; },
+        set themeFamily(v: string) { state.themeFamily = v as any; },
+        get themeId() { return state.themeId; },
+        set themeId(v: string) { state.themeId = v as any; },
+        get mode() { return state.mode; },
+        set mode(v: string) { state.mode = v as any; },
+        setThemeFamily: vi.fn((v: string) => { state.themeFamily = v as any; }),
+        setMode: vi.fn((v: string) => { state.mode = v as any; }),
     };
 });
 
@@ -23,30 +26,36 @@ vi.mock("../../util/settings", async () => {
     return {
         ...actual,
         useSettings: () => ({
-            get theme() { return mockState.theme; },
-            resolvedTheme: "light" as const,
-            get animationLevel() { return mockState.animationLevel; },
-            setTheme: mockState.setTheme,
-            setAnimationLevel: mockState.setAnimationLevel,
+            get themeFamily() { return mockState.themeFamily; },
+            get themeId() { return mockState.themeId; },
+            get mode() { return mockState.mode; },
+            resolvedMode: "dark" as const,
+            setThemeFamily: mockState.setThemeFamily,
+            setMode: mockState.setMode,
+            previewTheme: vi.fn(),
+            previewMode: vi.fn(),
+            endPreview: vi.fn(),
+            previewThemeId: null,
         }),
     };
 });
 
 beforeEach(() => {
-    mockState.theme = "system";
-    mockState.animationLevel = "all";
-    mockState.setTheme.mockClear();
-    mockState.setAnimationLevel.mockClear();
+    mockState.themeFamily = "default";
+    mockState.themeId = "dark";
+    mockState.mode = "dark";
+    mockState.setThemeFamily.mockClear();
+    mockState.setMode.mockClear();
 });
 
 describe("SettingsButton", () => {
-    it("renders the settings trigger", () => {
+    it("renders the palette trigger", () => {
         render(
             <SettingsProvider>
                 <SettingsButton />
             </SettingsProvider>,
         );
-        expect(screen.getByTitle("Settings")).toBeInTheDocument();
+        expect(screen.getByTitle("Color palette")).toBeInTheDocument();
     });
 
     it("opens dropdown on click", () => {
@@ -55,9 +64,9 @@ describe("SettingsButton", () => {
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
-        expect(screen.getByText("Theme")).toBeInTheDocument();
-        expect(screen.getByText("Animations")).toBeInTheDocument();
+        fireEvent.click(screen.getByTitle("Color palette"));
+        expect(screen.getByText("Palette")).toBeInTheDocument();
+        expect(screen.getByText("Mode")).toBeInTheDocument();
     });
 
     it("closes dropdown on Escape and returns focus to trigger", () => {
@@ -66,58 +75,62 @@ describe("SettingsButton", () => {
                 <SettingsButton />
             </SettingsProvider>,
         );
-        const trigger = screen.getByTitle("Settings");
+        const trigger = screen.getByTitle("Color palette");
         fireEvent.click(trigger);
-        expect(screen.getByText("Theme")).toBeInTheDocument();
+        expect(screen.getByText("Palette")).toBeInTheDocument();
         fireEvent.keyDown(window, { key: "Escape" });
-        expect(screen.queryByText("Theme")).not.toBeInTheDocument();
+        expect(screen.queryByText("Palette")).not.toBeInTheDocument();
         expect(trigger).toHaveFocus();
     });
 
-    it("theme selection updates dropdown", () => {
-        const { rerender } = render(
+    it("shows all themes with dark/light pairs", () => {
+        render(
             <SettingsProvider>
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
+        fireEvent.click(screen.getByTitle("Color palette"));
         const options = screen.getAllByRole("menuitemradio");
-        const darkOption = options.find((el) => el.textContent?.includes("Dark"));
-        expect(darkOption).toBeTruthy();
-        fireEvent.click(darkOption!);
-        expect(mockState.setTheme).toHaveBeenCalledWith("dark");
-
-        rerender(
-            <SettingsProvider>
-                <SettingsButton />
-            </SettingsProvider>,
-        );
-        const optionsAfter = screen.getAllByRole("menuitemradio");
-        const darkOptionAfter = optionsAfter.find((el) => el.textContent?.includes("Dark"));
-        expect(darkOptionAfter).toHaveAttribute("aria-checked", "true");
+        const themes = options.filter((el) => el.getAttribute("data-type") === "theme");
+        expect(themes.length).toBe(10);
+        expect(themes.some((el) => el.textContent?.includes("Default"))).toBe(true);
+        expect(themes.some((el) => el.textContent?.includes("Catppuccin"))).toBe(true);
+        expect(themes.some((el) => el.textContent?.includes("Nord"))).toBe(true);
+        expect(themes.some((el) => el.textContent?.includes("Tokyo Night"))).toBe(true);
+        expect(themes.some((el) => el.textContent?.includes("Dracula"))).toBe(true);
+        expect(themes.some((el) => el.textContent?.includes("One Dark"))).toBe(true);
+        expect(themes.some((el) => el.textContent?.includes("Ayu"))).toBe(true);
+        expect(themes.some((el) => el.textContent?.includes("GitHub"))).toBe(true);
+        expect(themes.some((el) => el.textContent?.includes("Night Owl"))).toBe(true);
+        expect(themes.some((el) => el.textContent?.includes("Houston"))).toBe(true);
     });
 
-    it("animation level selection updates dropdown", () => {
-        const { rerender } = render(
+    it("mode selection updates dropdown", () => {
+        render(
             <SettingsProvider>
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
+        fireEvent.click(screen.getByTitle("Color palette"));
         const options = screen.getAllByRole("menuitemradio");
-        const minimalOption = options.find((el) => el.textContent?.includes("Minimal"));
-        expect(minimalOption).toBeTruthy();
-        fireEvent.click(minimalOption!);
-        expect(mockState.setAnimationLevel).toHaveBeenCalledWith("minimal");
+        const lightOption = options.find((el) => el.getAttribute("data-type") === "mode" && el.textContent?.includes("Light"));
+        expect(lightOption).toBeTruthy();
+        fireEvent.click(lightOption!);
+        expect(mockState.setMode).toHaveBeenCalledWith("light");
+    });
 
-        rerender(
+    it("theme selection updates dropdown", () => {
+        render(
             <SettingsProvider>
                 <SettingsButton />
             </SettingsProvider>,
         );
-        const optionsAfter = screen.getAllByRole("menuitemradio");
-        const minimalOptionAfter = optionsAfter.find((el) => el.textContent?.includes("Minimal"));
-        expect(minimalOptionAfter).toHaveAttribute("aria-checked", "true");
+        fireEvent.click(screen.getByTitle("Color palette"));
+        const options = screen.getAllByRole("menuitemradio");
+        const nordOption = options.find((el) => el.getAttribute("data-type") === "theme" && el.textContent?.includes("Nord"));
+        expect(nordOption).toBeTruthy();
+        fireEvent.click(nordOption!);
+        expect(mockState.setThemeFamily).toHaveBeenCalledWith("nord");
     });
 
     it("ArrowDown navigates options in dropdown", () => {
@@ -126,15 +139,15 @@ describe("SettingsButton", () => {
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
+        fireEvent.click(screen.getByTitle("Color palette"));
         const options = screen.getAllByRole("menuitemradio");
-        // Initially focused on "System" (index 2)
-        expect(options[2]).toHaveAttribute("tabIndex", "0");
+        // Initially focused on "Dark" mode (index 1) because that's the current mode
+        expect(options[1]).toHaveAttribute("tabIndex", "0");
 
         fireEvent.keyDown(window, { key: "ArrowDown" });
-        // Now focused on "None" animation (index 3)
-        expect(options[3]).toHaveAttribute("tabIndex", "0");
-        expect(options[2]).toHaveAttribute("tabIndex", "-1");
+        // Now focused on "System" mode (index 2)
+        expect(options[2]).toHaveAttribute("tabIndex", "0");
+        expect(options[1]).toHaveAttribute("tabIndex", "-1");
     });
 
     it("ArrowUp navigates options in dropdown", () => {
@@ -143,15 +156,47 @@ describe("SettingsButton", () => {
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
+        fireEvent.click(screen.getByTitle("Color palette"));
         const options = screen.getAllByRole("menuitemradio");
-        // Initially focused on "System" (index 2)
-        expect(options[2]).toHaveAttribute("tabIndex", "0");
+        // Initially focused on "Dark" mode (index 1)
+        expect(options[1]).toHaveAttribute("tabIndex", "0");
 
         fireEvent.keyDown(window, { key: "ArrowUp" });
-        // Now focused on "Dark" (index 1)
+        // Now focused on "Light" mode (index 0)
+        expect(options[0]).toHaveAttribute("tabIndex", "0");
+        expect(options[1]).toHaveAttribute("tabIndex", "-1");
+    });
+
+    it("Home key jumps to first option", () => {
+        render(
+            <SettingsProvider>
+                <SettingsButton />
+            </SettingsProvider>,
+        );
+        fireEvent.click(screen.getByTitle("Color palette"));
+        const options = screen.getAllByRole("menuitemradio");
+        // Initially focused on "Dark" mode (index 1)
         expect(options[1]).toHaveAttribute("tabIndex", "0");
-        expect(options[2]).toHaveAttribute("tabIndex", "-1");
+
+        fireEvent.keyDown(window, { key: "Home" });
+        expect(options[0]).toHaveAttribute("tabIndex", "0");
+        expect(options[1]).toHaveAttribute("tabIndex", "-1");
+    });
+
+    it("End key jumps to last option", () => {
+        render(
+            <SettingsProvider>
+                <SettingsButton />
+            </SettingsProvider>,
+        );
+        fireEvent.click(screen.getByTitle("Color palette"));
+        const options = screen.getAllByRole("menuitemradio");
+        // Initially focused on "Dark" mode (index 1)
+        expect(options[1]).toHaveAttribute("tabIndex", "0");
+
+        fireEvent.keyDown(window, { key: "End" });
+        expect(options[options.length - 1]).toHaveAttribute("tabIndex", "0");
+        expect(options[1]).toHaveAttribute("tabIndex", "-1");
     });
 
     it("Enter selects option in dropdown", () => {
@@ -160,15 +205,16 @@ describe("SettingsButton", () => {
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
+        fireEvent.click(screen.getByTitle("Color palette"));
         const options = screen.getAllByRole("menuitemradio");
 
-        // Navigate to "Dark" (index 1)
-        fireEvent.keyDown(window, { key: "ArrowUp" });
-        expect(options[1]).toHaveAttribute("tabIndex", "0");
+        // Navigate to first theme (index 3, after 3 mode buttons)
+        fireEvent.keyDown(window, { key: "ArrowDown" });
+        fireEvent.keyDown(window, { key: "ArrowDown" });
+        expect(options[3]).toHaveAttribute("tabIndex", "0");
 
         fireEvent.keyDown(window, { key: "Enter" });
-        expect(mockState.setTheme).toHaveBeenCalledWith("dark");
+        expect(mockState.setThemeFamily).toHaveBeenCalledWith("default");
     });
 
     it("Space selects option in dropdown", () => {
@@ -177,15 +223,16 @@ describe("SettingsButton", () => {
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
+        fireEvent.click(screen.getByTitle("Color palette"));
         const options = screen.getAllByRole("menuitemradio");
 
-        // Navigate to "Dark" (index 1)
-        fireEvent.keyDown(window, { key: "ArrowUp" });
-        expect(options[1]).toHaveAttribute("tabIndex", "0");
+        // Navigate to first theme (index 3, after 3 mode buttons)
+        fireEvent.keyDown(window, { key: "ArrowDown" });
+        fireEvent.keyDown(window, { key: "ArrowDown" });
+        expect(options[3]).toHaveAttribute("tabIndex", "0");
 
         fireEvent.keyDown(window, { key: " " });
-        expect(mockState.setTheme).toHaveBeenCalledWith("dark");
+        expect(mockState.setThemeFamily).toHaveBeenCalledWith("default");
     });
 
     it("Tab cycles forward through options in dropdown", () => {
@@ -194,14 +241,14 @@ describe("SettingsButton", () => {
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
+        fireEvent.click(screen.getByTitle("Color palette"));
         const options = screen.getAllByRole("menuitemradio");
-        // Initially focused on "System" (index 2)
-        expect(options[2]).toHaveAttribute("tabIndex", "0");
+        // Initially focused on "Dark" mode (index 1)
+        expect(options[1]).toHaveAttribute("tabIndex", "0");
 
         fireEvent.keyDown(window, { key: "Tab" });
-        expect(options[3]).toHaveAttribute("tabIndex", "0");
-        expect(options[2]).toHaveAttribute("tabIndex", "-1");
+        expect(options[2]).toHaveAttribute("tabIndex", "0");
+        expect(options[1]).toHaveAttribute("tabIndex", "-1");
     });
 
     it("Shift+Tab cycles backward through options in dropdown", () => {
@@ -210,32 +257,15 @@ describe("SettingsButton", () => {
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
+        fireEvent.click(screen.getByTitle("Color palette"));
         const options = screen.getAllByRole("menuitemradio");
-        // Initially focused on "System" (index 2)
-        expect(options[2]).toHaveAttribute("tabIndex", "0");
+        // Initially focused on "Dark" mode (index 1)
+        expect(options[1]).toHaveAttribute("tabIndex", "0");
 
         fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
-        expect(options[1]).toHaveAttribute("tabIndex", "0");
-        expect(options[2]).toHaveAttribute("tabIndex", "-1");
-    });
-
-    it("Enter selects animation option in dropdown", () => {
-        render(
-            <SettingsProvider>
-                <SettingsButton />
-            </SettingsProvider>,
-        );
-        fireEvent.click(screen.getByTitle("Settings"));
-        const options = screen.getAllByRole("menuitemradio");
-
-        // Navigate to "Minimal" animation (index 4)
-        fireEvent.keyDown(window, { key: "ArrowDown" });
-        fireEvent.keyDown(window, { key: "ArrowDown" });
-        expect(options[4]).toHaveAttribute("tabIndex", "0");
-
-        fireEvent.keyDown(window, { key: "Enter" });
-        expect(mockState.setAnimationLevel).toHaveBeenCalledWith("minimal");
+        // Now focused on "Light" mode (index 0)
+        expect(options[0]).toHaveAttribute("tabIndex", "0");
+        expect(options[1]).toHaveAttribute("tabIndex", "-1");
     });
 
     it("dropdown closes when clicking outside", () => {
@@ -244,43 +274,32 @@ describe("SettingsButton", () => {
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
-        expect(screen.getByText("Theme")).toBeInTheDocument();
+        fireEvent.click(screen.getByTitle("Color palette"));
+        expect(screen.getByText("Palette")).toBeInTheDocument();
 
         const backdrop = document.querySelector('[data-overlay="true"]');
         expect(backdrop).toBeInTheDocument();
         fireEvent.click(backdrop!);
-        expect(screen.queryByText("Theme")).not.toBeInTheDocument();
+        expect(screen.queryByText("Palette")).not.toBeInTheDocument();
     });
 
     it("aria-checked updates when selection changes", () => {
-        const { rerender } = render(
+        render(
             <SettingsProvider>
                 <SettingsButton />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Settings"));
+        fireEvent.click(screen.getByTitle("Color palette"));
         const options = screen.getAllByRole("menuitemradio");
-        const lightOption = options.find((el) => el.textContent?.includes("Light"));
-        const darkOption = options.find((el) => el.textContent?.includes("Dark"));
-        const systemOption = options.find((el) => el.textContent?.includes("System"));
+        const defaultTheme = options.find((el) => el.getAttribute("data-type") === "theme" && el.textContent?.includes("Default"));
+        const nordTheme = options.find((el) => el.getAttribute("data-type") === "theme" && el.textContent?.includes("Nord"));
 
-        expect(lightOption).toHaveAttribute("aria-checked", "false");
-        expect(darkOption).toHaveAttribute("aria-checked", "false");
-        expect(systemOption).toHaveAttribute("aria-checked", "true");
+        expect(defaultTheme).toBeTruthy();
+        expect(nordTheme).toBeTruthy();
+        expect(defaultTheme).toHaveAttribute("aria-checked", "true");
+        expect(nordTheme).toHaveAttribute("aria-checked", "false");
 
-        fireEvent.click(darkOption!);
-        expect(mockState.setTheme).toHaveBeenCalledWith("dark");
-
-        rerender(
-            <SettingsProvider>
-                <SettingsButton />
-            </SettingsProvider>,
-        );
-        const optionsAfter = screen.getAllByRole("menuitemradio");
-        const darkOptionAfter = optionsAfter.find((el) => el.textContent?.includes("Dark"));
-        const systemOptionAfter = optionsAfter.find((el) => el.textContent?.includes("System"));
-        expect(darkOptionAfter).toHaveAttribute("aria-checked", "true");
-        expect(systemOptionAfter).toHaveAttribute("aria-checked", "false");
+        fireEvent.click(nordTheme!);
+        expect(mockState.setThemeFamily).toHaveBeenCalledWith("nord");
     });
 });

@@ -94,11 +94,23 @@ export const PI_CHARTS_LIBRARY = `
   function isDarkMode() {
     // Check if body has .dark class (set by theme propagation)
     if (document.body.classList.contains("dark")) return true;
-    const bg = themeColor("--background", "#fff");
-    // Heuristic: if background is very dark, we're in dark mode
-    const rgb = bg.match(/\d+/g);
+    // Check data-theme attribute on document (set by parent theme system)
+    var themeAttr = document.documentElement.getAttribute("data-theme");
+    if (themeAttr) {
+      var darkThemes = [
+        "dark", "nord-dark", "tokyo-night", "tokyo-night-storm",
+        "catppuccin-frappe", "catppuccin-macchiato", "catppuccin-mocha",
+        "dracula", "one-dark"
+      ];
+      if (darkThemes.indexOf(themeAttr) !== -1) return true;
+      var lightThemes = ["light", "nord-light", "catppuccin-latte"];
+      if (lightThemes.indexOf(themeAttr) !== -1) return false;
+    }
+    // Fallback: brightness heuristic from background color
+    var bg = themeColor("--background", "#fff");
+    var rgb = bg.match(/\d+/g);
     if (rgb && rgb.length >= 3) {
-      const brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
+      var brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
       return brightness < 80;
     }
     return false;

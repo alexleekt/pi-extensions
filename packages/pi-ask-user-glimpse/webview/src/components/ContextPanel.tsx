@@ -53,36 +53,30 @@ function initMermaid(theme: "light" | "dark") {
     }
 }
 
-/** Theme variables for the HTML context iframe, keyed by variable name. */
-const IFRAME_CSS_VAR_MAP: Record<string, { light: string; dark: string }> = {
-    background: { light: "0 0% 100%", dark: "240 10% 3.9%" },
-    foreground: { light: "240 10% 3.9%", dark: "0 0% 98%" },
-    card: { light: "0 0% 100%", dark: "240 10% 3.9%" },
-    "card-foreground": { light: "240 10% 3.9%", dark: "0 0% 98%" },
-    popover: { light: "0 0% 100%", dark: "240 10% 3.9%" },
-    "popover-foreground": { light: "240 10% 3.9%", dark: "0 0% 98%" },
-    primary: { light: "240 5.9% 10%", dark: "0 0% 98%" },
-    "primary-foreground": { light: "0 0% 98%", dark: "240 5.9% 10%" },
-    secondary: { light: "240 4.8% 95.9%", dark: "240 3.7% 15.9%" },
-    "secondary-foreground": { light: "240 5.9% 10%", dark: "0 0% 98%" },
-    muted: { light: "240 4.8% 95.9%", dark: "240 3.7% 15.9%" },
-    "muted-foreground": { light: "240 3.8% 46.1%", dark: "240 5% 64.9%" },
-    accent: { light: "240 4.8% 95.9%", dark: "240 3.7% 15.9%" },
-    "accent-foreground": { light: "240 5.9% 10%", dark: "0 0% 98%" },
-    destructive: { light: "0 84.2% 60.2%", dark: "0 62.8% 30.6%" },
-    "destructive-foreground": { light: "0 0% 98%", dark: "0 0% 98%" },
-    border: { light: "240 5.9% 90%", dark: "240 3.7% 15.9%" },
-    input: { light: "240 5.9% 90%", dark: "240 3.7% 15.9%" },
-    ring: { light: "240 5.9% 10%", dark: "240 4.9% 83.9%" },
-    radius: { light: "0.5rem", dark: "0.5rem" },
-};
+/** Read the current theme CSS variables from the document root */
+function getCurrentThemeCssVars(): Record<string, string> {
+    const root = document.documentElement;
+    const computed = getComputedStyle(root);
+    const vars: Record<string, string> = {};
+    const names = [
+        "background", "foreground", "card", "card-foreground",
+        "popover", "popover-foreground", "primary", "primary-foreground",
+        "secondary", "secondary-foreground", "muted", "muted-foreground",
+        "accent", "accent-foreground", "destructive", "destructive-foreground",
+        "border", "input", "ring", "radius",
+    ];
+    for (const name of names) {
+        vars[name] = computed.getPropertyValue(`--${name}`).trim();
+    }
+    return vars;
+}
 
-function buildCssVarBlock(theme: "light" | "dark"): string {
-    const selector = theme === "light" ? ":root" : ".dark";
-    const entries = Object.entries(IFRAME_CSS_VAR_MAP)
-        .map(([name, values]) => `    --${name}: ${values[theme]};`)
+function buildCssVarBlock(): string {
+    const vars = getCurrentThemeCssVars();
+    const entries = Object.entries(vars)
+        .map(([name, value]) => `    --${name}: ${value};`)
         .join("\n");
-    return `${selector} {\n${entries}\n}`;
+    return `:root {\n${entries}\n}`;
 }
 
 const IFRAME_CSS = `body {
@@ -100,27 +94,32 @@ const IFRAME_SCRIPT = `window.addEventListener("message", function(e) {
     // Sandbox without allow-same-origin gives this iframe an opaque ("null") origin,
     // so the parent’s origin will never match window.location.origin. We accept any
     // origin because this is a locked-down sandboxed iframe with no network access.
-    if (e.data?.type === "theme") {
-        document.body.classList.toggle("dark", e.data.theme === "dark");
+    if (e.data?.type === "THEME_CHANGED") {
+        // Update CSS variables dynamically
+        var root = document.documentElement;
+        for (var key in e.data.cssVars) {
+            root.style.setProperty(key, e.data.cssVars[key]);
+        }
+        // Toggle dark class
+        document.body.classList.toggle("dark", e.data.isDark);
     }
 });`;
 
-function buildIframeSrcdoc(rawHtml: string, theme: "light" | "dark"): string {
+function buildIframeSrcdoc(rawHtml: string, isDark: boolean): string {
     const sanitized = sanitizeHtmlContext(rawHtml);
     return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <style>
-${buildCssVarBlock("light")}
-${buildCssVarBlock("dark")}
+${buildCssVarBlock()}
 ${IFRAME_CSS}
 </style>
 <script>
 ${PI_CHARTS_LIBRARY}
 </script>
 </head>
-<body class="${theme}">
+<body${isDark ? ' class="dark"' : ''}>
 ${sanitized}
 <script>
 ${IFRAME_SCRIPT}
@@ -131,17 +130,18 @@ ${IFRAME_SCRIPT}
 
 function HtmlContext({
     html,
-    resolvedTheme,
+    resolvedMode,
 }: {
     html: string;
-    resolvedTheme: "light" | "dark";
+    resolvedMode: "light" | "dark";
 }) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [loaded, setLoaded] = useState(false);
+    const isDark = resolvedMode === "dark";
 
     const srcdoc = useMemo(
-        () => buildIframeSrcdoc(html, resolvedTheme),
-        [html, resolvedTheme],
+        () => buildIframeSrcdoc(html, isDark),
+        [html, isDark],
     );
 
     // The iframe has an opaque origin (sandbox without allow-same-origin), so we
@@ -151,8 +151,8 @@ function HtmlContext({
     useEffect(() => {
         const cw = iframeRef.current?.contentWindow;
         if (!cw || !loaded) return;
-        cw.postMessage({ type: "theme", theme: resolvedTheme }, "*");
-    }, [resolvedTheme, loaded]);
+        cw.postMessage({ type: "THEME_CHANGED", isDark }, "*");
+    }, [isDark, loaded]);
 
     return (
         <iframe
@@ -162,6 +162,7 @@ function HtmlContext({
             srcDoc={srcdoc}
             className="flex-1 w-full border-0 min-h-0"
             title="HTML context"
+            data-context-panel=""
             onLoad={() => setLoaded(true)}
             /*
              * NOTE: Do NOT add loading="lazy".
@@ -180,7 +181,7 @@ export default function ContextPanel({
     question,
 }: ContextPanelProps) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const { resolvedTheme } = useSettings();
+    const { resolvedMode } = useSettings();
     // Skip expensive markdown parsing when context is raw HTML
     const html = useMemo(
         () => (contextFormat === "html" ? "" : renderContextMarkdown(context)),
@@ -190,7 +191,7 @@ export default function ContextPanel({
     // biome-ignore lint/correctness/useExhaustiveDependencies: must re-run when markdown content changes to find mermaid nodes.
     useEffect(() => {
         if (contextFormat === "html") return;
-        initMermaid(resolvedTheme);
+        initMermaid(resolvedMode);
         const container = containerRef.current;
         if (!container) return;
 
@@ -208,7 +209,7 @@ export default function ContextPanel({
         });
 
         return () => cancelAnimationFrame(id);
-    }, [context, resolvedTheme, contextFormat]);
+    }, [context, resolvedMode, contextFormat]);
 
     return (
         <div className="flex h-full flex-col">
@@ -239,7 +240,7 @@ export default function ContextPanel({
             {/* Scrollable context: markdown or HTML iframe */}
             <div className={`flex-1 ${contextFormat === "html" ? "overflow-hidden flex flex-col" : "overflow-y-auto scrollbar-hover"}`}>
                 {contextFormat === "html" ? (
-                    <HtmlContext html={context} resolvedTheme={resolvedTheme} />
+                    <HtmlContext html={context} resolvedMode={resolvedMode} />
                 ) : (
                     <div
                         ref={containerRef}

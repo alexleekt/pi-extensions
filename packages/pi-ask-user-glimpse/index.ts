@@ -14,7 +14,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { PROTECTED_ABBREVIATIONS } from "./constants/abbreviations.js";
-import type { AnimationLevel, ThemeMode } from "./shared/ask-user.js";
+import { ALL_THEME_NAMES, type AnimationLevel, type ThemeMode, type ThemeName } from "./shared/ask-user.js";
 import {
     loadAskUserPrompt,
     loadYoloMandate,
@@ -53,7 +53,7 @@ function getStyleMode(entries: unknown[]): StyleMode {
 }
 
 function getThemeSettings(entries: unknown[]): {
-    theme?: ThemeMode;
+    theme?: ThemeName;
     animationLevel?: AnimationLevel;
 } {
     const data = findCustomData(entries, "ask-user-theme");
@@ -63,10 +63,7 @@ function getThemeSettings(entries: unknown[]): {
             ? data.animationLevel
             : undefined;
     return {
-        theme:
-            theme === "light" || theme === "dark" || theme === "system"
-                ? theme
-                : undefined,
+        theme: ALL_THEME_NAMES.includes(theme as ThemeName) ? theme as ThemeName : undefined,
         animationLevel:
             animationLevel === "none" ||
             animationLevel === "minimal" ||

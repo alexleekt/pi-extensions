@@ -10,7 +10,7 @@ vi.mock("mermaid", () => ({
 }));
 
 vi.mock("../../util/settings.js", () => ({
-    useSettings: () => ({ resolvedTheme: "light" as const }),
+    useSettings: () => ({ resolvedMode: "light" as const }),
 }));
 
 vi.mock("../../util/pi-charts.js", () => ({
@@ -77,7 +77,7 @@ describe("ContextPanel", () => {
         expect(iframe).toBeInTheDocument();
         const srcdoc = iframe?.getAttribute("srcDoc") ?? "";
         // For empty context, the body should be empty before the script tag
-        expect(srcdoc).toContain('<body class="light">\n\n<script>');
+        expect(srcdoc).toContain('<body>\n\n<script>');
     });
 
     it("iframe has sandbox attribute for security", () => {
@@ -172,7 +172,7 @@ describe("ContextPanel", () => {
         const iframe = screen.getByTitle("HTML context");
         fireEvent.load(iframe);
         expect(mockPostMessage).toHaveBeenCalledWith(
-            { type: "theme", theme: "light" },
+            { type: "THEME_CHANGED", isDark: false },
             "*",
         );
 
@@ -190,7 +190,7 @@ describe("ContextPanel", () => {
         expect(iframe).toBeInTheDocument();
         const srcdoc = iframe?.getAttribute("srcDoc") ?? "";
         // The body should be empty (no HTML content between body tags)
-        const bodyMatch = srcdoc.match(/<body class="light">([\s\S]*?)<\/body>/);
+        const bodyMatch = srcdoc.match(/<body[^>]*>([\s\S]*?)<\/body>/);
         expect(bodyMatch).toBeTruthy();
         const bodyContent = bodyMatch?.[1] ?? "";
         // After stripping the script tag, the body should be empty

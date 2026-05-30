@@ -5,20 +5,25 @@ import { useSettings, SettingsProvider } from "../settings";
 import type { ThemeMode, AnimationLevel } from "../../../../shared/ask-user";
 
 function TestConsumer() {
-    const { theme, resolvedTheme, animationLevel, setTheme, setAnimationLevel } = useSettings();
+    const { themeFamily, themeId, mode, resolvedMode, animationLevel, setThemeFamily, setMode, setAnimationLevel } = useSettings();
     return (
         <div>
-            <div data-testid="theme">{theme}</div>
-            <div data-testid="resolved">{resolvedTheme}</div>
+            <div data-testid="theme-family">{themeFamily}</div>
+            <div data-testid="theme-id">{themeId}</div>
+            <div data-testid="mode">{mode}</div>
+            <div data-testid="resolved">{resolvedMode}</div>
             <div data-testid="animation">{animationLevel}</div>
-            <button data-testid="set-dark" onClick={() => setTheme("dark")}>
+            <button data-testid="set-dark" onClick={() => { setThemeFamily("default"); setMode("dark"); }}>
                 Dark
             </button>
-            <button data-testid="set-light" onClick={() => setTheme("light")}>
+            <button data-testid="set-light" onClick={() => { setThemeFamily("default"); setMode("light"); }}>
                 Light
             </button>
-            <button data-testid="set-system" onClick={() => setTheme("system")}>
+            <button data-testid="set-system" onClick={() => setMode("system")}>
                 System
+            </button>
+            <button data-testid="set-tokyo" onClick={() => setThemeFamily("tokyo-night")}>
+                Tokyo Night
             </button>
             <button data-testid="set-minimal" onClick={() => setAnimationLevel("minimal")}>
                 Minimal
@@ -37,7 +42,10 @@ function wrapper({ children }: { children: React.ReactNode }) {
 describe("useSettings", () => {
     it("returns default theme and animation level", () => {
         const { result } = renderHook(() => useSettings(), { wrapper });
-        expect(result.current.theme).toBe("system");
+        expect(result.current.themeFamily).toBe("default");
+        // jsdom has no prefers-color-scheme, so system mode resolves to light
+        expect(result.current.themeId).toBe("light");
+        expect(result.current.mode).toBe("system");
         expect(result.current.animationLevel).toBe("all");
     });
 
@@ -58,31 +66,44 @@ describe("SettingsProvider", () => {
         expect(screen.getByTestId("child")).toHaveTextContent("Hello");
     });
 
-    it("uses initialTheme and initialAnimationLevel", () => {
+    it("uses initialThemeFamily and initialMode", () => {
         render(
-            <SettingsProvider initialTheme="dark" initialAnimationLevel="none">
+            <SettingsProvider initialThemeFamily="default" initialMode="dark" initialAnimationLevel="none">
                 <TestConsumer />
             </SettingsProvider>,
         );
-        expect(screen.getByTestId("theme")).toHaveTextContent("dark");
+        expect(screen.getByTestId("theme-family")).toHaveTextContent("default");
+        expect(screen.getByTestId("theme-id")).toHaveTextContent("dark");
+        expect(screen.getByTestId("mode")).toHaveTextContent("dark");
         expect(screen.getByTestId("animation")).toHaveTextContent("none");
     });
 
-    it("theme can be changed via setTheme", () => {
+    it("theme can be changed via setThemeFamily", () => {
         render(
-            <SettingsProvider>
+            <SettingsProvider initialMode="dark">
                 <TestConsumer />
             </SettingsProvider>,
         );
-        expect(screen.getByTestId("theme")).toHaveTextContent("system");
+        expect(screen.getByTestId("theme-family")).toHaveTextContent("default");
+        expect(screen.getByTestId("theme-id")).toHaveTextContent("dark");
+        fireEvent.click(screen.getByTestId("set-tokyo"));
+        expect(screen.getByTestId("theme-family")).toHaveTextContent("tokyo-night");
+        expect(screen.getByTestId("theme-id")).toHaveTextContent("tokyo-night");
+    });
+
+    it("mode can be changed via setMode", () => {
+        render(
+            <SettingsProvider initialMode="system">
+                <TestConsumer />
+            </SettingsProvider>,
+        );
+        expect(screen.getByTestId("mode")).toHaveTextContent("system");
         fireEvent.click(screen.getByTestId("set-dark"));
-        expect(screen.getByTestId("theme")).toHaveTextContent("dark");
+        expect(screen.getByTestId("mode")).toHaveTextContent("dark");
         expect(screen.getByTestId("resolved")).toHaveTextContent("dark");
         fireEvent.click(screen.getByTestId("set-light"));
-        expect(screen.getByTestId("theme")).toHaveTextContent("light");
+        expect(screen.getByTestId("mode")).toHaveTextContent("light");
         expect(screen.getByTestId("resolved")).toHaveTextContent("light");
-        fireEvent.click(screen.getByTestId("set-system"));
-        expect(screen.getByTestId("theme")).toHaveTextContent("system");
     });
 
     it("animation level can be changed via setAnimationLevel", () => {
@@ -98,13 +119,13 @@ describe("SettingsProvider", () => {
         expect(screen.getByTestId("animation")).toHaveTextContent("none");
     });
 
-    it("resolvedTheme is computed from system theme", () => {
+    it("resolvedMode is computed from system mode", () => {
         render(
-            <SettingsProvider initialTheme="system">
+            <SettingsProvider initialMode="system">
                 <TestConsumer />
             </SettingsProvider>,
         );
-        // jsdom has no prefers-color-scheme, so getSystemTheme returns "light"
+        // jsdom has no prefers-color-scheme, so getSystemMode returns "light"
         expect(screen.getByTestId("resolved")).toHaveTextContent("light");
     });
 
@@ -127,7 +148,7 @@ describe("SettingsProvider", () => {
         };
         // Should not throw during render
         render(
-            <SettingsProvider initialTheme="system">
+            <SettingsProvider initialMode="system">
                 <TestConsumer />
             </SettingsProvider>,
         );

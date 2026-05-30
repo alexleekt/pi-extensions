@@ -4,6 +4,8 @@ import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { SettingsProvider } from "./util/settings";
 import { sendToGlimpseSafe } from "./util/glimpse";
+import { getThemeFamilyId } from "./themes";
+import type { ThemeId } from "./themes";
 import "./index.generated.css";
 
 const raw = (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__;
@@ -34,11 +36,18 @@ if (!payload) {
     throw new Error(errorMessage);
 }
 
+const initialThemeName = (payload.theme as string | undefined);
+const initialThemeFamily = initialThemeName
+    ? getThemeFamilyId(initialThemeName as ThemeId) ?? undefined
+    : undefined;
+const initialMode = (payload.mode as "light" | "dark" | "system" | undefined) ?? "system";
+
 ReactDOM.createRoot(rootEl).render(
     <React.StrictMode>
         <ErrorBoundary>
             <SettingsProvider
-                initialTheme={(payload.theme as "light" | "dark" | "system") ?? undefined}
+                initialThemeFamily={initialThemeFamily}
+                initialMode={initialMode}
                 initialAnimationLevel={(payload.animationLevel as "none" | "minimal" | "all") ?? undefined}
             >
                 <App />

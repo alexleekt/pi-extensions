@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { sendToGlimpse, sendCancelled } from "../glimpse.js";
 
 vi.mock("../settings.js", () => ({
-    getCurrentTheme: () => "system",
+    getCurrentMode: () => "system",
     getCurrentAnimationLevel: () => "all",
 }));
 

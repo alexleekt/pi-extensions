@@ -1,4 +1,4 @@
-import { getCurrentAnimationLevel, getCurrentTheme } from "./settings";
+import { getCurrentAnimationLevel, getCurrentMode } from "./settings";
 
 /**
  * Send data to the Glimpse native host through the global window.glimpse bridge.
@@ -11,7 +11,7 @@ export function sendToGlimpse(data: unknown): void {
             : {};
     const enriched = {
         ...record,
-        __theme: getCurrentTheme(),
+        __theme: getCurrentMode(),
         __animationLevel: getCurrentAnimationLevel(),
     };
     const bridge = (window as unknown as Record<string, unknown>).glimpse as

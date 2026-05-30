@@ -3,8 +3,8 @@ import { render } from "@testing-library/react";
 import { SettingsProvider, useSettings } from "../settings";
 
 function TestComponent() {
-    const { resolvedTheme } = useSettings();
-    return <div data-testid="theme">{resolvedTheme}</div>;
+    const { resolvedMode } = useSettings();
+    return <div data-testid="theme">{resolvedMode}</div>;
 }
 
 describe("SettingsProvider system theme", () => {
@@ -15,7 +15,7 @@ describe("SettingsProvider system theme", () => {
         }) as unknown as typeof window.matchMedia;
 
         const { getByTestId } = render(
-            <SettingsProvider initialTheme="system">
+            <SettingsProvider initialMode="system">
                 <TestComponent />
             </SettingsProvider>,
         );

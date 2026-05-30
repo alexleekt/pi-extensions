@@ -3,8 +3,8 @@ import { render, act } from "@testing-library/react";
 import { SettingsProvider, useSettings } from "../settings";
 
 function TestComponent() {
-    const { theme } = useSettings();
-    return <div data-testid="theme">{theme}</div>;
+    const { mode } = useSettings();
+    return <div data-testid="mode">{mode}</div>;
 }
 
 describe("SettingsProvider matchMedia", () => {
@@ -15,7 +15,7 @@ describe("SettingsProvider matchMedia", () => {
         window.matchMedia = vi.fn(() => mockMq as unknown as MediaQueryList);
 
         render(
-            <SettingsProvider initialTheme="system">
+            <SettingsProvider initialMode="system">
                 <TestComponent />
             </SettingsProvider>,
         );
@@ -34,7 +34,7 @@ describe("SettingsProvider matchMedia", () => {
         window.matchMedia = vi.fn(() => mockMq as unknown as MediaQueryList);
 
         render(
-            <SettingsProvider initialTheme="system">
+            <SettingsProvider initialMode="system">
                 <TestComponent />
             </SettingsProvider>,
         );

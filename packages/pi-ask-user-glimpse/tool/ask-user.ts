@@ -4,11 +4,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { prompt } from "glimpseui";
-import type {
-    AnimationLevel,
-    AskUserPayload,
-    Question,
-    ThemeMode,
+import {
+    ALL_THEME_NAMES,
+    type AnimationLevel,
+    type AskUserPayload,
+    type Question,
+    type ThemeMode,
+    type ThemeName,
 } from "../shared/ask-user.js";
 import { formatResponse } from "./response-formatter.js";
 
@@ -82,12 +84,12 @@ export interface AskUserParams {
     allowComment?: boolean;
     allowSkip?: boolean;
     followCursor?: boolean;
-    theme?: ThemeMode;
+    theme?: ThemeName;
     animationLevel?: AnimationLevel;
 }
 
 export interface AskUserMetadata {
-    theme?: string;
+    theme?: ThemeName;
     animationLevel?: string;
 }
 
@@ -221,7 +223,7 @@ export async function askUserHandler(
             result = rawResult as Record<string, unknown>;
             if (onMetadata) {
                 onMetadata({
-                    theme: result.__theme as string | undefined,
+                    theme: ALL_THEME_NAMES.includes(result.__theme as ThemeName) ? result.__theme as ThemeName : undefined,
                     animationLevel: result.__animationLevel as string | undefined,
                 });
             }

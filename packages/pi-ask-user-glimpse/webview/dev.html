@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ask User — Dev Preview</title>
+    <script>
+      window.__ASK_USER_PAYLOAD__ = {
+        type: "questionnaire",
+        question: "Dev Preview: SettingsButton Redesign",
+        context: "Click the ⚙️ settings cog in the top-right to see the redesigned theme picker. The dropdown now uses a 2-column grid for expanded themes and has no animation section.",
+        questions: [
+          {
+            title: "Architecture",
+            description: "Which style?",
+            options: [
+              { title: "Monolith", description: "Simple", recommended: true },
+              { title: "Microservices", description: "Scalable" },
+            ],
+          },
+        ],
+        allowComment: true,
+        theme: "dark",
+        mode: "system",
+      };
+    </script>
+  </head>
+  <body class="bg-background text-foreground antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

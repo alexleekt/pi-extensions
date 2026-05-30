@@ -31,7 +31,7 @@ export function highlightMatch(text: string, query: string): string {
 
     while ((match = re.exec(text)) !== null) {
         result += escapeHtml(text.slice(lastIndex, match.index));
-        result += `<mark class="bg-yellow-200 dark:bg-yellow-700 rounded px-0.5">${escapeHtml(match[1])}</mark>`;
+        result += `<mark class="bg-yellow-200 rounded px-0.5" style="background-color:hsl(var(--accent) / 0.2)">${escapeHtml(match[1])}</mark>`;
         lastIndex = re.lastIndex;
     }
     result += escapeHtml(text.slice(lastIndex));
