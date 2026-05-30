@@ -22,30 +22,7 @@ export interface Question {
 export type ThemeMode = "light" | "dark" | "system";
 
 /** Named theme identifiers (all available variants) */
-export type ThemeName =
-    | "light"
-    | "dark"
-    | "nord-dark"
-    | "nord-light"
-    | "tokyo-night"
-    | "tokyo-night-storm"
-    | "tokyo-night-light"
-    | "catppuccin-latte"
-    | "catppuccin-frappe"
-    | "catppuccin-macchiato"
-    | "catppuccin-mocha"
-    | "dracula"
-    | "dracula-light"
-    | "one-dark"
-    | "one-light"
-    | "ayu-dark"
-    | "ayu-light"
-    | "github-dark"
-    | "github-light"
-    | "night-owl"
-    | "night-owl-light"
-    | "houston"
-    | "houston-light";
+export type ThemeName = string;
 
 export const ALL_THEME_NAMES: ThemeName[] = [
     "light",

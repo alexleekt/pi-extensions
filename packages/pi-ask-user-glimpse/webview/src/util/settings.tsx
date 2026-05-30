@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { AnimationLevel, ThemeMode } from "../../../shared/ask-user";
 import {
     getThemeDataAttribute,
@@ -12,7 +12,7 @@ import {
 
 /* ── System Appearance Detection ── */
 
-function getSystemMode(): "light" | "dark" {
+export function getSystemMode(): "light" | "dark" {
     if (typeof window === "undefined") return "light";
     try {
         return window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -32,12 +32,12 @@ function loadSavedThemeFamily(): ThemeFamilyId | null {
     try {
         const familyRaw = localStorage.getItem(THEME_FAMILY_KEY);
         if (familyRaw) {
-            const def = getThemeFamilyById(familyRaw as ThemeFamilyId);
-            if (def) return familyRaw as ThemeFamilyId;
+            const def = getThemeFamilyById(familyRaw);
+            if (def) return familyRaw;
         }
         const oldRaw = localStorage.getItem("pi-ask-user-glimpse:theme");
         if (oldRaw) {
-            const family = getThemeFamilyId(oldRaw as ThemeId);
+            const family = getThemeFamilyId(oldRaw);
             if (family) return family;
         }
     } catch {
@@ -99,22 +99,24 @@ export function useSettings(): SettingsState {
     return ctx;
 }
 
-/* ── Module-level snapshot for non-React sendToGlimpse() ── */
+/* ── Ref-based snapshot for non-React sendToGlimpse() ── */
 
-let _currentThemeId: ThemeId = "dark";
-let _currentMode: ThemeMode = "system";
-let _currentAnimationLevel: AnimationLevel = "all";
+const settingsRef = {
+    currentThemeId: "dark" as ThemeId,
+    currentMode: "system" as ThemeMode,
+    currentAnimationLevel: "all" as AnimationLevel,
+};
 
 export function getCurrentMode(): ThemeMode {
-    return _currentMode;
+    return settingsRef.currentMode;
 }
 
 export function getCurrentAnimationLevel(): AnimationLevel {
-    return _currentAnimationLevel;
+    return settingsRef.currentAnimationLevel;
 }
 
 export function getCurrentThemeName(): ThemeId {
-    return _currentThemeId;
+    return settingsRef.currentThemeId;
 }
 
 interface SettingsProviderProps {
@@ -192,18 +194,10 @@ export function SettingsProvider({
         return () => mq?.removeEventListener("change", listener);
     }, [effectiveMode]);
 
-    // Sync module-level snapshots
-    useEffect(() => {
-        _currentThemeId = themeId;
-    }, [themeId]);
-
-    useEffect(() => {
-        _currentMode = mode;
-    }, [mode]);
-
-    useEffect(() => {
-        _currentAnimationLevel = animationLevel;
-    }, [animationLevel]);
+    // Sync ref-based snapshots synchronously
+    settingsRef.currentThemeId = themeId;
+    settingsRef.currentMode = mode;
+    settingsRef.currentAnimationLevel = animationLevel;
 
     const setThemeFamily = (family: ThemeFamilyId) => {
         setThemeFamilyState(family);
@@ -217,7 +211,7 @@ export function SettingsProvider({
 
     const setAnimationLevel = (level: AnimationLevel) => {
         setAnimationLevelState(level);
-        _currentAnimationLevel = level;
+        settingsRef.currentAnimationLevel = level;
     };
 
     const previewTheme = (family: ThemeFamilyId) => {
@@ -266,6 +260,8 @@ export function SettingsProvider({
     );
 }
 
+import { THEME_CSS_VARS } from "../themes/types.js";
+
 /* ── Iframe Theme Notification ── */
 
 function notifyIframeThemeChange() {
@@ -277,30 +273,7 @@ function notifyIframeThemeChange() {
         const computed = getComputedStyle(root);
         const vars: Record<string, string> = {};
 
-        const varNames = [
-            "background",
-            "foreground",
-            "card",
-            "card-foreground",
-            "popover",
-            "popover-foreground",
-            "primary",
-            "primary-foreground",
-            "secondary",
-            "secondary-foreground",
-            "muted",
-            "muted-foreground",
-            "accent",
-            "accent-foreground",
-            "destructive",
-            "destructive-foreground",
-            "border",
-            "input",
-            "ring",
-            "radius",
-        ];
-
-        for (const name of varNames) {
+        for (const name of THEME_CSS_VARS) {
             vars[`--${name}`] = computed.getPropertyValue(`--${name}`).trim();
         }
 

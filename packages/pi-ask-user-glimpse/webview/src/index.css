@@ -286,6 +286,202 @@
         --input: 220 13% 28%;
         --ring: 207 82% 66%;
     }
+
+    /* ── Ayu ── */
+    [data-theme="ayu-dark"] {
+        color-scheme: dark;
+        --background: 210 25% 8%;
+        --foreground: 47 7% 73%;
+        --card: 213 29% 6%;
+        --card-foreground: 47 7% 73%;
+        --popover: 213 29% 6%;
+        --popover-foreground: 47 7% 73%;
+        --primary: 195 78% 56%;
+        --primary-foreground: 210 25% 8%;
+        --secondary: 223 27% 10%;
+        --secondary-foreground: 47 7% 73%;
+        --muted: 223 27% 10%;
+        --muted-foreground: 31 8% 50%;
+        --accent: 277 59% 76%;
+        --accent-foreground: 210 25% 8%;
+        --destructive: 355 84% 69%;
+        --destructive-foreground: 47 7% 73%;
+        --border: 217 23% 15%;
+        --input: 217 23% 15%;
+        --ring: 195 78% 56%;
+        --radius: 0.5rem;
+    }
+
+    [data-theme="ayu-light"] {
+        color-scheme: light;
+        --background: 0 0% 98%;
+        --foreground: 211 11% 41%;
+        --card: 0 0% 95%;
+        --card-foreground: 211 11% 41%;
+        --popover: 0 0% 95%;
+        --popover-foreground: 211 11% 41%;
+        --primary: 195 60% 58%;
+        --primary-foreground: 0 0% 98%;
+        --secondary: 0 0% 94%;
+        --secondary-foreground: 211 11% 41%;
+        --muted: 0 0% 94%;
+        --muted-foreground: 212 7% 57%;
+        --accent: 270 45% 64%;
+        --accent-foreground: 0 0% 98%;
+        --destructive: 357 81% 69%;
+        --destructive-foreground: 211 11% 41%;
+        --border: 0 0% 90%;
+        --input: 0 0% 90%;
+        --ring: 195 60% 58%;
+        --radius: 0.5rem;
+    }
+
+    /* ── GitHub ── */
+    [data-theme="github-dark"] {
+        color-scheme: dark;
+        --background: 210 12% 16%;
+        --foreground: 214 13% 90%;
+        --card: 207 13% 14%;
+        --card-foreground: 214 13% 90%;
+        --popover: 207 13% 14%;
+        --popover-foreground: 214 13% 90%;
+        --primary: 212 100% 74%;
+        --primary-foreground: 210 12% 16%;
+        --secondary: 210 13% 21%;
+        --secondary-foreground: 214 13% 90%;
+        --muted: 210 13% 21%;
+        --muted-foreground: 210 8% 62%;
+        --accent: 261 76% 76%;
+        --accent-foreground: 210 12% 16%;
+        --destructive: 354 92% 72%;
+        --destructive-foreground: 214 13% 90%;
+        --border: 210 12% 30%;
+        --input: 210 12% 30%;
+        --ring: 212 100% 74%;
+        --radius: 0.5rem;
+    }
+
+    [data-theme="github-light"] {
+        color-scheme: light;
+        --background: 0 0% 100%;
+        --foreground: 210 12% 16%;
+        --card: 210 29% 97%;
+        --card-foreground: 210 12% 16%;
+        --popover: 210 29% 97%;
+        --popover-foreground: 210 12% 16%;
+        --primary: 212 97% 43%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 210 29% 97%;
+        --secondary-foreground: 210 12% 16%;
+        --muted: 210 29% 97%;
+        --muted-foreground: 212 8% 45%;
+        --accent: 261 51% 51%;
+        --accent-foreground: 0 0% 100%;
+        --destructive: 354 66% 54%;
+        --destructive-foreground: 210 12% 16%;
+        --border: 214 13% 90%;
+        --input: 214 13% 90%;
+        --ring: 212 97% 43%;
+        --radius: 0.5rem;
+    }
+
+    /* ── Night Owl ── */
+    [data-theme="night-owl"] {
+        color-scheme: dark;
+        --background: 207 95% 8%;
+        --foreground: 217 34% 88%;
+        --card: 209 93% 5%;
+        --card-foreground: 217 34% 88%;
+        --popover: 209 93% 5%;
+        --popover-foreground: 217 34% 88%;
+        --primary: 221 100% 75%;
+        --primary-foreground: 207 95% 8%;
+        --secondary: 207 71% 15%;
+        --secondary-foreground: 217 34% 88%;
+        --muted: 207 71% 15%;
+        --muted-foreground: 209 27% 60%;
+        --accent: 276 68% 75%;
+        --accent-foreground: 207 95% 8%;
+        --destructive: 1 83% 63%;
+        --destructive-foreground: 217 34% 88%;
+        --border: 207 48% 22%;
+        --input: 207 48% 22%;
+        --ring: 221 100% 75%;
+        --radius: 0.5rem;
+    }
+
+    [data-theme="night-owl-light"] {
+        color-scheme: light;
+        --background: 210 17% 98%;
+        --foreground: 210 40% 17%;
+        --card: 210 16% 93%;
+        --card-foreground: 210 40% 17%;
+        --popover: 210 16% 93%;
+        --popover-foreground: 210 40% 17%;
+        --primary: 214 35% 37%;
+        --primary-foreground: 210 17% 98%;
+        --secondary: 210 16% 93%;
+        --secondary-foreground: 210 40% 17%;
+        --muted: 210 16% 93%;
+        --muted-foreground: 210 16% 42%;
+        --accent: 274 33% 46%;
+        --accent-foreground: 210 17% 98%;
+        --destructive: 6 63% 46%;
+        --destructive-foreground: 210 40% 17%;
+        --border: 210 14% 89%;
+        --input: 210 14% 89%;
+        --ring: 214 35% 37%;
+        --radius: 0.5rem;
+    }
+
+    /* ── Houston ── */
+    [data-theme="houston"] {
+        color-scheme: dark;
+        --background: 228 10% 10%;
+        --foreground: 240 5% 96%;
+        --card: 228 12% 8%;
+        --card-foreground: 240 5% 96%;
+        --popover: 228 12% 8%;
+        --popover-foreground: 240 5% 96%;
+        --primary: 243 75% 59%;
+        --primary-foreground: 228 10% 10%;
+        --secondary: 240 6% 13%;
+        --secondary-foreground: 240 5% 96%;
+        --muted: 240 6% 13%;
+        --muted-foreground: 240 5% 65%;
+        --accent: 258 90% 66%;
+        --accent-foreground: 228 10% 10%;
+        --destructive: 350 89% 60%;
+        --destructive-foreground: 240 5% 96%;
+        --border: 240 4% 16%;
+        --input: 240 4% 16%;
+        --ring: 243 75% 59%;
+        --radius: 0.5rem;
+    }
+
+    [data-theme="houston-light"] {
+        color-scheme: light;
+        --background: 0 0% 98%;
+        --foreground: 240 6% 10%;
+        --card: 240 5% 96%;
+        --card-foreground: 240 6% 10%;
+        --popover: 240 5% 96%;
+        --popover-foreground: 240 6% 10%;
+        --primary: 245 58% 51%;
+        --primary-foreground: 0 0% 98%;
+        --secondary: 240 5% 96%;
+        --secondary-foreground: 240 6% 10%;
+        --muted: 240 5% 96%;
+        --muted-foreground: 240 4% 46%;
+        --accent: 262 83% 58%;
+        --accent-foreground: 0 0% 98%;
+        --destructive: 347 77% 50%;
+        --destructive-foreground: 240 6% 10%;
+        --border: 240 6% 90%;
+        --input: 240 6% 90%;
+        --ring: 245 58% 51%;
+        --radius: 0.5rem;
+    }
 }
 
 @layer base {

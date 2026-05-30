@@ -6,10 +6,23 @@
  * space-separated HSL values in `hsl(var(--name) / 0.1)`.
  */
 
+const HEX_6_RE = /^#[0-9a-fA-F]{6}$/;
+const HEX_3_RE = /^#[0-9a-fA-F]{3}$/;
+
+/** Normalise shorthand #RGB → #RRGGBB */
+function normalizeHex(hex: string): string {
+    if (HEX_6_RE.test(hex)) return hex;
+    if (HEX_3_RE.test(hex)) {
+        return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+    }
+    throw new Error(`Invalid hex color: ${hex}. Expected #RGB or #RRGGBB.`);
+}
+
 export function hexToHsl(hex: string): string {
-    const r = parseInt(hex.slice(1, 3), 16) / 255;
-    const g = parseInt(hex.slice(3, 5), 16) / 255;
-    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const normalized = normalizeHex(hex);
+    const r = parseInt(normalized.slice(1, 3), 16) / 255;
+    const g = parseInt(normalized.slice(3, 5), 16) / 255;
+    const b = parseInt(normalized.slice(5, 7), 16) / 255;
 
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
@@ -42,10 +55,11 @@ export function hexToHsl(hex: string): string {
 }
 
 export function hexToRgb(hex: string): { r: number; g: number; b: number } {
+    const normalized = normalizeHex(hex);
     return {
-        r: parseInt(hex.slice(1, 3), 16),
-        g: parseInt(hex.slice(3, 5), 16),
-        b: parseInt(hex.slice(5, 7), 16),
+        r: parseInt(normalized.slice(1, 3), 16),
+        g: parseInt(normalized.slice(3, 5), 16),
+        b: parseInt(normalized.slice(5, 7), 16),
     };
 }
 

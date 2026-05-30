@@ -44,16 +44,17 @@ describe("skill-loader", () => {
     });
 
     test("returns file content when prompts/skill.md exists", () => {
-        const skillPath = path.join(tmpDir, "..", "prompts", "skill.md");
-        fs.mkdirSync(path.dirname(skillPath), { recursive: true });
+        const skillDir = path.join(tmpDir, "prompts");
+        fs.mkdirSync(skillDir, { recursive: true });
+        const skillPath = path.join(skillDir, "skill.md");
         fs.writeFileSync(
             skillPath,
             "# Custom Skill\n\nCustom content.",
             "utf8",
         );
-        // We can't easily override the path in the module, so we test the fallback
-        // path via the actual file system. This is best-effort since the module
-        // uses a hardcoded relative path.
+        const result = getHeadingSkillDocument(tmpDir);
+        expect(result).toContain("Custom Skill");
+        expect(result).toContain("Custom content.");
     });
 
     test("returns skill document when file exists", () => {
@@ -63,8 +64,8 @@ describe("skill-loader", () => {
     });
 
     test("returns fallback when skill file is missing", () => {
-        // We can't easily test the fallback path since the real file exists.
-        // The fallback is tested indirectly by the mock in heading-tool.test.ts.
-        expect(getHeadingSkillDocument).toBeTypeOf("function");
+        const result = getHeadingSkillDocument(tmpDir);
+        expect(result).toContain("Session Heading");
+        expect(result).toContain("get: Retrieve the current heading");
     });
 });

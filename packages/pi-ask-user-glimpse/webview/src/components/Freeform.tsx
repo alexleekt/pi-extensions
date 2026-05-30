@@ -30,6 +30,7 @@ export default function Freeform({ payload }: FreeformProps) {
     }, [text, comment]);
 
     const isDirty = text.trim() !== "" || comment.trim() !== "";
+    const submitDisabled = payload.allowSkip === false && text.trim().length === 0;
 
     const {
         isSubmitting,
@@ -44,6 +45,7 @@ export default function Freeform({ payload }: FreeformProps) {
         onSubmit: handleSubmit,
         isCommentOpen: showComment,
         onCloseComment: () => setShowComment(false),
+        submitDisabled,
     });
 
     return (
@@ -53,6 +55,7 @@ export default function Freeform({ payload }: FreeformProps) {
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Type your answer…"
+                    aria-label="Your answer"
                     maxLength={MAX_FREEFORM_LENGTH}
                     className="flex-1 w-full resize-none rounded-md border border-input bg-background p-3 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
                 />
