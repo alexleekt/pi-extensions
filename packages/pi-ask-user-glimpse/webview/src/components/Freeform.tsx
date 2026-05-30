@@ -36,6 +36,7 @@ export default function Freeform({ payload }: FreeformProps) {
         showCancelConfirm,
         setShowCancelConfirm,
         handleCancel,
+        handleStay,
         handleDiscard,
     } = useBaseDialog({
         payload,
@@ -97,7 +98,7 @@ export default function Freeform({ payload }: FreeformProps) {
 
             <CancelConfirmModal
                 isOpen={showCancelConfirm}
-                onStay={() => setShowCancelConfirm(false)}
+                onStay={handleStay}
                 onDiscard={handleDiscard}
             />
         </div>

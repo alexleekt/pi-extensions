@@ -622,6 +622,21 @@ export default function (pi: ExtensionAPI) {
     _pi = pi;
     pi.registerTool(askUserTool);
 
+    // Log prompt loading status for diagnostics
+    const promptStatus =
+        askUserPrompt.snippet && askUserPrompt.description
+            ? "loaded"
+            : "incomplete";
+    const guidelineCount = askUserPrompt.guidelines.length;
+    console.log(
+        `[pi-ask-user-glimpse] Tool registered. Prompt ${promptStatus} (${guidelineCount} guidelines).`,
+    );
+    if (guidelineCount === 0) {
+        console.warn(
+            `[pi-ask-user-glimpse] WARNING: No prompt guidelines loaded — the LLM may not know when to use ask_user. Check that prompts/ask-user.md has a ## Guidelines section.`,
+        );
+    }
+
     /** Send a user answer back into the journal with consistent error handling. */
     async function deliverAnswer(
         prefix: string,
@@ -645,10 +660,20 @@ export default function (pi: ExtensionAPI) {
     pi.on("before_agent_start", async (event, ctx) => {
         const hasAskUser =
             event.systemPromptOptions.selectedTools?.includes("ask_user");
-        if (!hasAskUser) return;
+        if (!hasAskUser) {
+            console.warn(
+                "[pi-ask-user-glimpse] ask_user is NOT in selectedTools — the LLM won't invoke this tool. Enable it in Pi settings or use the `ask_user` toggle.",
+            );
+            return;
+        }
 
         // Don't force ask_user in headless environments — the tool can't render dialogs
-        if (!ctx.hasUI) return;
+        if (!ctx.hasUI) {
+            console.warn(
+                "[pi-ask-user-glimpse] UI is not available — ask_user dialogs will not render.",
+            );
+            return;
+        }
 
         const styleMode = getStyleMode(ctx.sessionManager.getEntries());
 
@@ -656,7 +681,10 @@ export default function (pi: ExtensionAPI) {
             const yoloMandate = loadYoloMandate();
             return { systemPrompt: event.systemPrompt + "\n" + yoloMandate };
         }
-        // "plain" → no injection
+        // "plain" → no injection, but ensure the system prompt knows this tool is active
+        console.log(
+            `[pi-ask-user-glimpse] ask_user active in plain mode (${askUserPrompt.guidelines.length} guidelines).`,
+        );
     });
 
     // ── Manual style toggle ──

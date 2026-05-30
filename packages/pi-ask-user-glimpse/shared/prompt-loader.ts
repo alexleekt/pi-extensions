@@ -129,6 +129,22 @@ export function loadAskUserPrompt(): PromptSections {
     .filter((l) => l.length > 0)
     .map((l) => l.replace(/^\d+\.\s*/, "")); // strip "1. " prefix
 
+  if (!snippet) {
+    console.warn(
+      "[pi-ask-user-glimpse] ask-user.md has no ## Snippet section — tool may not be invoked correctly",
+    );
+  }
+  if (!description) {
+    console.warn(
+      "[pi-ask-user-glimpse] ask-user.md has no ## Description section — LLM may not understand the tool",
+    );
+  }
+  if (guidelines.length === 0) {
+    console.warn(
+      "[pi-ask-user-glimpse] ask-user.md has no ## Guidelines section — LLM won't know when to use ask_user",
+    );
+  }
+
   return {
     snippet,
     description,

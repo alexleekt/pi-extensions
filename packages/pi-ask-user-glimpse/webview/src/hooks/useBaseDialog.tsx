@@ -20,6 +20,7 @@ interface UseBaseDialogReturn {
     showCancelConfirm: boolean;
     setShowCancelConfirm: (v: boolean) => void;
     handleCancel: () => void;
+    handleStay: () => void;
     handleDiscard: () => void;
     handleSubmit: () => void;
 }
@@ -50,6 +51,10 @@ export function useBaseDialog({
             hasSent.current = false;
         }
     }, [isDirty, isSubmitting]);
+
+    const handleStay = useCallback(() => {
+        setShowCancelConfirm(false);
+    }, []);
 
     const handleDiscard = useCallback(() => {
         if (hasSent.current) return;
@@ -103,6 +108,7 @@ export function useBaseDialog({
         showCancelConfirm,
         setShowCancelConfirm,
         handleCancel,
+        handleStay,
         handleDiscard,
         handleSubmit,
     };

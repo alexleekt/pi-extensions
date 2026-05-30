@@ -231,6 +231,21 @@ export async function askUserHandler(
             cancelled = false;
         }
     } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+
+        // Timeout = user cancellation, not a tool error
+        if (errMsg === "Prompt timed out") {
+            return {
+                content: [{ type: "text" as const, text: "Cancelled" }],
+                details: {
+                    question: params.question,
+                    options: normalizedOptions,
+                    response: null,
+                    cancelled: true,
+                },
+            };
+        }
+
         // Glimpse unavailable — fast-exit and warn once
         if (!_warnedGlimpseUnavailable) {
             _warnedGlimpseUnavailable = true;

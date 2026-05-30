@@ -88,6 +88,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         showCancelConfirm,
         setShowCancelConfirm,
         handleCancel,
+        handleStay,
         handleDiscard,
     } = useBaseDialog({
         payload,
@@ -181,7 +182,7 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
 
             <CancelConfirmModal
                 isOpen={showCancelConfirm}
-                onStay={() => setShowCancelConfirm(false)}
+                onStay={handleStay}
                 onDiscard={handleDiscard}
             />
         </div>

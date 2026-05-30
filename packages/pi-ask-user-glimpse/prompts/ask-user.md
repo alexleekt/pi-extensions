@@ -43,7 +43,7 @@ For richer visualizations, use contextFormat: 'html' with the built-in pi charti
 
 All helpers auto-theme to light/dark mode.
 
-## Rules
+## Guidelines
 
 1. STOP and ask — NEVER guess. If ANY trigger condition applies, you MUST call ask_user immediately. Do NOT proceed with assumptions.
 2. If the user has given a clear, specific, unambiguous directive that leaves no room for interpretation, you may proceed without asking.

@@ -151,6 +151,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         showCancelConfirm,
         setShowCancelConfirm,
         handleCancel,
+        handleStay,
         handleDiscard,
         handleSubmit: baseHandleSubmit,
     } = useBaseDialog({
@@ -163,6 +164,9 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
             !hasFreeform &&
             (isSingle ? selected === null : selectedSet.size === 0),
     });
+
+    const showCancelConfirmRef = useRef(false);
+    showCancelConfirmRef.current = showCancelConfirm;
 
     useEffect(() => {
         const id = requestAnimationFrame(() => {
@@ -189,6 +193,8 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
             if (e.key === "Tab") return;
             if (isInInput) return;
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) return;
+            // Block all keys when cancel-confirm modal is open
+            if (showCancelConfirmRef.current) return;
 
             if (e.key >= "1" && e.key <= "9") {
                 const idx = parseInt(e.key, 10) - 1;
@@ -500,7 +506,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
 
             <CancelConfirmModal
                 isOpen={showCancelConfirm}
-                onStay={() => setShowCancelConfirm(false)}
+                onStay={handleStay}
                 onDiscard={handleDiscard}
             />
         </div>
