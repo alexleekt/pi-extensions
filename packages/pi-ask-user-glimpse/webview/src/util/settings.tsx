@@ -102,7 +102,7 @@ export function useSettings(): SettingsState {
 /* ── Ref-based snapshot for non-React sendToGlimpse() ── */
 
 const settingsRef = {
-    currentThemeId: "dark" as ThemeId,
+    currentThemeId: "tokyo-night" as ThemeId,
     currentMode: "system" as ThemeMode,
     currentAnimationLevel: "all" as AnimationLevel,
 };
@@ -133,7 +133,7 @@ export function SettingsProvider({
     children,
 }: SettingsProviderProps) {
     const [themeFamily, setThemeFamilyState] = useState<ThemeFamilyId>(
-        initialThemeFamily ?? loadSavedThemeFamily() ?? "default",
+        initialThemeFamily ?? loadSavedThemeFamily() ?? "tokyo-night",
     );
     const [mode, setModeState] = useState<ThemeMode>(
         initialMode ?? loadSavedMode() ?? "system",

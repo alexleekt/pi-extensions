@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import type { AskUserPayload } from "../../../shared/ask-user";
 import { useBaseDialog } from "../hooks/useBaseDialog";
 import { sendToGlimpse } from "../util/glimpse";
+import AdditionalComments from "./AdditionalComments";
 import CancelConfirmModal from "./CancelConfirmModal";
 import QuestionCard from "./QuestionCard";
 
@@ -21,19 +22,16 @@ function isAnswered(answer: AnswerValue | undefined): boolean {
 export default function Questionnaire({ payload }: QuestionnaireProps) {
     const questions = payload.questions ?? [];
     const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
-    const [comments, setComments] = useState<Record<string, string>>({});
-    const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
+    const [additionalComments, setAdditionalComments] = useState("");
 
     const stateRef = useRef({
         answers: {} as Record<string, AnswerValue>,
-        comments: {} as Record<string, string>,
-        showCommentFor: null as string | null,
+        additionalComments: "",
         questions,
     });
     stateRef.current = {
         answers,
-        comments,
-        showCommentFor,
+        additionalComments,
         questions,
     };
 
@@ -52,14 +50,12 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                     kind: (q.options && q.options.length > 0
                         ? "selection"
                         : "freeform") as "selection" | "freeform",
-                    comment: s.comments[q.title]?.trim() || undefined,
                 };
             })
             .filter(Boolean) as {
             question: string;
             answer: string;
             kind: "selection" | "freeform";
-            comment?: string;
         }[];
 
         const result: Record<string, unknown> = {
@@ -69,12 +65,15 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
             ),
             questionnaireDetails,
         };
+        if (s.additionalComments.trim()) {
+            result.additionalComments = s.additionalComments.trim();
+        }
         sendToGlimpse(result);
     }, []);
 
     const isDirty =
         Object.values(answers).some(isAnswered) ||
-        Object.values(comments).some((c) => c.trim() !== "");
+        additionalComments.trim() !== "";
 
     const answeredCount = questions.filter((q) =>
         isAnswered(answers[q.title]),
@@ -94,8 +93,6 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
         payload,
         isDirty,
         onSubmit: handleSubmit,
-        isCommentOpen: !!showCommentFor,
-        onCloseComment: () => setShowCommentFor(null),
         submitDisabled,
     });
 
@@ -152,31 +149,17 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                                 onSetText={(text) =>
                                     setSingleAnswer(q.title, text)
                                 }
-                                comment={comments[q.title] ?? ""}
-                                showComment={showCommentFor === q.title}
-                                onToggleComment={
-                                    payload.allowComment
-                                        ? () =>
-                                              setShowCommentFor((prev) =>
-                                                  prev === q.title
-                                                      ? null
-                                                      : q.title,
-                                              )
-                                        : undefined
-                                }
-                                onCommentChange={
-                                    payload.allowComment
-                                        ? (text) =>
-                                              setComments((prev) => ({
-                                                  ...prev,
-                                                  [q.title]: text,
-                                              }))
-                                        : undefined
-                                }
-                                allowComment={payload.allowComment}
                             />
                         </div>
                     ))}
+                </div>
+            </div>
+            <div className="shrink-0 px-4 py-3">
+                <div className="mt-3 pt-3 border-t border-border">
+                    <AdditionalComments
+                        value={additionalComments}
+                        onChange={setAdditionalComments}
+                    />
                 </div>
             </div>
 

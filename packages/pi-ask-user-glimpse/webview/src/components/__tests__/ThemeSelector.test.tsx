@@ -214,7 +214,7 @@ describe("ThemeSelector", () => {
         expect(options[3]).toHaveAttribute("tabIndex", "0");
 
         fireEvent.keyDown(window, { key: "Enter" });
-        expect(mockState.setThemeFamily).toHaveBeenCalledWith("default");
+        expect(mockState.setThemeFamily).toHaveBeenCalledWith("ayu");
     });
 
     it("Space selects option in dropdown", () => {
@@ -232,7 +232,7 @@ describe("ThemeSelector", () => {
         expect(options[3]).toHaveAttribute("tabIndex", "0");
 
         fireEvent.keyDown(window, { key: " " });
-        expect(mockState.setThemeFamily).toHaveBeenCalledWith("default");
+        expect(mockState.setThemeFamily).toHaveBeenCalledWith("ayu");
     });
 
     it("Tab cycles forward through options in dropdown", () => {

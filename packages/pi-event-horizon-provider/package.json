@@ -1,6 +1,6 @@
 {
   "name": "@alexleekt/pi-event-horizon-provider",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pi provider for Event Horizon — a LiteLLM proxy that collapses any model name to a configured target",
   "type": "module",
   "keywords": [

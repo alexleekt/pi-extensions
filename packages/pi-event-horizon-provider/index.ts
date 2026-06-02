@@ -15,7 +15,16 @@ const DEBUG = process.env.EVENTHORIZON_DEBUG === "1";
 
 const DEFAULT_INSTANCE = {
     url: "http://localhost:4000",
+    api: "openai-completions" as const,
 };
+
+/** Valid API formats for Event Horizon endpoints. */
+const VALID_API_TYPES = [
+    "openai-completions",
+    "anthropic-messages",
+    "openai-responses",
+] as const;
+type ValidApiType = (typeof VALID_API_TYPES)[number];
 
 // Fallback spec for when the proxy is unreachable — reflects modern model baselines.
 // Cost is a guess: Claude Sonnet 4 tier (common workhorse pricing).
@@ -33,6 +42,7 @@ const MODERN_FALLBACK = {
 
 interface InstanceConfig {
     url: string;
+    api?: ValidApiType;
     contextWindow?: number;
     maxTokens?: number;
     reasoning?: boolean;
@@ -96,6 +106,11 @@ function normalizeConfig(raw: {
             url: typeof inst.url === "string" ? inst.url : "",
         };
 
+        if (typeof inst.api === "string" &&
+            (VALID_API_TYPES as readonly string[]).includes(inst.api)) {
+            instance.api = inst.api as ValidApiType;
+        }
+
         if (typeof inst.context_window === "number")
             instance.contextWindow = inst.context_window;
         if (typeof inst.max_tokens === "number")
@@ -149,7 +164,7 @@ async function ensureConfig(): Promise<InstancesConfig> {
             // Auto-create with default only when config genuinely doesn't exist
             await mkdir(CONFIG_DIR, { recursive: true });
             const defaultConfig: InstancesConfig = {
-                instances: { local: { ...DEFAULT_INSTANCE } },
+                instances: { local: { url: DEFAULT_INSTANCE.url } },
             };
             await writeFile(CONFIG_PATH, YAML.stringify(defaultConfig), "utf8");
             return defaultConfig;
@@ -367,9 +382,9 @@ export default async function (pi: ExtensionAPI) {
 
         pi.registerProvider(providerName, {
             name: `Event Horizon (${name})`,
-            baseUrl: `${baseUrl}/v1`,
+            baseUrl,
             apiKey: "dummy",  // proxy handles auth internally; not used
-            api: "openai-completions",
+            api: instance.api ?? DEFAULT_INSTANCE.api,
             models: [
                 {
                     id: "singularity",
@@ -384,8 +399,9 @@ export default async function (pi: ExtensionAPI) {
         });
 
         if (DEBUG) {
+            const api = instance.api ?? DEFAULT_INSTANCE.api;
             console.log(
-                `[event-horizon] Registered ${providerName} → ${baseUrl} (specs from ${specs.source})`,
+                `[event-horizon] Registered ${providerName} → ${baseUrl} api=${api} (specs from ${specs.source})`,
             );
         }
     }
@@ -408,8 +424,9 @@ export default async function (pi: ExtensionAPI) {
     // Status command
     pi.registerCommand("event-horizon", {
         description: "Event Horizon proxy status and configuration",
-        handler: async (_args, ctx) => {
+        handler: async (args, ctx) => {
             const theme = ctx.ui.theme;
+            const trimmed = args.trim();
 
             // 1. Clear any stale widget
             ctx.ui.setWidget("pi-event-horizon:status", undefined);
@@ -418,8 +435,99 @@ export default async function (pi: ExtensionAPI) {
             const freshConfig = await ensureConfig();
             const instances = Object.entries(freshConfig.instances);
 
+            // -----------------------------------------------------------------
+            // Toggle mode: "<instance> <api>"
+            // -----------------------------------------------------------------
+            const apiShorthand: Record<string, ValidApiType> = {
+                anthropic: "anthropic-messages",
+                openai: "openai-completions",
+                responses: "openai-responses",
+            };
+            const parts = trimmed.split(/\s+/);
+            if (parts.length === 2 && parts[1] in apiShorthand) {
+                const [name, apiShort] = parts;
+                const api = apiShorthand[apiShort];
+                if (!freshConfig.instances[name]) {
+                    ctx.ui.notify(
+                        `Unknown instance: ${name}`,
+                        "error",
+                    );
+                    return;
+                }
+                const currentApi =
+                    freshConfig.instances[name].api ??
+                    DEFAULT_INSTANCE.api;
+                if (currentApi === api) {
+                    ctx.ui.notify(
+                        `${name} is already using ${api}`,
+                        "info",
+                    );
+                    return;
+                }
+
+                // Update config
+                freshConfig.instances[name].api = api;
+                await writeFile(
+                    CONFIG_PATH,
+                    YAML.stringify(freshConfig),
+                    "utf8",
+                );
+
+                // Re-register provider
+                const providerName = `event-horizon/${name}`;
+                const baseUrl = freshConfig.instances[name].url.replace(
+                    /\/$/,
+                    "",
+                );
+                const specs = await discoverModelSpecs(
+                    baseUrl,
+                    freshConfig.instances[name],
+                );
+                const upstreamTag = specs.targetModel
+                    ? ` — ${specs.targetModel}`
+                    : "";
+                pi.unregisterProvider(providerName);
+                pi.registerProvider(providerName, {
+                    name: `Event Horizon (${name})`,
+                    baseUrl,
+                    apiKey: "dummy",
+                    api,
+                    models: [
+                        {
+                            id: "singularity",
+                            name: `Singularity (${name})${upstreamTag}`,
+                            reasoning: specs.reasoning,
+                            input: specs.input,
+                            cost: specs.cost,
+                            contextWindow: specs.contextWindow,
+                            maxTokens: specs.maxTokens,
+                        },
+                    ],
+                });
+
+                ctx.ui.notify(
+                    `Switched ${name} to ${api}. Run /model ${providerName} to use it.`,
+                    "info",
+                );
+                return;
+            }
+
+            // Show usage hint for malformed toggle
+            if (trimmed && parts.length === 2 && !(parts[1] in apiShorthand)) {
+                ctx.ui.notify(
+                    `Unknown API: ${parts[1]}. Use: anthropic, openai, or responses.`,
+                    "error",
+                );
+                return;
+            }
+
+            // -----------------------------------------------------------------
+            // Status mode (no args or "<instance>")
+            // -----------------------------------------------------------------
+
             interface RowState {
                 name: string;
+                api?: ValidApiType;
                 reachable?: boolean;
                 targetModel?: string;
                 error?: string;
@@ -433,11 +541,18 @@ export default async function (pi: ExtensionAPI) {
                 };
             }
 
-            const rows: RowState[] = instances.map(([name]) => ({ name }));
+            const rows: RowState[] = instances.map(
+                ([name, instance]) => ({
+                    name,
+                    api: instance.api ?? DEFAULT_INSTANCE.api,
+                }),
+            );
 
             const renderWidget = (): string[] => {
                 const maxNameLen = Math.max(...rows.map((r) => r.name.length));
-                const online = rows.filter((r) => r.reachable === true).length;
+                const online = rows.filter(
+                    (r) => r.reachable === true,
+                ).length;
                 const lines: string[] = [];
 
                 lines.push(theme.bold("Event Horizon Instances"));
@@ -465,8 +580,9 @@ export default async function (pi: ExtensionAPI) {
                               ? theme.fg("error", stateText)
                               : theme.fg("dim", stateText);
 
-                    // Left-pad name for right-justification: <left-pad>rudolph ● online
-                    const nameLeftPad = " ".repeat(maxNameLen - r.name.length);
+                    const nameLeftPad = " ".repeat(
+                        maxNameLen - r.name.length,
+                    );
 
                     let targetPart = "";
                     if (r.targetModel) {
@@ -483,14 +599,25 @@ export default async function (pi: ExtensionAPI) {
                         costPart = `  $${c.input.toFixed(2)}/${c.output.toFixed(2)} per 1M (cache $${c.cacheRead.toFixed(2)}/${c.cacheWrite.toFixed(2)})`;
                     }
 
+                    let apiPart = "";
+                    if (r.api) {
+                        apiPart = theme.fg("dim", `  [${r.api}]`);
+                    }
+
                     lines.push(
-                        `  ${nameLeftPad}${theme.bold(r.name)} ${dot} ${statusStr}  ${targetPart}${costPart}`,
+                        `  ${nameLeftPad}${theme.bold(r.name)} ${dot} ${statusStr}  ${targetPart}${costPart}${apiPart}`,
                     );
                 }
 
                 lines.push("");
                 lines.push(`${online}/${rows.length} instances online`);
                 lines.push(theme.fg("dim", `Config: ${CONFIG_PATH}`));
+                lines.push(
+                    theme.fg(
+                        "dim",
+                        "Toggle: /event-horizon <instance> <anthropic|openai|responses>",
+                    ),
+                );
 
                 return lines;
             };
@@ -502,11 +629,14 @@ export default async function (pi: ExtensionAPI) {
             // Show initial "checking..." widget
             updateWidget();
 
-            // 4. Fire checks in parallel; update widget as each resolves
+            // Fire checks in parallel; update widget as each resolves
             const promises = instances.map(
                 async ([name, instance], index) => {
                     const baseUrl = instance.url.replace(/\/$/, "");
-                    const check = await checkInstance(name, instance.url);
+                    const check = await checkInstance(
+                        name,
+                        instance.url,
+                    );
                     const specs = await discoverModelSpecs(
                         baseUrl,
                         instance,

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>README — pi-ask-user-glimpse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="./src/shared.ts"></script>
+  <script type="module">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3b82f6',
+            secondary: '#64748b',
+            success: '#22c55e',
+            warning: '#f59e0b',
+            danger: '#ef4444',
+            muted: '#94a3b8',
+            background: '#ffffff',
+            'dark-background': '#0f172a',
+            'dark-surface': '#1e293b',
+            'dark-border': '#334155',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .readme-content h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem; margin-top: 2rem; }
+    .readme-content h2 { font-size: 1.75rem; font-weight: 600; margin-bottom: 0.75rem; margin-top: 1.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+    .dark .readme-content h2 { border-bottom-color: #334155; }
+    .readme-content h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; margin-top: 1.25rem; }
+    .readme-content p { margin-bottom: 1rem; line-height: 1.7; }
+    .readme-content ul { margin-bottom: 1rem; padding-left: 1.5rem; list-style-type: disc; }
+    .readme-content ol { margin-bottom: 1rem; padding-left: 1.5rem; list-style-type: decimal; }
+    .readme-content li { margin-bottom: 0.5rem; }
+    .readme-content code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: 'Monaco', 'Consolas', monospace; font-size: 0.875em; }
+    .dark .readme-content code { background: #1e293b; }
+    .readme-content pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 8px; overflow-x: auto; margin-bottom: 1rem; }
+    .readme-content pre code { background: transparent; padding: 0; color: inherit; }
+    .readme-content blockquote { border-left: 4px solid #3b82f6; padding-left: 1rem; margin: 1rem 0; font-style: italic; color: #64748b; }
+    .dark .readme-content blockquote { color: #94a3b8; }
+    .readme-content table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+    .readme-content th { background: #f8fafc; padding: 0.75rem; text-align: left; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+    .dark .readme-content th { background: #1e293b; border-bottom-color: #334155; }
+    .readme-content td { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; }
+    .dark .readme-content td { border-bottom-color: #334155; }
+    .readme-content hr { margin: 2rem 0; border: 0; border-top: 1px solid #e2e8f0; }
+    .dark .readme-content hr { border-top-color: #334155; }
+    .readme-content a { color: #3b82f6; text-decoration: underline; }
+    .readme-content a:hover { color: #2563eb; }
+    .readme-content img { max-width: 100%; border-radius: 8px; margin: 1rem 0; }
+    .loading { display: flex; align-items: center; justify-content: center; height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { background: #fef2f2; color: #dc2626; padding: 16px; border-radius: 8px; text-align: center; }
+    .dark .error { background: #450a0a; }
+    .toc { position: sticky; top: 2rem; max-height: calc(100vh - 4rem); overflow-y: auto; }
+    .toc-item { display: block; padding: 0.5rem 0; color: #64748b; font-size: 0.875rem; transition: color 0.2s; }
+    .toc-item:hover { color: #3b82f6; }
+    .toc-item.level-2 { padding-left: 1rem; }
+    .toc-item.level-3 { padding-left: 2rem; font-size: 0.8rem; }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-dark-background text-gray-900 dark:text-gray-100 min-h-screen">
+  <div class="max-w-6xl mx-auto px-6 py-12">
+    <!-- Header -->
+    <header class="mb-8 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold">README</h1>
+        <p class="text-muted text-sm">pi-ask-user-glimpse — dynamic markdown viewer</p>
+      </div>
+      <div class="flex gap-4 text-sm">
+        <a href="./index.html" class="text-primary hover:underline">← Landing Page</a>
+        <a href="./README.md" class="text-primary hover:underline">View Raw →</a>
+      </div>
+    </header>
+
+    <!-- Loading -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="error hidden">
+      <p>Failed to load README.md. Please ensure the file exists and is accessible.</p>
+      <p class="text-sm mt-2">Try viewing the <a href="../README.md" class="underline">raw markdown version</a>.</p>
+    </div>
+
+    <!-- Content -->
+    <div id="content" class="hidden flex gap-8">
+      <!-- Table of Contents -->
+      <aside class="w-64 hidden lg:block">
+        <div class="toc bg-white dark:bg-dark-surface rounded-xl shadow-sm p-6">
+          <h3 class="font-semibold mb-4">Contents</h3>
+          <nav id="toc-nav"></nav>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="flex-1 min-w-0">
+        <div class="bg-white dark:bg-dark-surface rounded-xl shadow-sm p-8">
+          <div class="readme-content" id="readme-content"></div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-muted text-sm py-8">
+      <p>Loaded dynamically from <a href="../README.md" class="text-primary hover:underline">README.md</a></p>
+    </footer>
+  </div>
+
+  <script>
+    // Initialize theme
+    docs.initTheme();
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+
+    async function loadAndRender() {
+      const loading = document.getElementById('loading');
+      const error = document.getElementById('error');
+      const content = document.getElementById('content');
+
+      try {
+        const md = await docs.loadMarkdown('../README.md');
+        const html = docs.parseMarkdown(md);
+        
+        document.getElementById('readme-content').innerHTML = html;
+        generateTOC();
+        
+        loading.classList.add('hidden');
+        content.classList.remove('hidden');
+      } catch (err) {
+        console.error('Failed to load README.md:', err);
+        loading.classList.add('hidden');
+        error.classList.remove('hidden');
+      }
+    }
+
+    function generateTOC() {
+      const content = document.getElementById('readme-content');
+      const headings = content.querySelectorAll('h2, h3');
+      const tocNav = document.getElementById('toc-nav');
+      
+      tocNav.innerHTML = Array.from(headings).map((heading, i) => {
+        const id = `heading-${i}`;
+        heading.id = id;
+        const level = heading.tagName === 'H2' ? 'level-2' : 'level-3';
+        return `<a href="#${id}" class="toc-item ${level}">${heading.textContent}</a>`;
+      }).join('');
+    }
+
+    loadAndRender();
+  </script>
+</body>
+</html>

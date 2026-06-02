@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changelog — pi-ask-user-glimpse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="./src/shared.ts"></script>
+  <script type="module">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3b82f6',
+            secondary: '#64748b',
+            success: '#22c55e',
+            warning: '#f59e0b',
+            danger: '#ef4444',
+            muted: '#94a3b8',
+            background: '#ffffff',
+            'dark-background': '#0f172a',
+            'dark-surface': '#1e293b',
+            'dark-border': '#334155',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .timeline-container { position: relative; }
+    .timeline-container::before {
+      content: ''; position: absolute; left: 24px; top: 0; bottom: 0;
+      width: 2px; background: #e2e8f0;
+    }
+    .dark .timeline-container::before { background: #334155; }
+    .timeline-entry { position: relative; padding-left: 64px; margin-bottom: 2rem; }
+    .timeline-dot {
+      position: absolute; left: 16px; top: 4px; width: 16px; height: 16px;
+      border-radius: 50%; border: 3px solid; background: white;
+    }
+    .dark .timeline-dot { background: #0f172a; }
+    .timeline-dot.major { border-color: #3b82f6; width: 20px; height: 20px; left: 14px; }
+    .timeline-dot.minor { border-color: #94a3b8; }
+    .timeline-dot.patch { border-color: #cbd5e1; }
+    .version-card { transition: all 0.3s; border: 1px solid #e2e8f0; }
+    .version-card:hover { border-color: #3b82f6; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .dark .version-card:hover { border-color: #3b82f6; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .category-badge {
+      display: inline-block; padding: 4px 12px; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 500; margin: 4px;
+    }
+    .category-added { background: #dcfce7; color: #166534; }
+    .dark .category-added { background: #14532d; color: #86efac; }
+    .category-changed { background: #dbeafe; color: #1e40af; }
+    .dark .category-changed { background: #1e3a5f; color: #93c5fd; }
+    .category-fixed { background: #fef9c3; color: #854d0e; }
+    .dark .category-fixed { background: #422006; color: #fde047; }
+    .category-security { background: #fecaca; color: #991b1b; }
+    .dark .category-security { background: #450a0a; color: #fca5a5; }
+    .category-removed { background: #f3f4f6; color: #374151; }
+    .dark .category-removed { background: #1f2937; color: #d1d5db; }
+    .category-tests { background: #e0e7ff; color: #3730a3; }
+    .dark .category-tests { background: #312e81; color: #c7d2fe; }
+    .change-item { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+    .dark .change-item { border-bottom-color: #1e293b; }
+    .change-item:last-child { border-bottom: none; }
+    .loading { display: flex; align-items: center; justify-content: center; height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { background: #fef2f2; color: #dc2626; padding: 16px; border-radius: 8px; text-align: center; }
+    .dark .error { background: #450a0a; }
+    .filter-chip { transition: all 0.2s; cursor: pointer; border: 1px solid #e2e8f0; }
+    .filter-chip.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+    .expand-btn { transition: transform 0.2s; }
+    .expand-btn.rotated { transform: rotate(180deg); }
+    .collapsible { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+    .collapsible.open { max-height: 2000px; }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-dark-background text-gray-900 dark:text-gray-100 min-h-screen">
+  <div class="max-w-4xl mx-auto px-6 py-12">
+    <!-- Header -->
+    <header class="mb-12">
+      <h1 class="text-4xl font-bold mb-2">Changelog</h1>
+      <p class="text-lg text-muted">All notable changes to pi-ask-user-glimpse</p>
+      <div class="flex gap-4 mt-6 text-sm">
+        <a href="../CHANGELOG.md" class="text-primary hover:underline">← Markdown Source</a>
+        <a href="./index.html" class="text-primary hover:underline">Landing Page →</a>
+        <a href="./roadmap.html" class="text-primary hover:underline">Interactive Roadmap →</a>
+      </div>
+    </header>
+
+    <!-- Category Filters -->
+    <section class="mb-8">
+      <div class="flex flex-wrap gap-2">
+        <button class="filter-chip active px-4 py-2 rounded-lg text-sm font-medium" data-filter="all">
+          All Changes
+        </button>
+        <button class="filter-chip px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-dark-surface" data-filter="added">
+          <span class="category-badge category-added">Added</span>
+        </button>
+        <button class="filter-chip px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-dark-surface" data-filter="changed">
+          <span class="category-badge category-changed">Changed</span>
+        </button>
+        <button class="filter-chip px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-dark-surface" data-filter="fixed">
+          <span class="category-badge category-fixed">Fixed</span>
+        </button>
+        <button class="filter-chip px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-dark-surface" data-filter="security">
+          <span class="category-badge category-security">Security</span>
+        </button>
+        <button class="filter-chip px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-dark-surface" data-filter="removed">
+          <span class="category-badge category-removed">Removed</span>
+        </button>
+        <button class="filter-chip px-4 py-2 rounded-lg text-sm font-medium bg-white dark:bg-dark-surface" data-filter="tests">
+          <span class="category-badge category-tests">Tests</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Loading -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="error hidden">
+      <p>Failed to load CHANGELOG.md. Please ensure the file exists and is accessible.</p>
+      <p class="text-sm mt-2">Try viewing the <a href="../CHANGELOG.md" class="underline">raw markdown version</a>.</p>
+    </div>
+
+    <!-- Timeline -->
+    <div id="timeline" class="timeline-container hidden">
+      <!-- Dynamically populated -->
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-muted text-sm py-8">
+      <p>Loaded dynamically from <a href="../CHANGELOG.md" class="text-primary hover:underline">CHANGELOG.md</a></p>
+    </footer>
+  </div>
+
+  <script type="module">
+    import { docs } from './src/shared.ts';
+
+    // Initialize theme
+    docs.initTheme();
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+
+    async function loadAndRender() {
+      const loading = document.getElementById('loading');
+      const error = document.getElementById('error');
+      const timeline = document.getElementById('timeline');
+
+      try {
+        const md = await docs.loadMarkdown('../CHANGELOG.md');
+        const versions = parseChangelog(md);
+
+        loading.classList.add('hidden');
+        timeline.classList.remove('hidden');
+
+        renderTimeline(versions);
+        setupFilters();
+        setupExpandCollapse();
+      } catch (err) {
+        console.error('Failed to load CHANGELOG.md:', err);
+        loading.classList.add('hidden');
+        error.classList.remove('hidden');
+      }
+    }
+
+    function parseChangelog(md) {
+      const versions = [];
+      const lines = md.split('\n');
+      let currentVersion = null;
+      let currentCategory = null;
+
+      for (const line of lines) {
+        // Version header: ## [0.5.2] — 2026-05-29
+        const versionMatch = line.match(/^## \[(\d+\.\d+\.\d+)\] \u2014 (\d{4}-\d{2}-\d{2})/);
+        if (versionMatch) {
+          currentVersion = {
+            version: versionMatch[1],
+            date: versionMatch[2],
+            categories: {}
+          };
+          versions.push(currentVersion);
+          currentCategory = null;
+        }
+        // Category header: ### Added
+        else if (line.startsWith('### ') && currentVersion) {
+          currentCategory = line.replace('### ', '').trim().toLowerCase();
+          currentVersion.categories[currentCategory] = [];
+        }
+        // Change item: - **Something** — description
+        else if (line.startsWith('- ') && currentVersion && currentCategory) {
+          const text = line.replace('- ', '').trim();
+          // Parse bold title and description
+          const boldMatch = text.match(/^\*\*([^*]+)\*\*\s*\u2014\s*(.+)/);
+          if (boldMatch) {
+            currentVersion.categories[currentCategory].push({
+              title: boldMatch[1],
+              description: boldMatch[2]
+            });
+          } else {
+            currentVersion.categories[currentCategory].push({
+              title: text,
+              description: ''
+            });
+          }
+        }
+      }
+
+      return versions;
+    }
+
+    function renderTimeline(versions) {
+      const container = document.getElementById('timeline');
+      const [major, minor] = versions[0]?.version?.split('.') || ['0', '0'];
+
+      container.innerHTML = versions.map((version, i) => {
+        const versionParts = version.version.split('.');
+        const isMajor = versionParts[0] !== major || versionParts[1] !== minor;
+        const dotClass = isMajor ? 'major' : versionParts[2] === '0' ? 'minor' : 'patch';
+
+        const categories = Object.entries(version.categories).map(([cat, items]) => {
+          const categoryClass = `category-${cat}`;
+          return `
+            <div class="mb-4" data-category="${cat}">
+              <div class="flex items-center justify-between mb-2">
+                <span class="category-badge ${categoryClass}">${cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
+                <span class="text-sm text-muted">${items.length} items</span>
+              </div>
+              <div class="collapsible open">
+                ${items.map(item => `
+                  <div class="change-item" data-category="${cat}">
+                    <div class="font-medium text-sm">${item.title}</div>
+                    ${item.description ? `<div class="text-sm text-muted mt-1">${item.description}</div>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="timeline-entry" data-version="${version.version}">
+            <div class="timeline-dot ${dotClass}"></div>
+            <div class="version-card bg-white dark:bg-dark-surface rounded-xl shadow-sm p-6">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                  <h2 class="text-xl font-bold">v${version.version}</h2>
+                  <span class="text-sm text-muted">${version.date}</span>
+                </div>
+                <button class="expand-btn p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" data-version="${version.version}">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="version-content" id="version-${version.version}">
+                ${categories}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setupFilters() {
+      const filterChips = document.querySelectorAll('.filter-chip');
+      const changeItems = document.querySelectorAll('.change-item');
+      const categoryContainers = document.querySelectorAll('[data-category]');
+
+      filterChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          filterChips.forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          const filter = chip.dataset.filter;
+
+          if (filter === 'all') {
+            changeItems.forEach(item => item.style.display = 'block');
+            categoryContainers.forEach(container => container.style.display = 'block');
+          } else {
+            changeItems.forEach(item => {
+              const itemCategory = item.dataset.category;
+              item.style.display = itemCategory === filter ? 'block' : 'none';
+            });
+
+            // Hide empty category containers
+            document.querySelectorAll('.mb-4[data-category]').forEach(container => {
+              const visibleItems = container.querySelectorAll('.change-item[style*="block"], .change-item:not([style*="none"])');
+              container.style.display = visibleItems.length > 0 ? 'block' : 'none';
+            });
+          }
+        });
+      });
+    }
+
+    function setupExpandCollapse() {
+      const expandBtns = document.querySelectorAll('.expand-btn');
+      expandBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const version = btn.dataset.version;
+          const content = document.getElementById(`version-${version}`);
+          const collapsibles = content.querySelectorAll('.collapsible');
+          const isOpen = collapsibles[0]?.classList.contains('open');
+
+          collapsibles.forEach(c => {
+            if (isOpen) {
+              c.classList.remove('open');
+              c.style.maxHeight = '0';
+            } else {
+              c.classList.add('open');
+              c.style.maxHeight = '2000px';
+            }
+          });
+
+          btn.classList.toggle('rotated', !isOpen);
+        });
+      });
+    }
+
+    loadAndRender();
+  </script>
+</body>
+</html>

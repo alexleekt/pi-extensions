@@ -5,9 +5,9 @@ import {
 } from "../../../shared/ask-user";
 import { useBaseDialog } from "../hooks/useBaseDialog";
 import { sendToGlimpse } from "../util/glimpse";
+import AdditionalComments from "./AdditionalComments";
 import CancelConfirmModal from "./CancelConfirmModal";
-import { CheckIcon, CommentIcon, isSelectAllOption, RadioIcon } from "./icons";
-import MarkdownPreview from "./MarkdownPreview";
+import { CheckIcon, isSelectAllOption, RadioIcon } from "./icons";
 import OptionCard from "./OptionCard";
 
 interface SelectDialogProps {
@@ -19,8 +19,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
     const isSingle = mode === "single";
     const [selected, setSelected] = useState<string | null>(null);
     const [selectedSet, setSelectedSet] = useState<Set<string>>(new Set());
-    const [comment, setComment] = useState("");
-    const [showComment, setShowComment] = useState(false);
+    const [additionalComments, setAdditionalComments] = useState("");
     const [activeIndex, setActiveIndex] = useState(-1);
     const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
     const freeformRef = useRef<HTMLButtonElement | null>(null);
@@ -38,8 +37,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
     const stateRef = useRef({
         selected: null as string | null,
         selectedSet: new Set<string>(),
-        comment: "",
-        showComment: false,
+        additionalComments: "",
         activeIndex: -1,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
@@ -50,8 +48,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
     stateRef.current = {
         selected,
         selectedSet,
-        comment,
-        showComment,
+        additionalComments,
         activeIndex,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
@@ -101,8 +98,8 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         const s = stateRef.current;
 
         const send = (result: Record<string, unknown>) => {
-            if (s.comment.trim()) {
-                result.comment = s.comment.trim();
+            if (s.additionalComments.trim()) {
+                result.additionalComments = s.additionalComments.trim();
             }
             sendToGlimpse(result);
         };
@@ -144,8 +141,8 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
     }, []);
 
     const isDirty = isSingle
-        ? selected !== null || comment.trim() !== ""
-        : selectedSet.size > 0 || comment.trim() !== "";
+        ? selected !== null || additionalComments.trim() !== ""
+        : selectedSet.size > 0 || additionalComments.trim() !== "";
 
     const {
         showCancelConfirm,
@@ -158,8 +155,6 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         payload,
         isDirty,
         onSubmit: handleSubmit,
-        isCommentOpen: showComment,
-        onCloseComment: () => setShowComment(false),
         submitDisabled:
             !hasFreeform &&
             (isSingle ? selected === null : selectedSet.size === 0),
@@ -221,14 +216,6 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                     setActiveIndex(s.options.length);
                     freeformRef.current?.focus();
                     freeformRef.current?.scrollIntoView({ block: "nearest" });
-                }
-                return;
-            }
-
-            if (e.key === "c" || e.key === "C") {
-                if (s.allowComment) {
-                    e.preventDefault();
-                    setShowComment((prev) => !prev);
                 }
                 return;
             }
@@ -466,42 +453,10 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
             </div>
 
             <div className="shrink-0 px-4 py-3">
-                {payload.allowComment && (
-                    <div>
-                        <button
-                            type="button"
-                            onClick={() => setShowComment((s) => !s)}
-                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                            aria-expanded={showComment}
-                            aria-controls="select-comment-textarea"
-                        >
-                            <CommentIcon />
-                            {showComment
-                                ? "Hide comment"
-                                : comment.trim()
-                                  ? "Edit comment"
-                                  : "Add comment"}
-                        </button>
-                        {showComment && (
-                            <>
-                                <textarea
-                                    id="select-comment-textarea"
-                                    aria-label="Additional comment"
-                                    value={comment}
-                                    onChange={(e) => setComment(e.target.value)}
-                                    placeholder="Optional comment…"
-                                    maxLength={1000}
-                                    className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
-                                    rows={3}
-                                />
-                                <div className="mt-1 text-right text-xs text-muted-foreground">
-                                    {comment.length}/1000
-                                </div>
-                                <MarkdownPreview text={comment} />
-                            </>
-                        )}
-                    </div>
-                )}
+                <AdditionalComments
+                    value={additionalComments}
+                    onChange={setAdditionalComments}
+                />
             </div>
 
             <CancelConfirmModal

@@ -4,6 +4,7 @@ export interface AskResponse {
     kind: "selection" | "freeform" | "questionnaire";
     selections?: string[];
     comment?: string;
+    additionalComments?: string;
     text?: string;
     questionnaireDetails?: {
         question: string;
@@ -39,6 +40,7 @@ function buildResponse(
             kind,
             text: String(result.text ?? "").trim(),
             comment: pickString(result.comment),
+            additionalComments: pickString(result.additionalComments),
         };
     }
 
@@ -62,6 +64,7 @@ function buildResponse(
                       };
                   })
                 : [],
+            additionalComments: pickString(result.additionalComments),
         };
     }
 
@@ -75,6 +78,7 @@ function buildResponse(
         kind,
         selections,
         comment: pickString(result.comment),
+        additionalComments: pickString(result.additionalComments),
     };
 }
 
@@ -95,6 +99,8 @@ function responseToText(response: AskResponse): string {
     }
 
     if (response.comment) lines.push(`Comment: ${response.comment}`);
+    if (response.additionalComments)
+        lines.push(`Additional Comments: ${response.additionalComments}`);
 
     return lines.join("\n\n") || "No response";
 }

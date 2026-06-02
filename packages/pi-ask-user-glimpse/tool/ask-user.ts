@@ -234,6 +234,7 @@ export async function askUserHandler(
         }
     } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
+        const errStack = err instanceof Error ? err.stack : undefined;
 
         // Timeout = user cancellation, not a tool error
         if (errMsg === "Prompt timed out") {
@@ -247,6 +248,12 @@ export async function askUserHandler(
                 },
             };
         }
+
+        // Log the actual error so we can diagnose what really failed
+        console.error(
+            "[pi-ask-user-glimpse] prompt() failed: " + errMsg,
+            errStack || "",
+        );
 
         // Glimpse unavailable — fast-exit and warn once
         if (!_warnedGlimpseUnavailable) {

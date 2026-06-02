@@ -65,11 +65,11 @@ describe("Questionnaire", () => {
         expect(screen.getByText("Q3")).toBeInTheDocument();
     });
 
-    it("does not render additional comments section", () => {
+    it("renders additional comments section", () => {
         renderWithFooter(buildPayload());
         expect(
-            screen.queryByText("Additional Comments"),
-        ).not.toBeInTheDocument();
+            screen.getByText("Additional Comments"),
+        ).toBeInTheDocument();
     });
 
     it("submits with answers", async () => {
@@ -101,15 +101,14 @@ describe("Questionnaire", () => {
         expect(details).toHaveLength(3);
     });
 
-    it("submits per-question comment when provided", async () => {
+    it("submits additionalComments when provided", async () => {
         renderWithFooter(buildPayload());
 
         fireEvent.click(screen.getByText("Q1-A"));
-        fireEvent.click(screen.getAllByText("Add comment")[0]);
-        const commentTextarea =
-            screen.getByPlaceholderText("Optional comment…");
-        fireEvent.change(commentTextarea, {
-            target: { value: "My comment" },
+        const additionalCommentsTextarea =
+            screen.getByPlaceholderText("Optional additional comments…");
+        fireEvent.change(additionalCommentsTextarea, {
+            target: { value: "My additional comment" },
         });
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
@@ -122,13 +121,7 @@ describe("Questionnaire", () => {
             unknown
         >;
         expect(sent.kind).toBe("questionnaire");
-        const details = sent.questionnaireDetails as Array<{
-            question: string;
-            answer: string;
-            comment?: string;
-        }>;
-        const q1 = details.find((d) => d.question === "Q1");
-        expect(q1?.comment).toBe("My comment");
+        expect(sent.additionalComments).toBe("My additional comment");
     });
 
     it("submits empty questionnaire when no answers provided", async () => {
@@ -158,14 +151,13 @@ describe("Questionnaire", () => {
         expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
     });
 
-    it("shows cancel confirm when dirty from per-question comment", () => {
+    it("shows cancel confirm when dirty from additionalComments", () => {
         renderWithFooter(buildPayload());
 
         fireEvent.click(screen.getByText("Q1-A"));
-        fireEvent.click(screen.getAllByText("Add comment")[0]);
-        const commentTextarea =
-            screen.getByPlaceholderText("Optional comment…");
-        fireEvent.change(commentTextarea, {
+        const additionalCommentsTextarea =
+            screen.getByPlaceholderText("Optional additional comments…");
+        fireEvent.change(additionalCommentsTextarea, {
             target: { value: "Dirty comment" },
         });
         fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -182,13 +174,12 @@ describe("Questionnaire", () => {
         expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
     });
 
-    it("shows cancel confirm when dirty from comments alone", () => {
+    it("shows cancel confirm when dirty from additionalComments alone", () => {
         renderWithFooter(buildPayload());
 
-        fireEvent.click(screen.getAllByText("Add comment")[0]);
-        const commentTextarea =
-            screen.getByPlaceholderText("Optional comment…");
-        fireEvent.change(commentTextarea, {
+        const additionalCommentsTextarea =
+            screen.getByPlaceholderText("Optional additional comments…");
+        fireEvent.change(additionalCommentsTextarea, {
             target: { value: "Just a comment" },
         });
         fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -222,79 +213,13 @@ describe("Questionnaire", () => {
         expect(q2A).toHaveAttribute("aria-selected", "false");
     });
 
-    it("Escape closes per-question comment textarea", () => {
+    it("does not send whitespace-only additionalComments", async () => {
         renderWithFooter(buildPayload());
 
         fireEvent.click(screen.getByText("Q1-A"));
-        fireEvent.click(screen.getAllByText("Add comment")[0]);
-        expect(
-            screen.getByPlaceholderText("Optional comment…"),
-        ).toBeInTheDocument();
-
-        fireEvent.keyDown(window, { key: "Escape" });
-        expect(
-            screen.queryByPlaceholderText("Optional comment…"),
-        ).not.toBeInTheDocument();
-    });
-
-    it("hides per-question comment buttons when allowComment is false", () => {
-        renderWithFooter(buildPayload({ allowComment: false }));
-        expect(screen.queryByText("Add comment")).not.toBeInTheDocument();
-    });
-
-    it("submits comments on multiple questions simultaneously", async () => {
-        renderWithFooter(buildPayload());
-
-        fireEvent.click(screen.getByText("Q1-A"));
-        fireEvent.click(screen.getByText("Q2-A"));
-        const freeformTextarea = screen.getByPlaceholderText("Your answer…");
-        fireEvent.change(freeformTextarea, { target: { value: "Q3 answer" } });
-
-        // Open Q1 comment, type, then close
-        fireEvent.click(screen.getAllByText("Add comment")[0]);
-        const q1Comment =
-            screen.getAllByPlaceholderText("Optional comment…")[0];
-        fireEvent.change(q1Comment, { target: { value: "Q1 comment" } });
-        fireEvent.keyDown(window, { key: "Escape" });
-        // After closing, Q1 button changes to "Edit comment"
-        expect(screen.getByText("Edit comment")).toBeInTheDocument();
-
-        // Open Q2 comment (now it's the first "Add comment" since Q1 is "Edit comment")
-        fireEvent.click(screen.getAllByText("Add comment")[0]);
-        const q2Comment =
-            screen.getAllByPlaceholderText("Optional comment…")[0];
-        fireEvent.change(q2Comment, { target: { value: "Q2 comment" } });
-        fireEvent.keyDown(window, { key: "Escape" });
-
-        fireEvent.click(screen.getByRole("button", { name: "Submit" }));
-
-        await waitFor(() => {
-            expect(mockSendToGlimpse).toHaveBeenCalledTimes(1);
-        });
-
-        const sent = mockSendToGlimpse.mock.calls[0][0] as Record<
-            string,
-            unknown
-        >;
-        const details = sent.questionnaireDetails as Array<{
-            question: string;
-            answer: string;
-            comment?: string;
-        }>;
-        const q1 = details.find((d) => d.question === "Q1");
-        const q2 = details.find((d) => d.question === "Q2");
-        expect(q1?.comment).toBe("Q1 comment");
-        expect(q2?.comment).toBe("Q2 comment");
-    });
-
-    it("does not send whitespace-only comments", async () => {
-        renderWithFooter(buildPayload());
-
-        fireEvent.click(screen.getByText("Q1-A"));
-        fireEvent.click(screen.getAllByText("Add comment")[0]);
-        const commentTextarea =
-            screen.getByPlaceholderText("Optional comment…");
-        fireEvent.change(commentTextarea, {
+        const additionalCommentsTextarea =
+            screen.getByPlaceholderText("Optional additional comments…");
+        fireEvent.change(additionalCommentsTextarea, {
             target: { value: "   " },
         });
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
@@ -307,12 +232,6 @@ describe("Questionnaire", () => {
             string,
             unknown
         >;
-        const details = sent.questionnaireDetails as Array<{
-            question: string;
-            answer: string;
-            comment?: string;
-        }>;
-        const q1 = details.find((d) => d.question === "Q1");
-        expect(q1?.comment).toBeUndefined();
+        expect(sent.additionalComments).toBeUndefined();
     });
 });

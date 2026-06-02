@@ -299,8 +299,8 @@ tool/ask-user.ts      → constructs payload, injects into HTML, calls glimpseui
 tool/response-formatter.ts → normalizes WebView response for Pi
 (no terminal fallback — fast-escape with error when UI unavailable)
 webview/              → Vite + React + Tailwind app
-  src/components/     → SingleSelect, MultiSelect, Questionnaire, Freeform, ContextPanel, ErrorBoundary, HeaderBar, ShortcutsModal, AdditionalComments
-  src/util/           → settings.tsx (theme/animation context), glimpse.ts (host bridge), platform.ts (modKey), html.ts (escapeHtml + highlightMatch)
+  src/components/     → SelectDialog (single + multi), Freeform, Questionnaire, QuestionCard, OptionCard, ContextPanel, ErrorBoundary, HeaderBar, DialogFooter, CancelConfirmModal, GlobalKeyboardHint, SettingsButton, ThemeSelector, RichText, MarkdownPreview
+  src/util/           → settings.tsx (theme/animation context), glimpse.ts (host bridge), platform.ts (modKey), html.ts (escapeHtml + highlightMatch), markdown.ts (renderMarkdown + DOMPurify), pi-charts.ts (window.pi micro library)
   dist/index.html     → single-file bundle (inlined JS + CSS)
 ```
 
@@ -317,6 +317,30 @@ If the glimpseui native host is unavailable, the extension returns an error to t
 ### Dialog shows "Missing or invalid ask_user payload"
 
 This means the HTML payload injection failed. Ensure `dist/index.html` contains the `/*ASK_USER_PAYLOAD*/` placeholder. Run `npm run build` to regenerate.
+
+## Documentation
+
+| Document | What it covers |
+|----------|---------------|
+| [CHANGELOG.md](./CHANGELOG.md) | What's shipped in each release |
+| [ROADMAP.md](./ROADMAP.md) | Current status, known issues, and upcoming work |
+| [CONTEXT.md](./CONTEXT.md) | Glossary of terms used across the codebase |
+| [AGENT.md](./AGENT.md) | Behavioral rules for AI agents working on this codebase |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Developer setup, build instructions, and testing |
+
+### Interactive HTML Documentation
+
+Rich HTML versions of the documentation are available in the `docs/` directory:
+
+| Document | Features |
+|----------|----------|
+| [docs/index.html](docs/index.html) | Landing page with dialog previews, feature tags, and quick links |
+| [docs/readme.html](docs/readme.html) | Full README rendered with rich styling, table of contents, and code highlighting |
+| [docs/changelog.html](docs/changelog.html) | Interactive timeline with category filters, expand/collapse, and change counts |
+| [docs/roadmap.html](docs/roadmap.html) | Interactive filters, progress bars, milestone timeline, and severity indicators |
+| [docs/glossary.html](docs/glossary.html) | Searchable terms with category filters, copy-to-clipboard, and cross-links |
+
+These HTML files load dynamically from their markdown source files (e.g., `docs/roadmap.html` fetches `ROADMAP.md` at runtime). Edit the markdown files to update both the GitHub view and the interactive HTML view.
 
 ## License
 

@@ -1,6 +1,6 @@
 # pi-event-horizon-provider Roadmap
 
-## v0.1.0 (Current)
+## v0.1.0
 
 - [x] Provider registration with `event-horizon/<name>` namespace
 - [x] Layered model discovery (LiteLLM model_info → /health enrichment → hardcoded registry → instances.yaml overrides → static defaults)
@@ -8,11 +8,11 @@
 - [x] Auto-create default config
 - [x] Health check with reachability reporting
 
-## v0.2.0 — Additional API Formats
+## v0.2.0 — Additional API Formats (Current)
 
-- [ ] Support `anthropic-messages` API option per instance
-- [ ] Support `openai-responses` API option per instance
-- [ ] Allow user to select preferred API format in `instances.yaml`
+- [x] Support `anthropic-messages` API option per instance
+- [x] Support `openai-responses` API option per instance
+- [x] Allow user to select preferred API format in `instances.yaml`
 
 ## v0.3.0 — LLM-Callable Tools
 

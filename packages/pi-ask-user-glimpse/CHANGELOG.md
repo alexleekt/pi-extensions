@@ -2,6 +2,17 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [0.5.3] — 2026-06-01
+
+### Fixed
+- **Restored global Additional Comments** — Removed duplicative per-option/per-question "Add comment" toggles that were gated by `allowComment` (default `false`). Restored the global "Additional Comments" textarea that is always visible below the answer area, across all dialog types (single-select, multi-select, freeform, questionnaire).
+- **additionalComments in response** — `response-formatter.ts` now includes `additionalComments` in `AskResponse`, `buildResponse`, and `responseToText` for all three response kinds (selection, freeform, questionnaire).
+- **Debug logging** — Added `console.error` in `ask-user.ts` catch block to surface the actual error when `prompt()` fails, instead of swallowing it with a generic "No UI available" message.
+
+### Changed
+- **Unified comment UI** — Removed the per-option `comment` field from SelectDialog, Freeform, and Questionnaire. The global `AdditionalComments` component is now the single comment input for all dialog types.
+- **Test coverage** — Updated all affected tests to assert `additionalComments` instead of the removed per-option `comment` field. 343 tests pass.
+
 ## [0.5.2] — 2026-05-29
 
 ### Security

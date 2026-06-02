@@ -86,6 +86,7 @@ export default function ThemeSelector({ buttonClassName }: ThemeSelectorProps) {
     const [focusedIndex, setFocusedIndex] = useState(0);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const previewTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const delayedEndPreview = useCallback(() => {
@@ -107,20 +108,20 @@ export default function ThemeSelector({ buttonClassName }: ThemeSelectorProps) {
     ];
     const modeCount = modeOptions.length;
 
-    // All themes now have dark/light pairs
+    // All themes now have dark/light pairs, sorted alphabetically by display name
     const allThemes = useMemo(() => {
         return [
             getThemeFamilyById("default")!,
-            getThemeFamilyById("catppuccin")!,
-            getThemeFamilyById("nord")!,
-            getThemeFamilyById("tokyo-night")!,
-            getThemeFamilyById("dracula")!,
-            getThemeFamilyById("one-dark")!,
             getThemeFamilyById("ayu")!,
+            getThemeFamilyById("catppuccin")!,
+            getThemeFamilyById("dracula")!,
             getThemeFamilyById("github")!,
-            getThemeFamilyById("night-owl")!,
             getThemeFamilyById("houston")!,
-        ];
+            getThemeFamilyById("night-owl")!,
+            getThemeFamilyById("nord")!,
+            getThemeFamilyById("one-dark")!,
+            getThemeFamilyById("tokyo-night")!,
+        ].sort((a, b) => a.displayName.localeCompare(b.displayName));
     }, []);
 
     // allOptions order: mode buttons first, then themes
@@ -163,7 +164,7 @@ export default function ThemeSelector({ buttonClassName }: ThemeSelectorProps) {
         return start;
     }, [allOptions, isModeDisabled]);
 
-    // When opening, focus the currently selected mode or theme
+    // When opening, focus the currently selected mode or theme and scroll into view
     useEffect(() => {
         if (!open) return;
         let idx = allOptions.findIndex((o) =>
@@ -177,7 +178,9 @@ export default function ThemeSelector({ buttonClassName }: ThemeSelectorProps) {
         if (idx === -1) idx = 0;
         setFocusedIndex(idx);
         const id = requestAnimationFrame(() => {
-            optionRefs.current[idx]?.focus();
+            const el = optionRefs.current[idx];
+            el?.focus();
+            el?.scrollIntoView({ block: "nearest" });
         });
         return () => cancelAnimationFrame(id);
     }, [open, allOptions, mode, themeFamily, isModeDisabled, findNextFocusable]);

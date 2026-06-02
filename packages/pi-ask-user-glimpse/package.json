@@ -1,6 +1,6 @@
 {
     "name": "@alexleekt/pi-ask-user-glimpse",
-    "version": "0.5.2",
+    "version": "0.5.3",
     "description": "Ask better questions. Get better answers. Rich native WebView dialogs for the Pi agent.",
     "type": "module",
     "keywords": [
@@ -49,6 +49,8 @@
         "typecheck": "tsc --noEmit",
         "check": "npm pack --dry-run",
         "prepack": "npm run build",
+        "dev:docs": "npx vite --config ./docs/vite.config.ts",
+        "build:docs": "wireit",
         "dev:webview": "npx vite --config ./webview/vite.config.ts",
         "preview": "npm run build:css && npx vite --config ./webview/vite.config.ts --open dev.html",
         "test": "vitest run",
@@ -63,7 +65,20 @@
         "build": {
             "dependencies": [
                 "build:css",
-                "build:webview"
+                "build:webview",
+                "build:docs"
+            ]
+        },
+        "build:docs": {
+            "command": "npx vite build --config ./docs/vite.config.ts",
+            "files": [
+                "./docs/src/**/*.ts",
+                "./docs/*.html",
+                "./docs/vite.config.ts",
+                "./docs/tsconfig.json"
+            ],
+            "output": [
+                "./docs/dist/"
             ]
         },
         "build:css": {

@@ -48,11 +48,11 @@ describe("Freeform", () => {
         ).toBeInTheDocument();
     });
 
-    it("does not render additional comments", () => {
+    it("renders additional comments", () => {
         renderWithFooter(buildPayload());
         expect(
-            screen.queryByText("Additional Comments"),
-        ).not.toBeInTheDocument();
+            screen.getByText("Additional Comments"),
+        ).toBeInTheDocument();
     });
 
     it("submits text", async () => {
@@ -131,19 +131,9 @@ describe("Freeform", () => {
         expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
     });
 
-    describe("with allowComment", () => {
-        it("shows comment UI when allowComment is true", () => {
-            renderWithFooter(buildPayload({ allowComment: true }));
-            expect(screen.getByText("Add comment")).toBeInTheDocument();
-        });
-
-        it("hides comment UI when allowComment is false", () => {
-            renderWithFooter(buildPayload({ allowComment: false }));
-            expect(screen.queryByText("Add comment")).not.toBeInTheDocument();
-        });
-
-        it("submits comment when provided", async () => {
-            renderWithFooter(buildPayload({ allowComment: true }));
+    describe("with additionalComments", () => {
+        it("submits additionalComments when provided", async () => {
+            renderWithFooter(buildPayload());
 
             const mainTextarea =
                 screen.getByPlaceholderText("Type your answer…");
@@ -151,11 +141,10 @@ describe("Freeform", () => {
                 target: { value: "My answer" },
             });
 
-            fireEvent.click(screen.getByText("Add comment"));
-            const commentTextarea =
-                screen.getByPlaceholderText("Optional comment…");
-            fireEvent.change(commentTextarea, {
-                target: { value: "My comment" },
+            const additionalCommentsTextarea =
+                screen.getByPlaceholderText("Optional additional comments…");
+            fireEvent.change(additionalCommentsTextarea, {
+                target: { value: "My additional comment" },
             });
 
             fireEvent.click(screen.getByRole("button", { name: "Submit" }));
@@ -170,11 +159,11 @@ describe("Freeform", () => {
             >;
             expect(sent.kind).toBe("freeform");
             expect(sent.text).toBe("My answer");
-            expect(sent.comment).toBe("My comment");
+            expect(sent.additionalComments).toBe("My additional comment");
         });
 
-        it("does not send whitespace-only comment", async () => {
-            renderWithFooter(buildPayload({ allowComment: true }));
+        it("does not send whitespace-only additionalComments", async () => {
+            renderWithFooter(buildPayload());
 
             const mainTextarea =
                 screen.getByPlaceholderText("Type your answer…");
@@ -182,10 +171,9 @@ describe("Freeform", () => {
                 target: { value: "My answer" },
             });
 
-            fireEvent.click(screen.getByText("Add comment"));
-            const commentTextarea =
-                screen.getByPlaceholderText("Optional comment…");
-            fireEvent.change(commentTextarea, {
+            const additionalCommentsTextarea =
+                screen.getByPlaceholderText("Optional additional comments…");
+            fireEvent.change(additionalCommentsTextarea, {
                 target: { value: "   " },
             });
 
@@ -201,35 +189,20 @@ describe("Freeform", () => {
             >;
             expect(sent.kind).toBe("freeform");
             expect(sent.text).toBe("My answer");
-            expect(sent.comment).toBeUndefined();
+            expect(sent.additionalComments).toBeUndefined();
         });
 
-        it("shows cancel confirm when dirty from comment alone", () => {
-            renderWithFooter(buildPayload({ allowComment: true }));
+        it("shows cancel confirm when dirty from additionalComments alone", () => {
+            renderWithFooter(buildPayload());
 
-            fireEvent.click(screen.getByText("Add comment"));
-            const commentTextarea =
-                screen.getByPlaceholderText("Optional comment…");
-            fireEvent.change(commentTextarea, {
+            const additionalCommentsTextarea =
+                screen.getByPlaceholderText("Optional additional comments…");
+            fireEvent.change(additionalCommentsTextarea, {
                 target: { value: "Dirty comment" },
             });
 
             fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
             expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
-        });
-
-        it("shows Edit comment when comment exists but textarea is hidden", () => {
-            renderWithFooter(buildPayload({ allowComment: true }));
-
-            fireEvent.click(screen.getByText("Add comment"));
-            const commentTextarea =
-                screen.getByPlaceholderText("Optional comment…");
-            fireEvent.change(commentTextarea, {
-                target: { value: "My comment" },
-            });
-            fireEvent.click(screen.getByText("Hide comment"));
-
-            expect(screen.getByText("Edit comment")).toBeInTheDocument();
         });
     });
 });

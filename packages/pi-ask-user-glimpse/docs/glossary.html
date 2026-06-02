@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glossary — pi-ask-user-glimpse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="./src/shared.ts"></script>
+  <script type="module">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3b82f6',
+            secondary: '#64748b',
+            success: '#22c55e',
+            warning: '#f59e0b',
+            danger: '#ef4444',
+            muted: '#94a3b8',
+            background: '#ffffff',
+            'dark-background': '#0f172a',
+            'dark-surface': '#1e293b',
+            'dark-border': '#334155',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .term-card { transition: all 0.2s; border-left: 3px solid transparent; }
+    .term-card:hover { border-left-color: #3b82f6; transform: translateX(4px); }
+    .term-link { color: #3b82f6; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; transition: text-decoration-color 0.2s; }
+    .term-link:hover { text-decoration-color: #3b82f6; }
+    .search-highlight { background: #fef3c7; color: #92400e; padding: 2px 4px; border-radius: 3px; }
+    .dark .search-highlight { background: #78350f; color: #fef3c7; }
+    .category-badge { transition: all 0.2s; }
+    .category-badge.active { background: #3b82f6; color: white; }
+    .copy-toast { position: fixed; bottom: 20px; right: 20px; background: #22c55e; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transform: translateY(100px); opacity: 0; transition: all 0.3s ease; z-index: 1000; }
+    .copy-toast.show { transform: translateY(0); opacity: 1; }
+    .code-block { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 2px 6px; font-family: 'Monaco', 'Consolas', monospace; font-size: 0.875em; }
+    .dark .code-block { background: #1e293b; border-color: #334155; }
+    .loading { display: flex; align-items: center; justify-content: center; height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { background: #fef2f2; color: #dc2626; padding: 16px; border-radius: 8px; text-align: center; }
+    .dark .error { background: #450a0a; }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-dark-background text-gray-900 dark:text-gray-100 min-h-screen">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <!-- Header -->
+    <header class="mb-12">
+      <h1 class="text-4xl font-bold mb-2">Glossary</h1>
+      <p class="text-lg text-muted">Terms used across pi-ask-user-glimpse</p>
+      <div class="flex gap-4 mt-6 text-sm">
+        <a href="../CONTEXT.md" class="text-primary hover:underline">← Markdown Source</a>
+        <a href="./roadmap.html" class="text-primary hover:underline">Interactive Roadmap →</a>
+      </div>
+    </header>
+
+    <!-- Loading -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="error hidden">
+      <p>Failed to load CONTEXT.md. Please ensure the file exists and is accessible.</p>
+      <p class="text-sm mt-2">Try viewing the <a href="../CONTEXT.md" class="underline">raw markdown version</a>.</p>
+    </div>
+
+    <!-- Content -->
+    <div id="content" class="hidden">
+      <!-- Search -->
+      <section class="mb-8">
+        <div class="relative">
+          <input type="text" id="search-input" placeholder="Search terms..." 
+            class="w-full px-4 py-3 pl-12 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-surface text-lg focus:outline-none focus:ring-2 focus:ring-primary">
+          <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+      </section>
+
+      <!-- Category Filters -->
+      <section class="mb-8">
+        <div class="flex flex-wrap gap-2" id="category-filters">
+          <button class="category-badge active px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700" data-category="all">
+            All Terms
+          </button>
+        </div>
+      </section>
+
+      <!-- Terms -->
+      <section class="space-y-6" id="terms-container">
+        <!-- Dynamically populated -->
+      </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-muted text-sm py-8">
+      <p>Loaded dynamically from <a href="../CONTEXT.md" class="text-primary hover:underline">CONTEXT.md</a></p>
+    </footer>
+  </div>
+
+  <!-- Copy Toast -->
+  <div class="copy-toast" id="copy-toast">Copied to clipboard!</div>
+
+  <script>
+    // Initialize theme
+    docs.initTheme();
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+
+    async function loadAndRender() {
+      const loading = document.getElementById('loading');
+      const error = document.getElementById('error');
+      const content = document.getElementById('content');
+
+      try {
+        const md = await docs.loadMarkdown('../CONTEXT.md');
+        const data = docs.parseContext(md);
+        
+        loading.classList.add('hidden');
+        content.classList.remove('hidden');
+        
+        renderCategories(data);
+        renderTerms(data);
+        setupSearch();
+        setupCategoryFilters();
+      } catch (err) {
+        console.error('Failed to load CONTEXT.md:', err);
+        loading.classList.add('hidden');
+        error.classList.remove('hidden');
+      }
+    }
+
+    function renderCategories(data) {
+      const container = document.getElementById('category-filters');
+      const categories = Object.keys(data);
+      
+      container.innerHTML = `
+        <button class="category-badge active px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700" data-category="all">
+          All Terms (${Object.values(data).flat().length})
+        </button>
+        ${categories.map(cat => `
+          <button class="category-badge px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700" data-category="${cat}">
+            ${cat} (${data[cat].length})
+          </button>
+        `).join('')}
+      `;
+    }
+
+    function renderTerms(data, categoryFilter = 'all', searchQuery = '') {
+      const container = document.getElementById('terms-container');
+      const categories = categoryFilter === 'all' ? Object.keys(data) : [categoryFilter];
+      
+      container.innerHTML = categories.map(category => {
+        const terms = data[category].filter(term => {
+          if (!searchQuery) return true;
+          const text = (term.term + ' ' + term.definition).toLowerCase();
+          return text.includes(searchQuery.toLowerCase());
+        });
+        
+        if (terms.length === 0) return '';
+        
+        return `
+          <div class="category-group" data-category="${category}">
+            <h2 class="text-2xl font-semibold mb-4 text-primary">${category}</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${terms.map(term => `
+                <div class="term-card bg-white dark:bg-dark-surface rounded-lg shadow-sm p-6">
+                  <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-semibold text-lg">${term.term}</h3>
+                    <span class="px-2 py-1 rounded text-xs bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">${category}</span>
+                  </div>
+                  <p class="text-muted text-sm">${term.definition}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setupSearch() {
+      const searchInput = document.getElementById('search-input');
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value;
+        const activeCategory = document.querySelector('.category-badge.active')?.dataset.category || 'all';
+        renderTerms(window.glossaryData, activeCategory, query);
+      });
+    }
+
+    function setupCategoryFilters() {
+      const container = document.getElementById('category-filters');
+      container.addEventListener('click', (e) => {
+        if (e.target.classList.contains('category-badge')) {
+          document.querySelectorAll('.category-badge').forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          const category = e.target.dataset.category;
+          const query = document.getElementById('search-input').value;
+          renderTerms(window.glossaryData, category, query);
+        }
+      });
+    }
+
+    // Load data and store globally
+    async function init() {
+      const md = await docs.loadMarkdown('../CONTEXT.md');
+      window.glossaryData = docs.parseContext(md);
+      loadAndRender();
+    }
+
+    init();
+  </script>
+</body>
+</html>

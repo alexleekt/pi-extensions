@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pi-ask-user-glimpse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module" src="./src/shared.ts"></script>
+  <script type="module">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3b82f6',
+            secondary: '#64748b',
+            success: '#22c55e',
+            warning: '#f59e0b',
+            danger: '#ef4444',
+            muted: '#94a3b8',
+            background: '#ffffff',
+            'dark-background': '#0f172a',
+            'dark-surface': '#1e293b',
+            'dark-border': '#334155',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .feature-card { transition: all 0.3s; border: 1px solid #e2e8f0; }
+    .feature-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.1); border-color: #3b82f6; }
+    .dark .feature-card:hover { border-color: #3b82f6; box-shadow: 0 12px 24px rgba(0,0,0,0.3); }
+    .dialog-preview { border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; background: #f8fafc; }
+    .dark .dialog-preview { background: #1e293b; border-color: #334155; }
+    .loading { display: flex; align-items: center; justify-content: center; height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { background: #fef2f2; color: #dc2626; padding: 16px; border-radius: 8px; text-align: center; }
+    .dark .error { background: #450a0a; }
+    .code-block { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; font-family: 'Monaco', 'Consolas', monospace; font-size: 0.875em; overflow-x: auto; }
+    .dark .code-block { background: #1e293b; border-color: #334155; }
+    .tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; margin: 4px; }
+    .tab-btn { padding: 8px 16px; border-radius: 8px; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; border: none; background: transparent; }
+    .tab-btn.active { background: #3b82f6; color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-dark-background text-gray-900 dark:text-gray-100 min-h-screen">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <!-- Header -->
+    <header class="mb-12 text-center">
+      <div class="flex justify-center gap-4 mb-6">
+        <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium">v0.5.2</span>
+        <span class="px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium">MIT</span>
+      </div>
+      <h1 class="text-5xl font-bold mb-4">pi-ask-user-glimpse</h1>
+      <p class="text-xl text-muted max-w-2xl mx-auto">Ask better questions. Get better answers. Rich native WebView dialogs powered by glimpseui and styled with shadcn/ui design tokens.</p>
+      <div class="flex justify-center gap-4 mt-6 text-sm">
+        <a href="./readme.html" class="text-primary hover:underline">← Full README</a>
+        <a href="./changelog.html" class="text-primary hover:underline">Changelog →</a>
+        <a href="./roadmap.html" class="text-primary hover:underline">Interactive Roadmap →</a>
+        <a href="./glossary.html" class="text-primary hover:underline">Interactive Glossary →</a>
+      </div>
+    </header>
+
+    <!-- Loading -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="error hidden">
+      <p>Failed to load README.md. Please ensure the file exists and is accessible.</p>
+      <p class="text-sm mt-2">Try viewing the <a href="../README.md" class="underline">raw markdown version</a>.</p>
+    </div>
+
+    <!-- Content -->
+    <div id="content" class="hidden">
+      <!-- Install -->
+      <section class="mb-12 bg-white dark:bg-dark-surface rounded-xl shadow-sm p-8">
+        <h2 class="text-2xl font-semibold mb-4">Install</h2>
+        <div class="code-block mb-4">pi install npm:@alexleekt/pi-ask-user-glimpse</div>
+        <p class="text-muted text-sm">Requires a Pi coding agent harness with extension support (e.g. <code>@earendil-works/pi-coding-agent</code>).</p>
+      </section>
+
+      <!-- Dialog Type Previews -->
+      <section class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">Dialog Types</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Single Select -->
+          <div class="feature-card bg-white dark:bg-dark-surface rounded-xl shadow-sm p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"></path></svg>
+              </div>
+              <h3 class="font-semibold text-lg">Single Select</h3>
+            </div>
+            <p class="text-muted text-sm mb-4">Searchable option list with radio buttons. Number badges for quick reference. Press Enter to submit.</p>
+            <div class="dialog-preview">
+              <div class="text-sm font-medium mb-2">Which database?</div>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 rounded-full border-2 border-primary"></div>
+                  <span class="text-sm">① PostgreSQL</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 rounded-full border-2 border-gray-300"></div>
+                  <span class="text-sm">② SQLite</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Multi Select -->
+          <div class="feature-card bg-white dark:bg-dark-surface rounded-xl shadow-sm p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              </div>
+              <h3 class="font-semibold text-lg">Multi Select</h3>
+            </div>
+            <p class="text-muted text-sm mb-4">Checkbox-style selection with "Select all" / "Select none" quick links. Submit disabled until at least one item selected.</p>
+            <div class="dialog-preview">
+              <div class="text-sm font-medium mb-2">Which features?</div>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 rounded border-2 border-primary bg-primary flex items-center justify-center">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                  </div>
+                  <span class="text-sm">① OAuth login</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 rounded border-2 border-gray-300"></div>
+                  <span class="text-sm">② Real-time sync</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Freeform -->
+          <div class="feature-card bg-white dark:bg-dark-surface rounded-xl shadow-sm p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+              </div>
+              <h3 class="font-semibold text-lg">Freeform</h3>
+            </div>
+            <p class="text-muted text-sm mb-4">Full-height textarea with live character counter. Empty submissions allowed. Platform-aware keyboard shortcuts.</p>
+            <div class="dialog-preview">
+              <div class="text-sm font-medium mb-2">Describe your ideal flow...</div>
+              <div class="h-20 border border-gray-300 dark:border-gray-600 rounded-lg p-2 text-sm bg-white dark:bg-gray-800">
+                The user should first see...
+              </div>
+              <div class="text-xs text-muted mt-2">24/2000</div>
+            </div>
+          </div>
+
+          <!-- Questionnaire -->
+          <div class="feature-card bg-white dark:bg-dark-surface rounded-xl shadow-sm p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+              </div>
+              <h3 class="font-semibold text-lg">Questionnaire</h3>
+            </div>
+            <p class="text-muted text-sm mb-4">Cards in a vertical list. Each question can be single-select, multi-select, or freeform. Progress bar at top.</p>
+            <div class="dialog-preview">
+              <div class="text-sm font-medium mb-2">Project Scoping</div>
+              <div class="text-xs text-muted mb-2">1/3 answered</div>
+              <div class="h-1 bg-gray-200 rounded-full mb-3">
+                <div class="h-1 bg-primary rounded-full" style="width: 33%"></div>
+              </div>
+              <div class="text-sm">Database: ① PostgreSQL</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features Grid -->
+      <section class="mb-12">
+        <h2 class="text-2xl font-semibold mb-6">Features</h2>
+        <div class="flex flex-wrap gap-2">
+          <span class="tag bg-blue-100 text-blue-800">Theme toggle (dark/light/system)</span>
+          <span class="tag bg-green-100 text-green-800">Animation levels (none/minimal/all)</span>
+          <span class="tag bg-purple-100 text-purple-800">Keyboard shortcuts</span>
+          <span class="tag bg-amber-100 text-amber-800">HTML context panel</span>
+          <span class="tag bg-red-100 text-red-800">Mermaid diagrams</span>
+          <span class="tag bg-indigo-100 text-indigo-800">Auto-split long questions</span>
+          <span class="tag bg-pink-100 text-pink-800">Per-option comments</span>
+          <span class="tag bg-gray-100 text-gray-800">Markdown rendering</span>
+          <span class="tag bg-teal-100 text-teal-800">Search highlight</span>
+          <span class="tag bg-orange-100 text-orange-800">Recommendation badges</span>
+        </div>
+      </section>
+
+      <!-- Documentation Links -->
+      <section class="mb-12 bg-white dark:bg-dark-surface rounded-xl shadow-sm p-8">
+        <h2 class="text-2xl font-semibold mb-4">Documentation</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <a href="./changelog.html" class="flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary transition-colors">
+            <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div>
+              <div class="font-medium">Interactive Changelog</div>
+              <div class="text-sm text-muted">Timeline with category filters and change counts</div>
+            </div>
+          </a>
+          <a href="./roadmap.html" class="flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary transition-colors">
+            <div class="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+              <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 7m0 13V7m0 0L9 7"></path></svg>
+            </div>
+            <div>
+              <div class="font-medium">Interactive Roadmap</div>
+              <div class="text-sm text-muted">Current status, known issues, upcoming work</div>
+            </div>
+          </a>
+          <a href="./glossary.html" class="flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary transition-colors">
+            <div class="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+              <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+            </div>
+            <div>
+              <div class="font-medium">Interactive Glossary</div>
+              <div class="text-sm text-muted">Searchable terms with cross-links</div>
+            </div>
+          </a>
+          <a href="../AGENT.md" class="flex items-center gap-3 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary transition-colors">
+            <div class="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            </div>
+            <div>
+              <div class="font-medium">AGENT.md</div>
+              <div class="text-sm text-muted">Behavioral rules for AI agents</div>
+            </div>
+          </a>
+        </div>
+      </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-muted text-sm py-8">
+      <p>Loaded dynamically from <a href="../README.md" class="text-primary hover:underline">README.md</a></p>
+    </footer>
+  </div>
+
+  <script>
+    // Initialize theme
+    docs.initTheme();
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+
+    async function loadAndRender() {
+      const loading = document.getElementById('loading');
+      const error = document.getElementById('error');
+      const content = document.getElementById('content');
+
+      try {
+        const md = await docs.loadMarkdown('../README.md');
+        // We don't need to parse the full README for this landing page
+        // The content is hardcoded above based on README sections
+        loading.classList.add('hidden');
+        content.classList.remove('hidden');
+      } catch (err) {
+        console.error('Failed to load README.md:', err);
+        loading.classList.add('hidden');
+        error.classList.remove('hidden');
+      }
+    }
+
+    loadAndRender();
+  </script>
+</body>
+</html>

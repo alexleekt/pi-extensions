@@ -17,9 +17,9 @@ Registers Event Horizon proxy instances as LLM providers within Pi.
 
 - **Provider namespace is `event-horizon/<name>`** — Changing this requires a migration plan.
 - **Model ID is always `singularity`** — The proxy rewrites all model names to the target.
-- **API is `openai-completions`** — The proxy handles translation to the actual provider.
+- **API defaults to `openai-completions`** — Per-instance override via `api` field in `instances.yaml`. The proxy handles translation to the actual provider.
 - **Config auto-creates with default `local` instance** — Must always succeed even when config is missing.
-- **Model discovery is layered (C → A → B → overrides → static)** — See README for the five layers.
+- **Model discovery is layered (pre-fetched health → LiteLLM /v1/models → /health → instances.yaml overrides → static fallback)** — See README for the four layers.
 
 ## File Responsibilities
 

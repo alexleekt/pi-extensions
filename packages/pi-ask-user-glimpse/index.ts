@@ -503,11 +503,11 @@ const askUserTool = defineTool({
         ),
         options: Type.Optional(
             Type.Array(
-                Type.Union([
-                    Type.String({ description: "Short option label" }),
-                    Type.Object({
+                Type.Object(
+                    {
                         title: Type.String({
-                            description: "Short title for this option",
+                            description:
+                                "Short title for this option (the option text itself)",
                         }),
                         description: Type.Optional(
                             Type.String({
@@ -521,9 +521,12 @@ const askUserTool = defineTool({
                                     "Mark this option as most recommended. Shows a badge in the dialog.",
                             }),
                         ),
-                    }),
-                ]),
-                { description: "List of options for the user to choose from" },
+                    },
+                    {
+                        description:
+                            "List of options for the user to choose from",
+                    },
+                ),
             ),
         ),
         questions: Type.Optional(

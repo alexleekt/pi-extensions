@@ -22,6 +22,9 @@ function TestConsumer() {
             <button data-testid="set-system" onClick={() => setMode("system")}>
                 System
             </button>
+            <button data-testid="set-default" onClick={() => setThemeFamily("default")}>
+                Default
+            </button>
             <button data-testid="set-tokyo" onClick={() => setThemeFamily("tokyo-night")}>
                 Tokyo Night
             </button>
@@ -42,9 +45,9 @@ function wrapper({ children }: { children: React.ReactNode }) {
 describe("useSettings", () => {
     it("returns default theme and animation level", () => {
         const { result } = renderHook(() => useSettings(), { wrapper });
-        expect(result.current.themeFamily).toBe("default");
+        expect(result.current.themeFamily).toBe("tokyo-night");
         // jsdom has no prefers-color-scheme, so system mode resolves to light
-        expect(result.current.themeId).toBe("light");
+        expect(result.current.themeId).toBe("tokyo-night-light");
         expect(result.current.mode).toBe("system");
         expect(result.current.animationLevel).toBe("all");
     });
@@ -84,11 +87,11 @@ describe("SettingsProvider", () => {
                 <TestConsumer />
             </SettingsProvider>,
         );
-        expect(screen.getByTestId("theme-family")).toHaveTextContent("default");
-        expect(screen.getByTestId("theme-id")).toHaveTextContent("dark");
-        fireEvent.click(screen.getByTestId("set-tokyo"));
         expect(screen.getByTestId("theme-family")).toHaveTextContent("tokyo-night");
         expect(screen.getByTestId("theme-id")).toHaveTextContent("tokyo-night");
+        fireEvent.click(screen.getByTestId("set-default"));
+        expect(screen.getByTestId("theme-family")).toHaveTextContent("default");
+        expect(screen.getByTestId("theme-id")).toHaveTextContent("dark");
     });
 
     it("mode can be changed via setMode", () => {

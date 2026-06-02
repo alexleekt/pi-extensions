@@ -57,11 +57,11 @@ describe("SelectDialog", () => {
             expect(screen.getByText("Option B")).toBeInTheDocument();
         });
 
-        it("does not render additional comments section", () => {
+        it("renders additional comments section", () => {
             renderWithFooter("single", buildPayload("single"));
             expect(
-                screen.queryByText("Additional Comments"),
-            ).not.toBeInTheDocument();
+                screen.getByText("Additional Comments"),
+            ).toBeInTheDocument();
         });
 
         it("submits selected option", async () => {
@@ -82,15 +82,14 @@ describe("SelectDialog", () => {
             expect(sent.selections).toEqual(["Option A"]);
         });
 
-        it("submits per-option comment when provided", async () => {
+        it("submits additionalComments when provided", async () => {
             renderWithFooter("single", buildPayload("single"));
 
             fireEvent.click(screen.getByText("Option A"));
-            fireEvent.click(screen.getByText("Add comment"));
-            const commentTextarea =
-                screen.getByPlaceholderText("Optional comment…");
-            fireEvent.change(commentTextarea, {
-                target: { value: "My comment" },
+            const additionalCommentsTextarea =
+                screen.getByPlaceholderText("Optional additional comments…");
+            fireEvent.change(additionalCommentsTextarea, {
+                target: { value: "My additional comment" },
             });
             fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
@@ -104,23 +103,7 @@ describe("SelectDialog", () => {
             >;
             expect(sent.kind).toBe("selection");
             expect(sent.selections).toEqual(["Option A"]);
-            expect(sent.comment).toBe("My comment");
-        });
-
-        it("shows Edit comment when comment exists but textarea is hidden", () => {
-            renderWithFooter("single", buildPayload("single"));
-
-            fireEvent.click(screen.getByText("Option A"));
-            fireEvent.click(screen.getByText("Add comment"));
-            const commentTextarea =
-                screen.getByPlaceholderText("Optional comment…");
-            fireEvent.change(commentTextarea, {
-                target: { value: "My comment" },
-            });
-            // Click the Hide comment button to close the textarea
-            fireEvent.click(screen.getByText("Hide comment"));
-
-            expect(screen.getByText("Edit comment")).toBeInTheDocument();
+            expect(sent.additionalComments).toBe("My additional comment");
         });
 
         it("submits freeform when no option selected and freeform allowed", async () => {
@@ -149,14 +132,13 @@ describe("SelectDialog", () => {
             expect(mockSendCancelled).not.toHaveBeenCalled();
         });
 
-        it("shows cancel confirm when dirty from per-option comment", () => {
+        it("shows cancel confirm when dirty from additionalComments", () => {
             renderWithFooter("single", buildPayload("single"));
 
             fireEvent.click(screen.getByText("Option A"));
-            fireEvent.click(screen.getByText("Add comment"));
-            const commentTextarea =
-                screen.getByPlaceholderText("Optional comment…");
-            fireEvent.change(commentTextarea, {
+            const additionalCommentsTextarea =
+                screen.getByPlaceholderText("Optional additional comments…");
+            fireEvent.change(additionalCommentsTextarea, {
                 target: { value: "Dirty comment" },
             });
             fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -176,12 +158,12 @@ describe("SelectDialog", () => {
             ).not.toBeInTheDocument();
         });
 
-        it("hides per-option comment section when allowComment is false", () => {
+        it("renders additional comments section regardless of allowComment", () => {
             renderWithFooter(
                 "single",
                 buildPayload("single", { allowComment: false }),
             );
-            expect(screen.queryByText("Add comment")).not.toBeInTheDocument();
+            expect(screen.getByText("Additional Comments")).toBeInTheDocument();
         });
 
         it("ArrowDown moves focus to next option", async () => {
@@ -419,11 +401,11 @@ describe("SelectDialog", () => {
             expect(screen.getByText("Option B")).toBeInTheDocument();
         });
 
-        it("does not render additional comments section", () => {
+        it("renders additional comments section", () => {
             renderWithFooter("multi", buildPayload("multi"));
             expect(
-                screen.queryByText("Additional Comments"),
-            ).not.toBeInTheDocument();
+                screen.getByText("Additional Comments"),
+            ).toBeInTheDocument();
         });
 
         it("submits selections", async () => {
@@ -445,15 +427,14 @@ describe("SelectDialog", () => {
             expect(sent.selections).toEqual(["Option A", "Option B"]);
         });
 
-        it("submits per-option comment when provided", async () => {
+        it("submits additionalComments when provided", async () => {
             renderWithFooter("multi", buildPayload("multi"));
 
             fireEvent.click(screen.getByText("Option A"));
-            fireEvent.click(screen.getByText("Add comment"));
-            const commentTextarea =
-                screen.getByPlaceholderText("Optional comment…");
-            fireEvent.change(commentTextarea, {
-                target: { value: "My comment" },
+            const additionalCommentsTextarea =
+                screen.getByPlaceholderText("Optional additional comments…");
+            fireEvent.change(additionalCommentsTextarea, {
+                target: { value: "My additional comment" },
             });
             fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
@@ -467,7 +448,7 @@ describe("SelectDialog", () => {
             >;
             expect(sent.kind).toBe("selection");
             expect(sent.selections).toEqual(["Option A"]);
-            expect(sent.comment).toBe("My comment");
+            expect(sent.additionalComments).toBe("My additional comment");
         });
 
         it("submits freeform when no selection and freeform allowed", async () => {
@@ -496,14 +477,13 @@ describe("SelectDialog", () => {
             expect(mockSendCancelled).not.toHaveBeenCalled();
         });
 
-        it("shows cancel confirm when dirty from per-option comment", () => {
+        it("shows cancel confirm when dirty from additionalComments", () => {
             renderWithFooter("multi", buildPayload("multi"));
 
             fireEvent.click(screen.getByText("Option A"));
-            fireEvent.click(screen.getByText("Add comment"));
-            const commentTextarea =
-                screen.getByPlaceholderText("Optional comment…");
-            fireEvent.change(commentTextarea, {
+            const additionalCommentsTextarea =
+                screen.getByPlaceholderText("Optional additional comments…");
+            fireEvent.change(additionalCommentsTextarea, {
                 target: { value: "Dirty comment" },
             });
             fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -855,35 +835,13 @@ describe("SelectDialog", () => {
         expect(screen.getByText("2 selected")).toBeInTheDocument();
     });
 
-    it("Escape closes per-option comment textarea", () => {
-        renderWithFooter("single", buildPayload("single"));
-        fireEvent.click(screen.getByText("Option A"));
-        fireEvent.click(screen.getByText("Add comment"));
-        expect(
-            screen.getByPlaceholderText("Optional comment…"),
-        ).toBeInTheDocument();
-        fireEvent.keyDown(window, { key: "Escape" });
-        expect(
-            screen.queryByPlaceholderText("Optional comment…"),
-        ).not.toBeInTheDocument();
-    });
-
-    it("hides per-option comment section when allowComment is false in multi mode", () => {
-        renderWithFooter(
-            "multi",
-            buildPayload("multi", { allowComment: false }),
-        );
-        expect(screen.queryByText("Add comment")).not.toBeInTheDocument();
-    });
-
-    it("does not send whitespace-only comment", async () => {
+    it("does not send whitespace-only additionalComments", async () => {
         renderWithFooter("single", buildPayload("single"));
 
         fireEvent.click(screen.getByText("Option A"));
-        fireEvent.click(screen.getByText("Add comment"));
-        const commentTextarea =
-            screen.getByPlaceholderText("Optional comment…");
-        fireEvent.change(commentTextarea, {
+        const additionalCommentsTextarea =
+            screen.getByPlaceholderText("Optional additional comments…");
+        fireEvent.change(additionalCommentsTextarea, {
             target: { value: "   " },
         });
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
@@ -898,16 +856,15 @@ describe("SelectDialog", () => {
         >;
         expect(sent.kind).toBe("selection");
         expect(sent.selections).toEqual(["Option A"]);
-        expect(sent.comment).toBeUndefined();
+        expect(sent.additionalComments).toBeUndefined();
     });
 
-    it("submits comment-only in single-select when freeform allowed", async () => {
+    it("submits additionalComments-only in single-select when freeform allowed", async () => {
         renderWithFooter("single", buildPayload("single"));
 
-        fireEvent.click(screen.getByText("Add comment"));
-        const commentTextarea =
-            screen.getByPlaceholderText("Optional comment…");
-        fireEvent.change(commentTextarea, {
+        const additionalCommentsTextarea =
+            screen.getByPlaceholderText("Optional additional comments…");
+        fireEvent.change(additionalCommentsTextarea, {
             target: { value: "Just a comment" },
         });
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
@@ -921,47 +878,19 @@ describe("SelectDialog", () => {
             unknown
         >;
         expect(sent.kind).toBe("freeform");
-        expect(sent.comment).toBe("Just a comment");
+        expect(sent.additionalComments).toBe("Just a comment");
     });
 
-    it("Escape closes comment textarea in multi-select", () => {
-        renderWithFooter("multi", buildPayload("multi"));
-        fireEvent.click(screen.getByText("Option A"));
-        fireEvent.click(screen.getByText("Add comment"));
-        expect(
-            screen.getByPlaceholderText("Optional comment…"),
-        ).toBeInTheDocument();
-        fireEvent.keyDown(window, { key: "Escape" });
-        expect(
-            screen.queryByPlaceholderText("Optional comment…"),
-        ).not.toBeInTheDocument();
-    });
 
-    it("renders MarkdownPreview when comment is visible", () => {
-        renderWithFooter("single", buildPayload("single"));
-        fireEvent.click(screen.getByText("Option A"));
-        fireEvent.click(screen.getByText("Add comment"));
-        const commentTextarea =
-            screen.getByPlaceholderText("Optional comment…");
-        fireEvent.change(commentTextarea, {
-            target: { value: "**bold**" },
-        });
-        const previewToggle = screen.getByRole("button", {
-            name: "Preview markdown",
-        });
-        fireEvent.click(previewToggle);
-        expect(document.getElementById("markdown-preview")).toBeInTheDocument();
-    });
 
-    it("submits comment with multi-select selections", async () => {
+    it("submits additionalComments with multi-select selections", async () => {
         renderWithFooter("multi", buildPayload("multi"));
 
         fireEvent.click(screen.getByText("Option A"));
         fireEvent.click(screen.getByText("Option B"));
-        fireEvent.click(screen.getByText("Add comment"));
-        const commentTextarea =
-            screen.getByPlaceholderText("Optional comment…");
-        fireEvent.change(commentTextarea, {
+        const additionalCommentsTextarea =
+            screen.getByPlaceholderText("Optional additional comments…");
+        fireEvent.change(additionalCommentsTextarea, {
             target: { value: "Multi comment" },
         });
         fireEvent.click(screen.getByRole("button", { name: "Submit" }));
@@ -976,6 +905,6 @@ describe("SelectDialog", () => {
         >;
         expect(sent.kind).toBe("selection");
         expect(sent.selections).toEqual(["Option A", "Option B"]);
-        expect(sent.comment).toBe("Multi comment");
+        expect(sent.additionalComments).toBe("Multi comment");
     });
 });
