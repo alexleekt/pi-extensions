@@ -57,6 +57,19 @@ Package-specific behavioral rules (e.g., "Never use `setTimeout` in this package
 - Cross-cutting concerns (shared tooling, CI, release workflow)
 - References to package-level docs
 
+## Dependency Hygiene
+
+The workspace `package-lock.json` resolves `@earendil-works/pi-coding-agent` because all packages declare it as a peer dependency. npm auto-installs peer deps, so the lockfile hard-pins the resolved version.
+
+**Keep it current.** When working in this monorepo:
+
+1. **Check the latest version:** `npm view @earendil-works/pi-coding-agent version`
+2. **Check the lockfile version:** `grep -A2 '"node_modules/@earendil-works/pi-coding-agent"' package-lock.json`
+3. **If behind, bump before building:** `npm update @earendil-works/pi-coding-agent`
+4. **Verify the build still passes** after updating — extension API surface may have changed
+
+**Why:** A stale lockfile (e.g., 0.75.4 while latest is 0.78.1) means you build and test against old types, but users may run on newer Pi versions with new/deprecated APIs. This creates hidden drift.
+
 ## Before Committing
 
 1. Run `npm run typecheck` in the affected package

@@ -29,7 +29,7 @@ Both methods only fire when the agent is idle and no messages are pending.
 
 **Default (invisible)**: A hidden `customType` message is sent with `display: false`. The `context` handler replaces it with `"Continue"` before the LLM sees it. The LLM receives a clean semantic nudge and the chat stays uncluttered.
 
-**Escalated (visible)**: When loop detection notices the last two assistant responses had identical tool calls (or exact text duplicates), the *next* continue sends a real visible user message like `"What's next?"` or `"Keep going"` — stronger signal, same goal.
+**Escalated (visible)**: When loop detection notices the last two assistant responses had identical tool calls (or exact text duplicates), the *next* continue sends a real visible user message like `"Keep going"` or `"Press on"` — stronger signal, same goal.
 
 A `context` event handler proactively removes any leaked invisible markers as insurance. Real user input always resets escalation state.
 
@@ -72,7 +72,7 @@ pi-bump is designed to stay out of the way:
 `pi-bump` uses a two-tier strategy to keep the agent moving without polluting the chat:
 
 1. **Invisible tier** (default) — sends a hidden `customType` message (`display: false`). The `context` handler replaces it with `"Continue"` for the LLM. Chat stays clean.
-2. **Visible tier** (escalation) — when loop detection sees identical tool calls (or exact text duplicates) across the last two assistant responses, the *next* continue sends a real visible user message with a randomized nudge like `"Continue"`, `"Go deeper"`, or `"Show me where this leads"`.
+2. **Visible tier** (escalation) — when loop detection sees identical tool calls (or exact text duplicates) across the last two assistant responses, the *next* continue sends a real visible user message with a randomized nudge like `"Continue"`, `"Resume"`, or `"Keep going"`.
 3. **Auto-reset** — a non-loop assistant response or real user input resets back to the invisible tier.
 
 The visible tier only triggers when the invisible tier isn't breaking the loop — so most continues stay silent and seamless.

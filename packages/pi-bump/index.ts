@@ -15,24 +15,32 @@ const THRESHOLD_MS = 300;
  *  Invisible to the user, but gives the LLM a clear semantic nudge to keep going. */
 const CONTINUE_SIGNAL = "Continue";
 
-/** Randomized prompts to break loops with fresh phrasing. */
+/** Randomized prompts to break loops with fresh phrasing.
+ *  All signals are pure continuation — no expansion, no new direction.
+ *
+ *  Curation rules:
+ *    - Must mean "keep doing exactly what you were doing"
+ *    - Must NOT imply: expand scope, go deeper, add more, change direction,
+ *      plan next steps, or execute/show results
+ *    - Single-word, terse, and conversational variants included for freshness
+ */
 export const NUDGE_MESSAGES = [
+    // Core — direct, unambiguous, one word
     "Continue",
-    "Keep going",
-    "What's next?",
-    "Onward!",
-    "And then?",
-    "Build on that",
-    "More please",
-    "Next step?",
-    "Keep the momentum",
-    "Let's see it",
-    "Expand on this",
-    "Go deeper",
+    "Resume",
     "Proceed",
-    "Keep building",
-    "Show me where this leads",
-    "Run it",
+    "Next",
+    // Minimal — two words, tight
+    "Go on",
+    "Carry on",
+    "Onward",
+    "Press on",
+    // Conversational / encouraging
+    "Keep going",
+    "Keep the momentum",
+    "Push through",
+    // Energetic / rhythmic
+    "Don't stop",
 ];
 
 function pickNudge(): string {
@@ -285,7 +293,6 @@ async function runContinueCommand(
  *   - Real user input resets escalation and fingerprint state
  */
 export default function bumpExtension(pi: ExtensionAPI) {
-    // @ts-expect-error — monorepo type resolution mismatch (local 0.74.1 vs root 0.75.4)
     const sub = manageSessionSubscription(pi);
     const debugSessions = new Set<string>();
 
