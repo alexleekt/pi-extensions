@@ -10,7 +10,6 @@ packages/
   pi-ask-user-glimpse/
   pi-bump/
   pi-pkg-guard/
-  pi-herdr-tab-sync/
   pi-heading/
   pi-shared/
 .github/workflows/        ← CI lives at root only

@@ -16,7 +16,6 @@ This is a monorepo with multiple independently-published packages. Keep changes 
 | [`@alexleekt/pi-ask-user-glimpse`](./packages/pi-ask-user-glimpse) | Rich native WebView dialogs via glimpseui |
 | [`@alexleekt/pi-bump`](./packages/pi-bump) | Double-Enter nudge with randomized prompts |
 | [`@alexleekt/pi-heading`](./packages/pi-heading) | One-line session heading widget for pi |
-| [`@alexleekt/pi-herdr-tab-sync`](./packages/pi-herdr-tab-sync) | Sync pi session name to herdr tab label |
 | [`@alexleekt/pi-pkg-guard`](./packages/pi-pkg-guard) | Package management guard for pi extensions |
 | [`@alexleekt/pi-worktrunk-signal`](./packages/pi-worktrunk-signal) | Worktree context overlay and activity tracking for worktrunk |
 | [`@alexleekt/pi-shared`](./packages/pi-shared) | Shared types and utilities for Pi extensions |

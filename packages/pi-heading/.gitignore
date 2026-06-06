@@ -1,7 +1,7 @@
 VENT.md
 config.json
 debug.log
-tools/prompt-eval-report-*.md
+tools/prompt-eval-*-report.md
 tools/prompt-minimal*.md
 tools/test-cases-edge.json
 tools/test-cases-comprehensive.json

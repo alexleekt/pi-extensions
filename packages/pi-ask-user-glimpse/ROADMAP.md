@@ -81,17 +81,6 @@
 - [ ] A/B test new prompt vs current prompt
 - [ ] Measure tool invocation rate, user response rate, downstream task success
 
-## Research Files
-
-The following files are **temporary research artifacts** and are not part of the unified documentation structure:
-
-- `research.md` — AI agent "ask user" triggering patterns research
-- `progress.md` — Scout investigation progress tracker
-- `scout-*-report.md` (6 files) — Scout investigation reports
-- `*-tests.md` (9 files) — Test planning documents
-
-These are retained for historical reference but are not linked from the unified docs.
-
 ## Icebox
 
 - [ ] Custom window icons in Glimpse (API does not exist in v0.8.1)

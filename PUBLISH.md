@@ -56,7 +56,6 @@ Before pushing a release tag, verify:
 | `pi-heading` | `0.1.1` | `0.1.1` | ✅ Released |
 | `pi-pkg-guard` | `0.13.0` | `0.13.0` | ✅ Released |
 | `pi-shared` | `0.1.2` | `0.1.2` | ✅ Released |
-| `pi-herdr-tab-sync` | — | `1.0.0` | ⚠️ **NEEDS BOOTSTRAP** |
 
 ## Troubleshooting
 

@@ -25,7 +25,6 @@ Each package has its own `AGENT.md` with package-specific rules. When working on
 | `pi-shared` | `packages/pi-shared/AGENT.md` | Shared scorer library, minimal surface |
 | `pi-bump` | `packages/pi-bump/AGENT.md` | (existing) |
 | `pi-extension-reloader` | `packages/pi-extension-reloader/AGENT.md` | (existing) |
-| `pi-herdr-tab-sync` | `packages/pi-herdr-tab-sync/AGENT.md` | (existing) |
 | `pi-pkg-guard` | `packages/pi-pkg-guard/AGENT.md` | (existing) |
 | `pi-worktrunk-signal` | `packages/pi-worktrunk-signal/AGENT.md` | (existing) |
 
