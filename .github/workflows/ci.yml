@@ -17,7 +17,6 @@ jobs:
                     - pi-pkg-guard
                     - pi-ask-user-glimpse
                     - pi-heading
-                    - pi-herdr-tab-sync
                     - pi-worktrunk-signal
         steps:
             - name: Checkout
