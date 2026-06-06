@@ -100,6 +100,16 @@ export function handleBeforeAgentStart(
     sharedState.currentPlaceholder = placeholder;
     setHeadingMessage(ctx, placeholder, "working");
 
+    // Store placeholder as temporary state so the heading tool can see it
+    // while the async summarize is still in progress.
+    if (leafId) {
+        setState(leafId, {
+            topic: existing?.topic ?? "General",
+            goal: placeholder,
+            achievement: existing?.achievement,
+        });
+    }
+
     // Fire-and-forget: do not await summarize — we must not block the agent
     void (async () => {
         try {

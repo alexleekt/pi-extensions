@@ -448,6 +448,8 @@ describe("headingExtension", () => {
         // Immediate placeholder is set synchronously before async summarize
         expect(ctx.workingMessageCalls.length).toBeGreaterThanOrEqual(1);
         expect(ctx.workingMessageCalls[0]).toContain("help with docker");
+        // The placeholder is also stored in state so heading tool can see it
+        expect(getState("leaf-1")?.goal).toBe("help with docker");
         await new Promise((r) => setTimeout(r, 50));
         // After summarize completes, the LLM goal replaces the placeholder
         expect(
