@@ -1,7 +1,7 @@
 # Council Review Report — pi-ask-user-glimpse
 
-**Reviewed:** package.json (wireit + prepare), .gitignore, pi-extension-reloader/index.ts  
-**Date:** 2026-05-24  
+**Reviewed:** package.json (wireit + prepare), .gitignore
+**Date:** 2026-05-24
 **Verdict:** **NO — requires fixes before merge**
 
 ---
