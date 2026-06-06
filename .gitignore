@@ -20,3 +20,14 @@ packages/*/.a5c/
 # Dev test scripts
 test-dialog.mjs
 test-results/
+
+# Graphify knowledge graph outputs
+graphify-out/
+.graphify_*
+
+/.crew/
+/.crew
+!.crew/artifacts/
+!.crew/graphs/
+!.crew/artifacts/.gitkeep
+!.crew/graphs/.gitkeep
