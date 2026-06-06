@@ -58,4 +58,6 @@
 | **Glimpse null origin** | Glimpse loads the webview via `loadHTMLString(baseURL: nil)`, giving the page `null` origin. `localStorage` access throws `SecurityError`. Theme changes are propagated via `postMessage` instead. |
 | **DOMPurify strict mode** | ContextPanel sanitization uses strict `ALLOWED_TAGS` and `ALLOWED_ATTR` lists. Blocks `script`, `img`, `iframe`, `object`, `embed`, `form`, `svg`, and strips `javascript:` / `data:` URLs. |
 | **CSP meta tag** | Content-Security-Policy header in the HTML document to prevent inline script execution. |
+| **Console artifact** | A `[pi-ask-user-glimpse]` tag rendered in the Pi UI when `console.log` or `console.warn` is called in a hook (`before_agent_start`). The Pi system captures console output and appends it to messages as a visual widget. |
+| **Silent hook** | A hook that returns `undefined` without logging, avoiding console artifacts in the UI. |
 | **hasSent guard** | Synchronous ref in `useBaseDialog` that prevents double-submit / double-cancel against the fire-and-forget Glimpse native bridge. |

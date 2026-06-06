@@ -2,6 +2,11 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## Unreleased
+
+### Fixed
+- **Removed noisy console logs from `before_agent_start` hook** — `console.log` and `console.warn` calls in `before_agent_start` were being captured by the Pi system and rendered as `[pi-ask-user-glimpse]` tags appended to user messages. The hook now silently returns `undefined` in plain mode and silently early-returns when `ask_user` is not in selectedTools or UI is unavailable. Only the one-time `guidelineCount === 0` warning remains at startup.
+
 ## [0.5.3] — 2026-06-01
 
 ### Fixed

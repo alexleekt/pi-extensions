@@ -9,7 +9,8 @@
 
 | Version | Date | Status |
 |---------|------|--------|
-| v0.5.2 | 2026-05-29 | 🔴 Active development |
+| v0.5.3 | 2026-06-01 | 🟢 Released |
+| v0.5.4 | — | 🔴 Active development (unreleased) |
 
 ## Known Issues
 

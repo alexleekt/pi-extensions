@@ -31,7 +31,7 @@ For manual visual testing, use `/ask-debug` inside a Pi session. It offers five 
 
 - **Indentation:** 2 spaces (TypeScript)
 - **Imports:** Use `.js` extensions on relative imports (NodeNext module resolution)
-- **Console output:** Use `[pi-ask-user-glimpse]` prefix for all `console.warn`/`console.error`
+- **Console output:** Use `[pi-ask-user-glimpse]` prefix for all `console.warn`/`console.error`. **Never use `console.log` in hooks** — it creates visual artifacts in the Pi UI.
 - **Peer deps:** Only list `@earendil-works/pi-coding-agent` and `@earendil-works/pi-ai` in `peerDependencies`
 
 ## Security Notes

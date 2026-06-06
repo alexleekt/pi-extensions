@@ -63,7 +63,7 @@ When working with HTML context (`contextFormat: "html"`) or any iframe inside th
 
 - **Indentation:** 2 spaces (TypeScript)
 - **Imports:** Use `.js` extensions on relative imports (NodeNext module resolution)
-- **Console output:** Use `[pi-ask-user-glimpse]` prefix for all `console.warn`/`console.error`
+- **Console output:** Use `[pi-ask-user-glimpse]` prefix for all `console.warn`/`console.error`. **Never use `console.log` in hooks (`before_agent_start`, etc.)** — it creates visual artifacts in the Pi UI.
 - **Peer deps:** List `@earendil-works/pi-coding-agent` and `@earendil-works/pi-ai` in `peerDependencies`. Do NOT add `@earendil-works/pi-tui` — it's not used.
 
 ## Decision Making
