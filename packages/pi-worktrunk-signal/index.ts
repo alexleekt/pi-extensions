@@ -14,6 +14,12 @@ import {
     Text,
 } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import {
+    detectBranchChange,
+    fetchStatusline,
+    getHealth,
+    invalidateStatusline,
+} from "./statusline";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -213,26 +219,29 @@ async function relaunchInWorktreeHerdr(
         });
 
         // Parse the workspace ID and root pane from the JSON output
-        let workspaceId: string | undefined;
         let rootPaneId: string | undefined;
         try {
             const parsed = JSON.parse(workspaceResult);
-            workspaceId = parsed.result?.workspace?.workspace_id;
             rootPaneId = parsed.result?.workspace?.root_pane;
         } catch {
             // Fallback: try to find the workspace by listing
             const listResult = await new Promise<string>((resolve, reject) => {
-                exec("herdr workspace list", { encoding: "utf-8" }, (err, stdout) => {
-                    if (err) return reject(err);
-                    resolve(stdout);
-                });
+                exec(
+                    "herdr workspace list",
+                    { encoding: "utf-8" },
+                    (err, stdout) => {
+                        if (err) return reject(err);
+                        resolve(stdout);
+                    },
+                );
             });
             try {
                 const parsed = JSON.parse(listResult);
                 const workspaces = parsed.result?.workspaces || [];
-                const ws = workspaces.find((w: { label?: string }) => w.label === branch);
+                const ws = workspaces.find(
+                    (w: { label?: string }) => w.label === branch,
+                );
                 if (ws) {
-                    workspaceId = ws.workspace_id;
                     rootPaneId = ws.root_pane;
                 }
             } catch {
@@ -242,16 +251,27 @@ async function relaunchInWorktreeHerdr(
 
         if (!rootPaneId) {
             // Fallback: run in current pane
-            await pi.exec("herdr", ["pane", "run", process.env.HERDR_PANE_ID || "", cmd]);
-            if (ctx.hasUI) ctx.ui.notify(`Switched to ${branch} in current pane.`, "info");
+            await pi.exec("herdr", [
+                "pane",
+                "run",
+                process.env.HERDR_PANE_ID || "",
+                cmd,
+            ]);
+            if (ctx.hasUI)
+                ctx.ui.notify(`Switched to ${branch} in current pane.`, "info");
             return;
         }
 
         // Run Pi in the new workspace's root pane
         await pi.exec("herdr", ["pane", "run", rootPaneId, cmd]);
-        if (ctx.hasUI) ctx.ui.notify(`Created workspace ${branch} and launched Pi.`, "info");
+        if (ctx.hasUI)
+            ctx.ui.notify(
+                `Created workspace ${branch} and launched Pi.`,
+                "info",
+            );
     } catch (e) {
-        if (ctx.hasUI) ctx.ui.notify(`Workspace creation failed: ${errMsg(e)}`, "error");
+        if (ctx.hasUI)
+            ctx.ui.notify(`Workspace creation failed: ${errMsg(e)}`, "error");
     }
 }
 
@@ -319,6 +339,7 @@ async function relaunchInWorktree(
 
 export default function (pi: ExtensionAPI) {
     let currentBranch: string | null = null;
+    let lastKnownBranch: string | null = null;
 
     // ── Session Tracking ──────────────────────────────────────────────────
 
@@ -327,12 +348,52 @@ export default function (pi: ExtensionAPI) {
         if (!(await isInsideGitRepo(cwd))) return;
         const branch = await getBranchFromCwd(cwd);
         currentBranch = branch;
+        lastKnownBranch = branch;
+
+        if (ctx.hasUI && branch) {
+            const status = await fetchStatusline(cwd, branch);
+            if (status) ctx.ui.setStatus("worktrunk", status);
+        }
+    });
+
+    pi.on("turn_start", async (_event, ctx) => {
+        const cwd = ctx.cwd;
+        if (!(await isInsideGitRepo(cwd))) return;
+
+        // Self-recovery: detect branch drift and invalidate stale cache
+        const drifted = await detectBranchChange(cwd, lastKnownBranch);
+        if (drifted && drifted !== currentBranch) {
+            currentBranch = drifted;
+            lastKnownBranch = drifted;
+            if (ctx.hasUI) {
+                const status = await fetchStatusline(cwd, drifted, true);
+                if (status) ctx.ui.setStatus("worktrunk", status);
+            }
+        }
+    });
+
+    pi.on("turn_end", async (_event, ctx) => {
+        const cwd = ctx.cwd;
+        if (!(await isInsideGitRepo(cwd))) return;
+
+        const branch = currentBranch || (await getBranchFromCwd(cwd));
+        if (!branch) return;
+        currentBranch = branch;
+        lastKnownBranch = branch;
+
+        if (!ctx.hasUI) return;
+        const status = await fetchStatusline(cwd, branch);
+        if (status) ctx.ui.setStatus("worktrunk", status);
     });
 
     pi.on("session_shutdown", async (_event, ctx) => {
         const cwd = ctx.cwd;
         const branch = currentBranch || (await getBranchFromCwd(cwd));
         currentBranch = branch;
+        lastKnownBranch = branch;
+
+        if (ctx.hasUI) ctx.ui.setStatus("worktrunk", "");
+        invalidateStatusline(cwd);
     });
 
     // ── /wt-switch-create Command ─────────────────────────────────────────
@@ -375,6 +436,22 @@ export default function (pi: ExtensionAPI) {
                 if (ctx.hasUI)
                     ctx.ui.notify(`wt failed: ${errMsg(e)}`, "error");
                 return;
+            }
+
+            // Invalidate stale cache and update statusline before relaunch
+            invalidateStatusline(ctx.cwd);
+            const newBranch = await getBranchFromCwd(ctx.cwd);
+            if (newBranch) {
+                currentBranch = newBranch;
+                lastKnownBranch = newBranch;
+                if (ctx.hasUI) {
+                    const status = await fetchStatusline(
+                        ctx.cwd,
+                        newBranch,
+                        true,
+                    );
+                    if (status) ctx.ui.setStatus("worktrunk", status);
+                }
             }
 
             await relaunchInWorktree(pi, ctx, branch, repo, task);
@@ -525,15 +602,11 @@ export default function (pi: ExtensionAPI) {
             const target = (args || "").trim();
             if (!target) {
                 if (ctx.hasUI)
-                    ctx.ui.notify(
-                        "Usage: /wt-merge <target-branch>",
-                        "error",
-                    );
+                    ctx.ui.notify("Usage: /wt-merge <target-branch>", "error");
                 return;
             }
 
-            if (ctx.hasUI)
-                ctx.ui.notify(`Merging into ${target}…`, "info");
+            if (ctx.hasUI) ctx.ui.notify(`Merging into ${target}…`, "info");
 
             try {
                 const result = await new Promise<string>((resolve, reject) => {
@@ -588,14 +661,59 @@ export default function (pi: ExtensionAPI) {
         },
     });
 
+    // ── /wt-status Command ─────────────────────────────────────────────────
+
+    pi.registerCommand("wt-status", {
+        description: "Show current worktrunk statusline and health diagnostics",
+        handler: async (_args, ctx) => {
+            const cwd = ctx.cwd;
+            const branch = currentBranch || (await getBranchFromCwd(cwd));
+            const health = getHealth();
+            const status = branch ? await fetchStatusline(cwd, branch) : null;
+
+            const lines = [
+                `Branch: ${branch || "(unknown)"}`,
+                `Statusline: ${status || "(none)"}`,
+                `Health: ${health.degradedUntil > Date.now() ? "degraded" : "healthy"}`,
+                `WT failures: ${health.consecutiveWtFailures}`,
+                `WT successes: ${health.consecutiveWtSuccesses}`,
+                `Last error: ${health.lastError || "(none)"}`,
+            ];
+
+            if (ctx.hasUI) ctx.ui.notify(lines.join("\n"), "info");
+        },
+    });
+
+    // ── /wt-refresh Command ─────────────────────────────────────────────────
+
+    pi.registerCommand("wt-refresh", {
+        description: "Force-refresh the statusline cache",
+        handler: async (_args, ctx) => {
+            const cwd = ctx.cwd;
+            const branch = currentBranch || (await getBranchFromCwd(cwd));
+            if (!branch) {
+                if (ctx.hasUI) ctx.ui.notify("No branch detected.", "warning");
+                return;
+            }
+
+            invalidateStatusline(cwd);
+            const status = await fetchStatusline(cwd, branch, true);
+            if (status && ctx.hasUI) {
+                ctx.ui.setStatus("worktrunk", status);
+                ctx.ui.notify(`Statusline refreshed: ${status}`, "info");
+            } else if (ctx.hasUI) {
+                ctx.ui.notify("No statusline available.", "warning");
+            }
+        },
+    });
+
     // ── /wt-commit Command ─────────────────────────────────────────────────
 
     pi.registerCommand("wt-commit", {
         description:
             "Generate a commit message using LLM and commit. Usage: /wt-commit",
         handler: async (_args, ctx) => {
-            if (ctx.hasUI)
-                ctx.ui.notify("Running wt step commit…", "info");
+            if (ctx.hasUI) ctx.ui.notify("Running wt step commit…", "info");
 
             try {
                 const result = await new Promise<string>((resolve, reject) => {
@@ -646,7 +764,13 @@ export default function (pi: ExtensionAPI) {
 
             // 1. Create worktree (use --no-cd --no-hooks to avoid cd
             // script side-effects and duplicate hooks in the subagent)
-            const wtArgs = ["switch", "--create", "--no-cd", "--no-hooks", branch];
+            const wtArgs = [
+                "switch",
+                "--create",
+                "--no-cd",
+                "--no-hooks",
+                branch,
+            ];
             if (repo) wtArgs.push("--repo", repo);
 
             try {
@@ -675,16 +799,18 @@ export default function (pi: ExtensionAPI) {
             const mux = detectMultiplexer();
             if (mux === "herdr") {
                 try {
-                    const paneResult = await new Promise<string>((resolve, reject) => {
-                        exec(
-                            `herdr pane split ${process.env.HERDR_PANE_ID || ""} --direction right --no-focus`,
-                            { encoding: "utf-8" },
-                            (err, stdout) => {
-                                if (err) return reject(err);
-                                resolve(stdout);
-                            },
-                        );
-                    });
+                    const paneResult = await new Promise<string>(
+                        (resolve, reject) => {
+                            exec(
+                                `herdr pane split ${process.env.HERDR_PANE_ID || ""} --direction right --no-focus`,
+                                { encoding: "utf-8" },
+                                (err, stdout) => {
+                                    if (err) return reject(err);
+                                    resolve(stdout);
+                                },
+                            );
+                        },
+                    );
 
                     let newPaneId: string | undefined;
                     try {

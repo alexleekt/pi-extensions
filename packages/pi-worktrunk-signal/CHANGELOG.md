@@ -7,9 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Robust statusline module** (`statusline.ts`): Re-introduces automatic footer statusline with 3-layer fallback resolution, self-recovery, and health tracking.
+  - **Layer 1**: `wt list statusline` — highest fidelity, includes ahead/behind, dirty, untracked
+  - **Layer 2**: `git branch --show-current` + `git rev-list --left-right --count` + `git status --porcelain` — manual reconstruction when `wt` is unavailable
+  - **Layer 3**: Read `.git/HEAD` directly — no subprocess, works even if `git` is slow
+  - **Health tracking**: Automatic degraded mode after 3 consecutive `wt` failures (switches to git-only for 30s); auto-recovery after 3 consecutive successes
+  - **Cache keyed by `cwd#branch`**: Automatic invalidation on branch switch within the same directory — fixes the root cause of stale statusline data
+  - **Branch drift detection**: `turn_start` checks `detectBranchChange()` — if branch changed since last turn, invalidates cache and force-refreshes statusline
+  - **Self-recovery from stale cache**: Cache entries older than 2× TTL or with branch mismatch are treated as stale and refreshed immediately
+- **`/wt-status` command**: Displays current branch, statusline text, health state (healthy/degraded), consecutive failure/success counts, and last error
+- **`/wt-refresh` command**: Force-refresh the statusline cache and update the footer
+- **`turn_start` hook**: Detects branch drift and force-refreshes statusline before the turn begins
+- **`session_shutdown` hook**: Clears the statusline footer and invalidates cache
+
 ### Removed
 
-- **Statusline feature**: Removed automatic footer statusline, `/wt-statusline-refresh` command, `fetchStatusline()`, `invalidateStatuslineCache()`, and all related caching infrastructure. Statusline was duplicative of `wt list` output and added 1–2s latency per turn.
+- **Old statusline feature**: Removed automatic footer statusline, `/wt-statusline-refresh` command, `fetchStatusline()`, `invalidateStatuslineCache()`, and all related caching infrastructure. Statusline was duplicative of `wt list` output and added 1–2s latency per turn.
 
 ## [0.2.0] - 2026-05-22
 
