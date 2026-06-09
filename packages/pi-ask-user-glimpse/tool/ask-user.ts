@@ -48,14 +48,12 @@ function summarizeTitle(question: string, maxWords = 3): string {
 
 function resolveWebviewHtml(): string {
     const distPath = join(__dirname, "..", "dist", "index.html");
-    console.log(`[pi-ask-user-glimpse] Loading webview from: ${distPath}`);
     try {
         return readFileSync(distPath, "utf-8");
     } catch {
         // Fallback for development: resolve from package root
         const pkgRoot = dirname(_require.resolve("../package.json"));
         const fallbackPath = join(pkgRoot, "dist", "index.html");
-        console.log(`[pi-ask-user-glimpse] Fallback: ${fallbackPath}`);
         try {
             return readFileSync(fallbackPath, "utf-8");
         } catch (err) {
