@@ -1,6 +1,6 @@
 {
     "name": "@alexleekt/pi-ask-user-glimpse",
-    "version": "0.5.3",
+    "version": "0.5.4",
     "description": "Ask better questions. Get better answers. Rich native WebView dialogs for the Pi agent.",
     "type": "module",
     "keywords": [
@@ -115,6 +115,7 @@
     "dependencies": {
         "@alexleekt/pi-shared": "^0.1.0",
         "@catppuccin/palette": "^1.8.0",
+        "@earendil-works/pi-tui": "^0.79.1",
         "dompurify": "^3.4.7",
         "glimpseui": "^0.8.1"
     },

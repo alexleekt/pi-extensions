@@ -275,9 +275,34 @@ Open a debug prompt that lets you manually test each dialog type:
 /ask-debug
 ```
 
+The command also supports a `getArgumentCompletions` autocomplete — type `/ask-debug kit<Tab>` and the editor completes it to `kitchen-sink`. Passing the scenario as the argument skips the select dialog:
+
+```
+/ask-debug kitchen-sink
+```
+
 Options: `single-select`, `multi-select`, `freeform`, `questionnaire`, `kitchen-sink`. The result is shown as a Pi notification.
 
 The **kitchen-sink** option opens a comprehensive questionnaire with an HTML context panel, recommended badges, multi-select, freeform, comments, and skip — every major feature in one dialog.
+
+## Editor Autocomplete
+
+The extension layers two completions on top of Pi's built-in slash / path provider via `ctx.ui.addAutocompleteProvider()` (requires `pi-coding-agent ≥ 0.79.1`).
+
+### `#<header>` — recall a recent ask_user call
+
+Type `#` at a token boundary to open a fuzzy-completed dropdown of headers from the most recent `ask_user` calls. Each entry is the question's `title` (questionnaire sub-questions get one entry each), the value inserted is the full question text.
+
+Examples:
+- `#dat<Tab>` → `Which database should we use?` (from a recent single-select)
+- `#arch<Tab>` → `Preferred architecture style?` (from a recent questionnaire)
+- `#<Tab>` → newest-first list of all recent question headers
+
+The store is **session-scoped**: cleared on `session_start`, capped at 20 entries, and reseeded from every `ask_user` tool call. There is no disk persistence.
+
+### `/ask-debug <scenario>` — debug scenario completion
+
+See [Slash Command: `/ask-debug`](#slash-command-ask-debug) above.
 
 ## Window Behavior
 

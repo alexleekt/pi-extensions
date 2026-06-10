@@ -11,8 +11,10 @@ import { StringEnum, Type } from "@earendil-works/pi-ai";
 import type {
     ExtensionAPI,
     ExtensionContext,
+    ToolCallEvent,
 } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
+import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import { PROTECTED_ABBREVIATIONS } from "./constants/abbreviations.js";
 import {
     ALL_THEME_NAMES,
@@ -32,9 +34,61 @@ import {
     type AskUserParams,
     askUserHandler,
 } from "./tool/ask-user.js";
+import { makeRecentQuestionAutocompleteProvider } from "./tool/extension-autocomplete.js";
+import {
+    entriesFromAskUserCall,
+    makeRecentQuestionsStore,
+    type AskKind,
+    type RecentQuestionsStore,
+} from "./tool/recent-questions.js";
+
+/* ── Fixed scenarios for /ask-debug command and its argument completion ── */
+const ASK_DEBUG_SCENARIOS: AutocompleteItem[] = [
+    {
+        value: "single-select",
+        label: "single-select",
+        description: "Radio-style options with optional freeform + comment",
+    },
+    {
+        value: "multi-select",
+        label: "multi-select",
+        description: "Checkbox-style options, select-all, submit-gating",
+    },
+    {
+        value: "freeform",
+        label: "freeform",
+        description: "Plain textarea, character counter, platform shortcuts",
+    },
+    {
+        value: "questionnaire",
+        label: "questionnaire",
+        description: "Multiple structured questions, progress bar, per-Q counters",
+    },
+    {
+        value: "kitchen-sink",
+        label: "kitchen-sink",
+        description: "Every feature: HTML context, charts, comparison tables",
+    },
+];
+
+function inferAskKind(params: AskUserParams): AskKind {
+    if (Array.isArray(params.questions) && params.questions.length > 0) {
+        return "questionnaire";
+    }
+    if (params.allowMultiple) {
+        return "multi-select";
+    }
+    if (Array.isArray(params.options) && params.options.length > 0) {
+        return "single-select";
+    }
+    return "freeform";
+}
 
 /* ── Module-level reference to ExtensionAPI for tool execute closure ── */
 let _pi: ExtensionAPI | undefined;
+
+/* ── Session-scoped store of recent ask_user calls (powers `#<header>` autocomplete) ── */
+const recentQuestionsStore: RecentQuestionsStore = makeRecentQuestionsStore();
 
 /* ── Style constants ── */
 
@@ -630,6 +684,33 @@ export default function (pi: ExtensionAPI) {
         }
     }
 
+    // ── Capture ask_user tool calls to power `#<header>` autocomplete ──
+    pi.on("tool_call", (event: ToolCallEvent) => {
+        if (event.toolName !== "ask_user") return;
+        const params = event.input as unknown as AskUserParams;
+        const entries = entriesFromAskUserCall(
+            params,
+            inferAskKind(params),
+            event.toolCallId,
+        );
+        for (const entry of entries) {
+            recentQuestionsStore.add(entry);
+        }
+    });
+
+    // ── Session start: clear store, register `#<header>` autocomplete provider ──
+    pi.on("session_start", (_event, ctx) => {
+        recentQuestionsStore.clear();
+        if (ctx.ui.addAutocompleteProvider) {
+            ctx.ui.addAutocompleteProvider((current) =>
+                makeRecentQuestionAutocompleteProvider(
+                    current,
+                    recentQuestionsStore,
+                ),
+            );
+        }
+    });
+
     // ── Inject mandate based on ask style ──
     pi.on("before_agent_start", async (event, ctx) => {
         const hasAskUser =
@@ -736,13 +817,19 @@ export default function (pi: ExtensionAPI) {
                 return;
             }
 
-            const mode = await ctx.ui.select("Choose a prompt type to test:", [
-                "single-select",
-                "multi-select",
-                "freeform",
-                "questionnaire",
-                "kitchen-sink",
-            ]);
+            // Prefer the scenario passed via the slash-command argument (autocompleted),
+            // falling back to a select dialog so the command still works with no args.
+            const argMode = _args?.trim();
+            const isValidArg = ASK_DEBUG_SCENARIOS.some(
+                (s) => s.value === argMode,
+            );
+            const mode =
+                isValidArg && argMode
+                    ? argMode
+                    : await ctx.ui.select(
+                          "Choose a prompt type to test:",
+                          ASK_DEBUG_SCENARIOS.map((s) => s.value),
+                      );
             if (!mode) return;
 
             const params = buildDebugParams(mode);
