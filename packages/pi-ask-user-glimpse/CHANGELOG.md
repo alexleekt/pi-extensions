@@ -14,6 +14,7 @@ All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this f
 
 ### Fixed
 - **`renderMarkdownInline` multi-paragraph bug** — The previous implementation stripped the wrapping `<p>...</p>` with a regex that only matched the first/last pair, leaving the final paragraph unclosed in multi-paragraph input. The function now detects multiple blocks (paragraphs, paragraph + list, etc.) and keeps the block structure intact rather than producing invalid HTML.
+- **`/ask-debug <scenario>` tab completion was advertised but not wired** — the prior commit added the `_args` handler side (so `/ask-debug kitchen-sink` would skip the select dialog) but never declared `getArgumentCompletions` on the `registerCommand` call, so Tab after `/ask-debug` showed no completions. Added the missing `getArgumentCompletions` callback (extracted to a testable `filterAskDebugScenarios` helper in `tool/ask-debug-scenarios.ts`), and 8 unit tests covering empty/prefix/matching/non-matching cases.
 - **Removed noisy console logs from `before_agent_start` hook** — `console.log` and `console.warn` calls in `before_agent_start` were being captured by the Pi system and rendered as `[pi-ask-user-glimpse]` tags appended to user messages. The hook now silently returns `undefined` in plain mode and silently early-returns when `ask_user` is not in selectedTools or UI is unavailable. Only the one-time `guidelineCount === 0` warning remains at startup.
 
 ### Tests

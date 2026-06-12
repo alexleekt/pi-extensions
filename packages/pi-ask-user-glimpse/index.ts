@@ -14,7 +14,6 @@ import type {
     ToolCallEvent,
 } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
-import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import { PROTECTED_ABBREVIATIONS } from "./constants/abbreviations.js";
 import {
     ALL_THEME_NAMES,
@@ -41,35 +40,10 @@ import {
     type AskKind,
     type RecentQuestionsStore,
 } from "./tool/recent-questions.js";
-
-/* ── Fixed scenarios for /ask-debug command and its argument completion ── */
-const ASK_DEBUG_SCENARIOS: AutocompleteItem[] = [
-    {
-        value: "single-select",
-        label: "single-select",
-        description: "Radio-style options with optional freeform + comment",
-    },
-    {
-        value: "multi-select",
-        label: "multi-select",
-        description: "Checkbox-style options, select-all, submit-gating",
-    },
-    {
-        value: "freeform",
-        label: "freeform",
-        description: "Plain textarea, character counter, platform shortcuts",
-    },
-    {
-        value: "questionnaire",
-        label: "questionnaire",
-        description: "Multiple structured questions, progress bar, per-Q counters",
-    },
-    {
-        value: "kitchen-sink",
-        label: "kitchen-sink",
-        description: "Every feature: HTML context, charts, comparison tables",
-    },
-];
+import {
+    ASK_DEBUG_SCENARIOS,
+    filterAskDebugScenarios,
+} from "./tool/ask-debug-scenarios.js";
 
 function inferAskKind(params: AskUserParams): AskKind {
     if (Array.isArray(params.questions) && params.questions.length > 0) {
@@ -809,6 +783,8 @@ export default function (pi: ExtensionAPI) {
 
     pi.registerCommand("ask-debug", {
         description: "Open a debug prompt to test each ask_user dialog type",
+        getArgumentCompletions: (argumentPrefix) =>
+            filterAskDebugScenarios(argumentPrefix),
         handler: async (_args, ctx) => {
             if (!ctx.hasUI) {
                 console.warn(
