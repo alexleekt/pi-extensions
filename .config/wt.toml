@@ -4,8 +4,12 @@
 # Install workspace dependencies when creating a new worktree.
 # Each worktree is a separate working directory, so node_modules must be
 # bootstrapped before any package scripts will run.
+# Override ~/.npmrc's ignore-scripts=true so postinstall hooks (e.g. glimpseui's
+# Swift binary build) actually run. See ~/.agents/skills/my-workflow or the
+# memex card "ignore-scripts=true in ~/.npmrc silently breaks glimpseui in
+# worktrees" for context.
 [[pre-start]]
-deps = "npm ci"
+deps = "npm ci --ignore-scripts=false"
 
 # Build the webview after dependencies are installed so dist/ is ready.
 [[pre-start]]
