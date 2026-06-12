@@ -8,12 +8,14 @@ export default defineConfig({
         include: [
             "webview/src/**/*.{test,spec}.{ts,tsx}",
             "tool/**/*.{test,spec}.{ts,tsx}",
+            "shared/**/*.{test,spec}.{ts,tsx}",
         ],
         coverage: {
             provider: "v8",
             include: [
                 "webview/src/**/*.{ts,tsx}",
                 "tool/**/*.ts",
+                "shared/**/*.ts",
             ],
             exclude: [
                 "webview/src/**/*.test.{ts,tsx}",
@@ -23,6 +25,8 @@ export default defineConfig({
                 "webview/src/test-setup.ts",
                 "tool/**/*.test.ts",
                 "tool/**/*.spec.ts",
+                "shared/**/*.test.ts",
+                "shared/**/*.spec.ts",
             ],
         },
     },

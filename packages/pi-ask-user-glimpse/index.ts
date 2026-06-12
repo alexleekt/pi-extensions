@@ -16,6 +16,13 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { PROTECTED_ABBREVIATIONS } from "./constants/abbreviations.js";
 import { ALL_THEME_NAMES, type AnimationLevel, type ThemeMode, type ThemeName } from "./shared/ask-user.js";
 import {
+    buildAgentPreamble,
+    extractTextFromAssistantEntry,
+    findLastAssistantEntry,
+    mergeContextWithPreamble,
+    stripThinkingBlocks,
+} from "./shared/preamble.js";
+import {
     loadAskUserPrompt,
     loadYoloMandate,
 } from "./shared/prompt-loader.js";
@@ -73,22 +80,6 @@ function getThemeSettings(entries: unknown[]): {
     };
 }
 
-/** Extract text blocks from a content array (journal entry). */
-function extractTextFromContent(content: unknown): string {
-    if (typeof content === "string") return content;
-    if (!Array.isArray(content)) return "";
-    return content
-        .filter(
-            (c): c is { type: string; text: string } =>
-                typeof c === "object" &&
-                c !== null &&
-                typeof (c as Record<string, unknown>).type === "string" &&
-                typeof (c as Record<string, unknown>).text === "string",
-        )
-        .map((c) => c.text)
-        .join("\n");
-}
-
 /* ── Shared helpers for consistent ask_user UX across all entry points ── */
 
 /** Enrich raw ask_user params with persisted theme/animation settings. */
@@ -110,13 +101,8 @@ function saveThemeMetadata(metadata: AskUserMetadata) {
     }
 }
 
-/** Strip XML-style `<thinking>` blocks and markdown reasoning blocks from text. */
-function stripThinkingBlocks(text: string): string {
-    return text
-        .replace(/<thinking>[\s\S]*?<\/thinking>/g, "")
-        .replace(/```\s*thinking\n[\s\S]*?```/g, "")
-        .trim();
-}
+/** Strip XML-style `<thinking>` blocks and markdown reasoning blocks from text.
+ *  Uses the shared implementation from `./shared/preamble.js`. */
 
 /** Execute ask_user with full enrichment + persistence, used by tool and commands alike. */
 async function runAskUserWithTheme(
@@ -128,9 +114,21 @@ async function runAskUserWithTheme(
     const params = enrichWithThemeSettings(rawParams, entries);
     let metadata: AskUserMetadata = {};
 
-    // Strip reasoning chains from explicitly-passed context
-    const cleanedParams: AskUserParams = params.context
-        ? { ...params, context: stripThinkingBlocks(params.context) }
+    // 1. Strip reasoning chains from explicitly-passed context
+    const explicitContext = params.context
+        ? stripThinkingBlocks(params.context)
+        : undefined;
+
+    // 2. Capture the most recent assistant message as a preamble (the
+    //    long-promised "preamble capture"). mergeContextWithPreamble
+    //    dedupes against the explicit context so the `/ask` command
+    //    (which already passes the full assistant text as context)
+    //    doesn't render the same content twice.
+    const preamble = buildAgentPreamble(entries, params.question);
+    const context = mergeContextWithPreamble(explicitContext, preamble);
+
+    const cleanedParams: AskUserParams = context
+        ? { ...params, context }
         : params;
 
     const result = await askUserHandler(cleanedParams, signal, ctx, (m) => {
@@ -138,27 +136,6 @@ async function runAskUserWithTheme(
     });
     saveThemeMetadata(metadata);
     return result;
-}
-
-/** Extract plain text from a Pi journal assistant entry. */
-function extractTextFromAssistantEntry(entry: unknown): string {
-    if (!entry || typeof entry !== "object") return "";
-    const content = (
-        (entry as Record<string, unknown>).message as
-            | Record<string, unknown>
-            | undefined
-    )?.content;
-    return extractTextFromContent(content);
-}
-
-/** Find the most recent assistant entry in the session journal. */
-function findLastAssistantEntry(entries: unknown[]): unknown | undefined {
-    return [...entries].reverse().find((e) => {
-        if (!e || typeof e !== "object") return false;
-        const msg = (e as Record<string, unknown>).message;
-        if (!msg || typeof msg !== "object") return false;
-        return (msg as Record<string, unknown>).role === "assistant";
-    });
 }
 
 /* ── /ask: extract explicit questions only ── */

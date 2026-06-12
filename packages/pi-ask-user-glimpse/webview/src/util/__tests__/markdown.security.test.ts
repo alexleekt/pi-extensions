@@ -417,5 +417,34 @@ describe("markdown security pipeline", () => {
             expect(output).toContain('target="_blank"');
             expect(output).toContain('rel="noopener noreferrer"');
         });
+
+        // ──────────────────────────────────────────────────────────────
+        // Multi-paragraph inline: strips the OUTER <p> wrappers but keeps
+        // intermediate block structure intact, so the caller (always a
+        // block container) gets valid HTML.
+        // ──────────────────────────────────────────────────────────────
+        it("strips outer <p> for single-paragraph input", () => {
+            const output = renderMarkdownInline("Hello world");
+            expect(output).toBe("Hello world");
+        });
+
+        it("preserves intermediate <p> for multi-paragraph input", () => {
+            const input = "First paragraph.\n\nSecond paragraph.";
+            const output = renderMarkdownInline(input);
+            // For multi-paragraph input we keep the block-level HTML
+            // structure intact (each <p>...</p> stays a valid pair).
+            // Stripping the outer wrapper would leave the final paragraph
+            // unclosed — that's why we no longer attempt it.
+            expect(output).toContain("<p>First paragraph.</p>");
+            expect(output).toContain("<p>Second paragraph.</p>");
+        });
+
+        it("handles paragraph + list combination without broken HTML", () => {
+            const input = "Intro paragraph.\n\n- item one\n- item two";
+            const output = renderMarkdownInline(input);
+            expect(output).toContain("<p>Intro paragraph.</p>");
+            expect(output).toContain("<ul>");
+            expect(output).toContain("<li>item one</li>");
+        });
     });
 });

@@ -48,6 +48,7 @@ All helpers auto-theme to light/dark mode.
 1. STOP and ask — NEVER guess. If ANY trigger condition applies, you MUST call ask_user immediately. Do NOT proceed with assumptions.
 2. If the user has given a clear, specific, unambiguous directive that leaves no room for interpretation, you may proceed without asking.
 3. Keep the question field short and focused (ideally one sentence). Put background, examples, or elaboration in the context field.
+   **Auto-captured preamble:** if you don't pass an explicit `context` field, the most recent text you streamed will be automatically captured and shown in the left panel. You usually don't need to repeat your plan/analysis in the context — just call `ask_user` with the question and the user will see what you just said. Pass an explicit `context` only when you want to override or supplement the auto-capture.
 4. Include Mermaid diagrams in the context field when visualizing architecture, data flows, or decision trees would help the user understand the question.
 5. Use contextFormat: 'html' for rich visualizations (comparison tables, bar charts, pros/cons lists, metric cards, timelines, and layouts) that help the user understand trade-offs and make faster decisions. The iframe inherits the wrapper's CSS variables for automatic theme consistency.
 6. When comparing 3+ options, render a comparison table with `pi.table(headers, rows, {highlightColumn: recommendedIndex})`.

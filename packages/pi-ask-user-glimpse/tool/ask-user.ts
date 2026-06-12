@@ -9,7 +9,6 @@ import {
     type AnimationLevel,
     type AskUserPayload,
     type Question,
-    type ThemeMode,
     type ThemeName,
 } from "../shared/ask-user.js";
 import { formatResponse } from "./response-formatter.js";
@@ -21,6 +20,100 @@ import { STOPWORDS } from "../constants/stopwords.js";
 
 /** Warn once per process when Glimpse is unavailable. */
 let _warnedGlimpseUnavailable = false;
+
+/** Find the index of the first sentence-end punctuation (`.`, `?`, `!`)
+ *  in `text` that is OUTSIDE a fenced code block, followed by whitespace
+ *  or end of string. Returns -1 if no such boundary exists.
+ *
+ *  Used by the auto-split logic so a long question that contains a code
+ *  block (e.g. with `1.2.3` version numbers) doesn't get torn at a `.`
+ *  inside the code block. We track code-block state by walking the string
+ *  and toggling on each ``` marker.
+ */
+function findFirstSentenceEndOutsideCode(text: string): number {
+    let inCode = false;
+    let i = 0;
+    while (i < text.length) {
+        // Toggle code block state on ``` (including info-string fences)
+        if (text[i] === "`" && text[i + 1] === "`" && text[i + 2] === "`") {
+            inCode = !inCode;
+            i += 3;
+            // Skip the optional language tag and newline
+            while (i < text.length && text[i] !== "\n") i++;
+            continue;
+        }
+        // Inside a code block, skip until the next ``` or end of string
+        if (inCode) {
+            i++;
+            continue;
+        }
+        // Look for sentence end followed by whitespace or EOS
+        if (
+            (text[i] === "." || text[i] === "?" || text[i] === "!") &&
+            (i + 1 === text.length || /\s/.test(text[i + 1] ?? ""))
+        ) {
+            return i;
+        }
+        i++;
+    }
+    return -1;
+}
+
+/** Quick heuristic for "this string contains HTML" — requires at least
+ *  one of the tag types we actually render in the HTML context iframe
+ *  (div, p, h1-h6, table, ul, ol, li, blockquote, pre, code, span, etc.).
+ *  A bare angle-bracket word like `<header>` or `<scenario>` is NOT enough
+ *  — markdown headings and angle-bracketed placeholders trip the naive
+ *  regex but aren't real HTML.
+ */
+const HTML_TAG_NAMES = [
+    "div",
+    "p",
+    "span",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "ul",
+    "ol",
+    "li",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "td",
+    "th",
+    "blockquote",
+    "pre",
+    "code",
+    "strong",
+    "em",
+    "b",
+    "i",
+    "a",
+    "br",
+    "hr",
+    "img",
+    "section",
+    "article",
+    "header",
+    "footer",
+    "main",
+    "aside",
+    "nav",
+    "figure",
+    "figcaption",
+];
+const HTML_TAG_RE = new RegExp(
+    `<(${HTML_TAG_NAMES.join("|")})[\\s>/]`,
+    "i",
+);
+
+function looksLikeHtml(text: string): boolean {
+    return HTML_TAG_RE.test(text);
+}
 
 /** Extract a short title from a question by removing stopwords.
  *  Falls back to first 5 words if nothing meaningful remains.
@@ -136,22 +229,36 @@ export async function askUserHandler(
     }
 
     // If the question is long and no separate context was provided, auto-split
-    // the first sentence into the question and the rest into context.
+    // the first sentence into the question and the rest into context. The
+    // boundary is found with a code-block-aware scanner so punctuation
+    // inside ``` blocks (e.g. version numbers like 1.2.3) doesn't trigger
+    // an early split.
     let question = params.question;
     let context = params.context;
     if (!context && params.question.length > 120) {
-        const match = params.question.match(/^(.+?[.?!])(\s+|$)/);
-        if (match && match[0].length < params.question.length) {
-            question = match[1].trim();
-            context = params.question.slice(match[0].length).trim();
+        const splitAt = findFirstSentenceEndOutsideCode(params.question);
+        if (splitAt > 0 && splitAt < params.question.length - 1) {
+            question = params.question.slice(0, splitAt + 1).trim();
+            context = params.question.slice(splitAt + 1).trim();
         }
+    }
+
+    // If contextFormat is "html" but the content is plain markdown (no tag
+    // openers), silently downgrade to markdown so the user sees parsed text
+    // instead of raw markdown source in the iframe.
+    let contextFormat = params.contextFormat;
+    if (contextFormat === "html" && context && !looksLikeHtml(context)) {
+        console.warn(
+            "[pi-ask-user-glimpse] contextFormat='html' but context has no HTML tags — auto-downgrading to markdown",
+        );
+        contextFormat = "markdown";
     }
 
     const payload: AskUserPayload = {
         type: payloadType,
         question,
         context,
-        contextFormat: params.contextFormat,
+        contextFormat,
         options: normalizedOptions,
         questions: params.questions,
         allowMultiple,

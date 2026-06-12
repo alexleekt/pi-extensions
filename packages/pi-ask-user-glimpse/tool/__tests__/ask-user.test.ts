@@ -296,4 +296,114 @@ describe("askUserHandler", () => {
         expect(html).toContain('"title":"Option B"');
         expect(html).toContain('"description":"Desc B"');
     });
+
+    // ──────────────────────────────────────────────────────────────
+    // contextFormat='html' auto-downgrade: when the agent sets
+    // contextFormat to 'html' but the content is plain markdown, the
+    // payload must surface it as markdown so the iframe doesn't render
+    // raw markdown text.
+    // ──────────────────────────────────────────────────────────────
+    it("downgrades contextFormat=html to markdown when context has no HTML tags", async () => {
+        mockPrompt.mockResolvedValue({ kind: "freeform", text: "x" });
+
+        await askUserHandler(
+            {
+                question: "Pick one?",
+                contextFormat: "html",
+                context: "# Plan\n\nThis is **bold** markdown, not HTML.",
+            },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const html = lastCall[0] as string;
+        expect(html).toContain('"contextFormat":"markdown"');
+    });
+
+    it("keeps contextFormat=html when context actually contains HTML tags", async () => {
+        mockPrompt.mockResolvedValue({ kind: "freeform", text: "x" });
+
+        await askUserHandler(
+            {
+                question: "Pick one?",
+                contextFormat: "html",
+                context: '<div class="plan"><h2>Plan</h2><p>Details</p></div>',
+            },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const html = lastCall[0] as string;
+        expect(html).toContain('"contextFormat":"html"');
+    });
+
+    it("auto-downgrades bare angle-bracket placeholders (looksLikeHtml requires a real tag)", async () => {
+        // The previous looksLikeHtml used `/<[a-zA-Z][a-zA-Z0-9-]*[\s>/]/`,
+        // which would treat markdown headings like `## A. /ask-debug <scenario>`
+        // as HTML because `<scenario>` matches. The new heuristic requires a
+        // known HTML tag name, so a bare placeholder DOES trigger a downgrade
+        // — the agent gets markdown rendering rather than raw markdown source
+        // in the iframe.
+        mockPrompt.mockResolvedValue({ kind: "freeform", text: "x" });
+
+        await askUserHandler(
+            {
+                question: "Pick one?",
+                contextFormat: "html",
+                context: "## A. /ask-debug <scenario>\n\nFiles\n- index.ts",
+            },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const html = lastCall[0] as string;
+        // <scenario> is NOT a known HTML tag, so the auto-downgrade fires
+        // and the format is now markdown — the user sees parsed text.
+        expect(html).toContain('"contextFormat":"markdown"');
+    });
+
+    // ──────────────────────────────────────────────────────────────
+    // Auto-split code-block masking: when a long question contains a
+    // fenced code block with dots (e.g. version numbers like 1.2.3),
+    // the auto-split regex should not tear through it.
+    // ──────────────────────────────────────────────────────────────
+    it("auto-split ignores punctuation inside fenced code blocks", async () => {
+        mockPrompt.mockResolvedValue({ kind: "freeform", text: "x" });
+
+        // The question contains a fenced code block with dots that
+        // would naively trigger the auto-split regex. The code-block-aware
+        // scanner should protect it so the first sentence end OUTSIDE the
+        // code block ("Here is my proposed plan." followed by `\n\n`) is
+        // the actual split point.
+        const longQuestion = [
+            "Here is my proposed plan, with extensive detail so the question",
+            "triggers the auto-split threshold of 120 characters.",
+            "",
+            "```",
+            "const v = pkg.version; // 1.2.3",
+            "```",
+            "",
+            "Please review the plan and approve.",
+        ].join("\n");
+
+        await askUserHandler(
+            { question: longQuestion },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const html = lastCall[0] as string;
+        // The first sentence end outside the code block is the "." after
+        // "characters." — that's where the split happens. The "1.2.3" inside
+        // the code block must NOT have been treated as a split point.
+        expect(html).toContain('"question":"Here is my proposed plan, with extensive detail so the question\\ntriggers the auto-split threshold of 120 characters."');
+        // Context should include the code block and the trailing sentence
+        expect(html).toContain('"context":"');
+        // Specifically, the version "1.2.3" must be in the context, not in the question
+        expect(html).toContain("1.2.3");
+    });
 });

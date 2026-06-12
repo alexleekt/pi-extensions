@@ -4,8 +4,17 @@ All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this f
 
 ## Unreleased
 
+### Added
+- **Agent preamble capture (the long-promised v0.5.0 feature)** — When the agent calls `ask_user` without an explicit `context`, the most recent assistant message is automatically captured and rendered in the left context panel. Plans, analyses, and reasoning that the LLM streamed right before asking the question are now visible to the user. When an explicit `context` IS provided, the preamble is appended below a horizontal rule. Skipped automatically when the prior message is shorter than 200 chars (avoids "I'll ask the user now." noise) or longer than 12,000 chars (truncated with a `[…truncated]` note). The capture is code-block-aware: thinking blocks (`<thinking>` and ``` ```thinking ``` ```) are stripped before display.
+- **HTML context auto-downgrade** — When an agent sets `contextFormat: "html"` but the `context` payload has no HTML tags, the format is silently downgraded to `markdown` with a `[pi-ask-user-glimpse]` warning. Prevents raw markdown from being rendered as text inside the HTML iframe.
+- **Code-block-aware auto-split** — The long-question auto-split now uses a code-block-aware scanner (`findFirstSentenceEndOutsideCode`). Punctuation inside ``` ``` … ``` ``` blocks (e.g. `1.2.3` version numbers, IP addresses, prose with dots) is no longer treated as a sentence boundary. Replaces the previous regex-based split that could tear through code blocks.
+
 ### Fixed
+- **`renderMarkdownInline` multi-paragraph bug** — The previous implementation stripped the wrapping `<p>...</p>` with a regex that only matched the first/last pair, leaving the final paragraph unclosed in multi-paragraph input. The function now detects multiple blocks (paragraphs, paragraph + list, etc.) and keeps the block structure intact rather than producing invalid HTML.
 - **Removed noisy console logs from `before_agent_start` hook** — `console.log` and `console.warn` calls in `before_agent_start` were being captured by the Pi system and rendered as `[pi-ask-user-glimpse]` tags appended to user messages. The hook now silently returns `undefined` in plain mode and silently early-returns when `ask_user` is not in selectedTools or UI is unavailable. Only the one-time `guidelineCount === 0` warning remains at startup.
+
+### Tests
+- Added 22 new tests (preamble capture, HTML auto-downgrade, code-block-aware auto-split, multi-paragraph `renderMarkdownInline`). 365 tests pass.
 
 ## [0.5.3] — 2026-06-01
 
