@@ -356,7 +356,7 @@ export async function askUserHandler(
 
         // Log the actual error so we can diagnose what really failed
         console.error(
-            "[pi-ask-user-glimpse] prompt() failed: " + errMsg,
+            `[pi-ask-user-glimpse] prompt() failed: ${errMsg}`,
             errStack || "",
         );
 

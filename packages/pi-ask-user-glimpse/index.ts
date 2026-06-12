@@ -14,7 +14,11 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { PROTECTED_ABBREVIATIONS } from "./constants/abbreviations.js";
-import { ALL_THEME_NAMES, type AnimationLevel, type ThemeMode, type ThemeName } from "./shared/ask-user.js";
+import {
+    ALL_THEME_NAMES,
+    type AnimationLevel,
+    type ThemeName,
+} from "./shared/ask-user.js";
 import {
     buildAgentPreamble,
     extractTextFromAssistantEntry,
@@ -22,10 +26,7 @@ import {
     mergeContextWithPreamble,
     stripThinkingBlocks,
 } from "./shared/preamble.js";
-import {
-    loadAskUserPrompt,
-    loadYoloMandate,
-} from "./shared/prompt-loader.js";
+import { loadAskUserPrompt, loadYoloMandate } from "./shared/prompt-loader.js";
 import {
     type AskUserMetadata,
     type AskUserParams,
@@ -70,7 +71,9 @@ function getThemeSettings(entries: unknown[]): {
             ? data.animationLevel
             : undefined;
     return {
-        theme: ALL_THEME_NAMES.includes(theme as ThemeName) ? theme as ThemeName : undefined,
+        theme: ALL_THEME_NAMES.includes(theme as ThemeName)
+            ? (theme as ThemeName)
+            : undefined,
         animationLevel:
             animationLevel === "none" ||
             animationLevel === "minimal" ||
@@ -644,7 +647,7 @@ export default function (pi: ExtensionAPI) {
 
         if (styleMode === "yolo") {
             const yoloMandate = loadYoloMandate();
-            return { systemPrompt: event.systemPrompt + "\n" + yoloMandate };
+            return { systemPrompt: `${event.systemPrompt}\n${yoloMandate}` };
         }
         // "plain" → no injection; silently return undefined
     });
@@ -808,7 +811,10 @@ export default function (pi: ExtensionAPI) {
             if (choice === "Set ask-user prompt file") {
                 await handleInput("Path to ask-user.md", "askUserPrompt");
             } else if (choice === "Set yolo mandate file") {
-                await handleInput("Path to yolo-mandate.md", "yoloMandatePrompt");
+                await handleInput(
+                    "Path to yolo-mandate.md",
+                    "yoloMandatePrompt",
+                );
             } else if (choice === "Clear all overrides") {
                 writeAskUserSettings({});
                 ctx.ui.notify("All overrides cleared", "info");
