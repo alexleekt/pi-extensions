@@ -38,12 +38,25 @@ import {
     entriesFromAskUserCall,
     makeRecentQuestionsStore,
     type AskKind,
+    type JournalToolCallEntry,
     type RecentQuestionsStore,
+    seedStoreFromJournal,
 } from "./tool/recent-questions.js";
 import {
     ASK_DEBUG_SCENARIOS,
     filterAskDebugScenarios,
 } from "./tool/ask-debug-scenarios.js";
+
+/** Counter for synthetic toolCallIds used when this extension invokes
+ *  ask_user directly (via /ask-debug or /ask) — those code paths never
+ *  fire the runtime `tool_call` event, so we mint our own id. The store
+ *  dedupes by toolCallId, so collisions are impossible inside one process
+ *  (the counter is monotonic). */
+let _syntheticAskUserIdCounter = 0;
+function makeSyntheticAskUserId(): string {
+    _syntheticAskUserIdCounter += 1;
+    return `synthetic-ask-user-${Date.now()}-${_syntheticAskUserIdCounter}`;
+}
 
 function inferAskKind(params: AskUserParams): AskKind {
     if (Array.isArray(params.questions) && params.questions.length > 0) {
@@ -658,23 +671,43 @@ export default function (pi: ExtensionAPI) {
         }
     }
 
+    /** Record an ask_user call into the recent-questions store, no matter
+     *  who initiated it. `toolCallId` is the real runtime id for LLM-driven
+     *  calls (from the `tool_call` event) and a synthetic id for direct
+     *  invocations like `/ask-debug` and `/ask` (which never fire
+     *  `tool_call`). The store dedupes by toolCallId, so an LLM call
+     *  recorded through the event won't double-add if it also passes
+     *  through `runAskUserWithTheme` later. */
+    function recordAskUserCall(params: AskUserParams, toolCallId: string): void {
+        const newEntries = entriesFromAskUserCall(
+            params,
+            inferAskKind(params),
+            toolCallId,
+        );
+        for (const e of newEntries) {
+            recentQuestionsStore.add(e);
+        }
+    }
+
     // ── Capture ask_user tool calls to power `#<header>` autocomplete ──
     pi.on("tool_call", (event: ToolCallEvent) => {
         if (event.toolName !== "ask_user") return;
         const params = event.input as unknown as AskUserParams;
-        const entries = entriesFromAskUserCall(
-            params,
-            inferAskKind(params),
-            event.toolCallId,
-        );
-        for (const entry of entries) {
-            recentQuestionsStore.add(entry);
-        }
+        recordAskUserCall(params, event.toolCallId);
     });
 
-    // ── Session start: clear store, register `#<header>` autocomplete provider ──
+    // ── Session start: clear store, re-seed from journal, register provider ──
     pi.on("session_start", (_event, ctx) => {
         recentQuestionsStore.clear();
+        // Re-seed from past ask_user tool calls in the journal so a resumed
+        // session immediately has the same `#<header>` suggestions it had
+        // before the process exited. `session_start` fires for startup,
+        // reload, new, resume, and fork; only resume/fork have a non-empty
+        // journal here, but the helper is a no-op on empty input.
+        seedStoreFromJournal(
+            recentQuestionsStore,
+            ctx.sessionManager.getEntries() as ReadonlyArray<JournalToolCallEntry>,
+        );
         if (ctx.ui.addAutocompleteProvider) {
             ctx.ui.addAutocompleteProvider((current) =>
                 makeRecentQuestionAutocompleteProvider(
@@ -762,8 +795,13 @@ export default function (pi: ExtensionAPI) {
 
             const questions = extractQuestions(fullText);
 
+            const askLastParams = buildAskLastParams(questions, fullText);
+            // Record before running so a cancelled dialog still seeds the
+            // store — the question is what the user is trying to ask.
+            recordAskUserCall(askLastParams, makeSyntheticAskUserId());
+
             const result = await runAskUserWithTheme(
-                buildAskLastParams(questions, fullText),
+                askLastParams,
                 undefined,
                 ctx,
             );
