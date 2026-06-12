@@ -51,7 +51,9 @@ export function extractTextFromAssistantEntry(entry: unknown): string {
 }
 
 /** Find the most recent assistant entry in the session journal. */
-export function findLastAssistantEntry(entries: unknown[]): unknown | undefined {
+export function findLastAssistantEntry(
+    entries: unknown[],
+): unknown | undefined {
     return [...entries].reverse().find((e) => {
         if (!e || typeof e !== "object") return false;
         const msg = (e as Record<string, unknown>).message;
@@ -93,7 +95,9 @@ export function buildAgentPreamble(
         slice.lastIndexOf("? "),
     );
     const cutPoint =
-        lastBreak > MAX_PREAMBLE_LENGTH * 0.6 ? lastBreak + 1 : MAX_PREAMBLE_LENGTH;
+        lastBreak > MAX_PREAMBLE_LENGTH * 0.6
+            ? lastBreak + 1
+            : MAX_PREAMBLE_LENGTH;
     return `${slice.slice(0, cutPoint).trim()}\n\n[…truncated]`;
 }
 
