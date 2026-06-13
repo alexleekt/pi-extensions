@@ -21,13 +21,13 @@ export default function Freeform({ payload }: FreeformProps) {
             kind: "freeform",
             text: text.trim(),
         };
-        if (additionalComments.trim()) {
+        if (payload.allowComment === true && additionalComments.trim()) {
             result.additionalComments = additionalComments.trim();
         }
         sendToGlimpse(result);
-    }, [text, additionalComments]);
+    }, [payload.allowComment, text, additionalComments]);
 
-    const isDirty = text.trim() !== "" || additionalComments.trim() !== "";
+    const isDirty = text.trim() !== "" || (payload.allowComment === true && additionalComments.trim() !== "");
     const submitDisabled = payload.allowSkip === false && text.trim().length === 0;
 
     const {
@@ -57,12 +57,14 @@ export default function Freeform({ payload }: FreeformProps) {
                 />
                 <MarkdownPreview text={text} />
             </div>
-            <div className="shrink-0 px-4 py-3">
-                <AdditionalComments
-                    value={additionalComments}
-                    onChange={setAdditionalComments}
-                />
-            </div>
+            {payload.allowComment === true && (
+                <div className="shrink-0 px-4 py-3">
+                    <AdditionalComments
+                        value={additionalComments}
+                        onChange={setAdditionalComments}
+                    />
+                </div>
+            )}
 
             <CancelConfirmModal
                 isOpen={showCancelConfirm}

@@ -9,12 +9,15 @@
  * @earendil-works/pi-coding-agent: decorate the current provider, intercept
  * only the prefixes we own, and delegate everything else to `current`.
  *
- * Trigger character is registered via the `AutocompleteProvider.triggerCharacters`
- * field so Pi's editor opens the dropdown on `#` at token boundaries without
- * requiring a slash-command prefix.
+ * Pi's current `AutocompleteProvider` API has no trigger-character field, so
+ * this provider detects `#<query>` inside `getSuggestions` and delegates every
+ * non-matching cursor position to the wrapped provider.
  */
 
-import type { AutocompleteProvider, AutocompleteItem } from "@earendil-works/pi-tui";
+import type {
+    AutocompleteItem,
+    AutocompleteProvider,
+} from "@earendil-works/pi-tui";
 import { fuzzyFilter } from "@earendil-works/pi-tui";
 import type { RecentQuestionsStore } from "./recent-questions.js";
 
@@ -28,25 +31,38 @@ export function makeRecentQuestionAutocompleteProvider(
     store: RecentQuestionsStore,
 ): AutocompleteProvider {
     return {
-        triggerCharacters: ["#"],
-
         async getSuggestions(lines, cursorLine, cursorCol, options) {
             const currentLine = lines[cursorLine] ?? "";
             const beforeCursor = currentLine.slice(0, cursorCol);
             const match = beforeCursor.match(HEADER_REGEX);
             if (!match) {
-                return current.getSuggestions(lines, cursorLine, cursorCol, options);
+                return current.getSuggestions(
+                    lines,
+                    cursorLine,
+                    cursorCol,
+                    options,
+                );
             }
 
             const query = match[1] ?? "";
             const entries = store.recent();
             if (options.signal.aborted || entries.length === 0) {
-                return current.getSuggestions(lines, cursorLine, cursorCol, options);
+                return current.getSuggestions(
+                    lines,
+                    cursorLine,
+                    cursorCol,
+                    options,
+                );
             }
 
             const ranked = rankEntries(entries, query);
             if (ranked.length === 0) {
-                return current.getSuggestions(lines, cursorLine, cursorCol, options);
+                return current.getSuggestions(
+                    lines,
+                    cursorLine,
+                    cursorCol,
+                    options,
+                );
             }
 
             const items: AutocompleteItem[] = ranked
@@ -64,11 +80,23 @@ export function makeRecentQuestionAutocompleteProvider(
         },
 
         applyCompletion(lines, cursorLine, cursorCol, item, prefix) {
-            return current.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
+            return current.applyCompletion(
+                lines,
+                cursorLine,
+                cursorCol,
+                item,
+                prefix,
+            );
         },
 
         shouldTriggerFileCompletion(lines, cursorLine, cursorCol) {
-            return current.shouldTriggerFileCompletion?.(lines, cursorLine, cursorCol) ?? true;
+            return (
+                current.shouldTriggerFileCompletion?.(
+                    lines,
+                    cursorLine,
+                    cursorCol,
+                ) ?? true
+            );
         },
     };
 }
@@ -82,7 +110,9 @@ function rankEntries(
     if (q.length === 0) {
         return entries;
     }
-    const prefixHits = entries.filter((e) => e.header.toLowerCase().startsWith(q));
+    const prefixHits = entries.filter((e) =>
+        e.header.toLowerCase().startsWith(q),
+    );
     if (prefixHits.length > 0) {
         return prefixHits;
     }
@@ -99,7 +129,8 @@ function describeEntry(
         return parts.join(" · ");
     }
     // Truncate the value to keep the dropdown narrow.
-    const value = entry.value.length > 80 ? `${entry.value.slice(0, 77)}…` : entry.value;
+    const value =
+        entry.value.length > 80 ? `${entry.value.slice(0, 77)}…` : entry.value;
     parts.push(value);
     return parts.join(" · ");
 }

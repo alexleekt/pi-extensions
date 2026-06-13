@@ -15,7 +15,8 @@ describe("preamble capture", () => {
         });
 
         it("removes multiline <thinking> blocks", () => {
-            const input = "before\n<thinking>\nsecret\nlines\n</thinking>\nafter";
+            const input =
+                "before\n<thinking>\nsecret\nlines\n</thinking>\nafter";
             expect(stripThinkingBlocks(input)).toBe("before\n\nafter");
         });
 
@@ -25,7 +26,9 @@ describe("preamble capture", () => {
         });
 
         it("returns empty string for thinking-only input", () => {
-            expect(stripThinkingBlocks("<thinking>all secret</thinking>")).toBe("");
+            expect(stripThinkingBlocks("<thinking>all secret</thinking>")).toBe(
+                "",
+            );
         });
     });
 
@@ -50,7 +53,9 @@ describe("preamble capture", () => {
                     ],
                 },
             };
-            expect(extractTextFromAssistantEntry(entry)).toBe("Block 1\nBlock 2");
+            expect(extractTextFromAssistantEntry(entry)).toBe(
+                "Block 1\nBlock 2",
+            );
         });
 
         it("returns empty string for null entry", () => {
@@ -189,7 +194,10 @@ describe("preamble capture", () => {
             const preambleText = `Intro paragraph. ${"x".repeat(200)}`;
             const explicitSnippet = preambleText.slice(0, 100);
             // Preamble is a superset of the explicit context — keep preamble
-            const result = mergeContextWithPreamble(explicitSnippet, preambleText);
+            const result = mergeContextWithPreamble(
+                explicitSnippet,
+                preambleText,
+            );
             expect(result).toBe(preambleText);
         });
 
@@ -203,7 +211,8 @@ describe("preamble capture", () => {
 
         it("appends with HR separator when both are distinct", () => {
             const ctx = "First section about A.";
-            const pre = "Second section about B with a much longer body. ".repeat(20);
+            const pre =
+                "Second section about B with a much longer body. ".repeat(20);
             const result = mergeContextWithPreamble(ctx, pre);
             expect(result).toContain("First section about A.");
             expect(result).toContain("---");

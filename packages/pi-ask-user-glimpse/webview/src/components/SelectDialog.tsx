@@ -98,7 +98,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         const s = stateRef.current;
 
         const send = (result: Record<string, unknown>) => {
-            if (s.additionalComments.trim()) {
+            if (s.allowComment && s.additionalComments.trim()) {
                 result.additionalComments = s.additionalComments.trim();
             }
             sendToGlimpse(result);
@@ -141,8 +141,8 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
     }, []);
 
     const isDirty = isSingle
-        ? selected !== null || additionalComments.trim() !== ""
-        : selectedSet.size > 0 || additionalComments.trim() !== "";
+        ? selected !== null || (payload.allowComment === true && additionalComments.trim() !== "")
+        : selectedSet.size > 0 || (payload.allowComment === true && additionalComments.trim() !== "");
 
     const {
         showCancelConfirm,
@@ -452,12 +452,14 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                 </div>
             </div>
 
-            <div className="shrink-0 px-4 py-3">
-                <AdditionalComments
-                    value={additionalComments}
-                    onChange={setAdditionalComments}
-                />
-            </div>
+            {payload.allowComment === true && (
+                <div className="shrink-0 px-4 py-3">
+                    <AdditionalComments
+                        value={additionalComments}
+                        onChange={setAdditionalComments}
+                    />
+                </div>
+            )}
 
             <CancelConfirmModal
                 isOpen={showCancelConfirm}

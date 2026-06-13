@@ -1,7 +1,10 @@
-import { describe, expect, it } from "vitest";
 import type { AutocompleteProvider } from "@earendil-works/pi-tui";
+import { describe, expect, it } from "vitest";
 import { makeRecentQuestionAutocompleteProvider } from "../extension-autocomplete.js";
-import { makeRecentQuestionsStore, type RecentQuestion } from "../recent-questions.js";
+import {
+    makeRecentQuestionsStore,
+    type RecentQuestion,
+} from "../recent-questions.js";
 
 function makeCurrent(): AutocompleteProvider {
     return {
@@ -35,9 +38,13 @@ function seed(headers: string[]): ReturnType<typeof makeRecentQuestionsStore> {
 const noAbort = { aborted: false } as AbortSignal;
 
 describe("makeRecentQuestionAutocompleteProvider", () => {
-    it("declares # as a trigger character", () => {
-        const provider = makeRecentQuestionAutocompleteProvider(makeCurrent(), makeRecentQuestionsStore());
-        expect(provider.triggerCharacters).toEqual(["#"]);
+    it("keeps the provider compatible with Pi's current autocomplete API", () => {
+        const provider = makeRecentQuestionAutocompleteProvider(
+            makeCurrent(),
+            makeRecentQuestionsStore(),
+        );
+        expect(provider).not.toHaveProperty("triggerCharacters");
+        expect(provider.getSuggestions).toEqual(expect.any(Function));
     });
 
     it("delegates to current when no # token is present", async () => {
@@ -50,16 +57,31 @@ describe("makeRecentQuestionAutocompleteProvider", () => {
                 return current.getSuggestions(...args);
             },
         };
-        const provider = makeRecentQuestionAutocompleteProvider(currentWithSpy, makeRecentQuestionsStore());
-        const result = await provider.getSuggestions(["hello world"], 0, 5, { signal: noAbort });
+        const provider = makeRecentQuestionAutocompleteProvider(
+            currentWithSpy,
+            makeRecentQuestionsStore(),
+        );
+        const result = await provider.getSuggestions(["hello world"], 0, 5, {
+            signal: noAbort,
+        });
         expect(called).toBe(true);
         expect(result).toBeNull();
     });
 
     it("returns prefix matches before fuzzy matches when # token is present", async () => {
-        const store = seed(["Database", "Caching", "Deployment", "Architecture"]);
-        const provider = makeRecentQuestionAutocompleteProvider(makeCurrent(), store);
-        const result = await provider.getSuggestions(["#Da"], 0, 3, { signal: noAbort });
+        const store = seed([
+            "Database",
+            "Caching",
+            "Deployment",
+            "Architecture",
+        ]);
+        const provider = makeRecentQuestionAutocompleteProvider(
+            makeCurrent(),
+            store,
+        );
+        const result = await provider.getSuggestions(["#Da"], 0, 3, {
+            signal: noAbort,
+        });
         expect(result).not.toBeNull();
         expect(result?.prefix).toBe("#Da");
         // "Database" is the only prefix hit.
@@ -67,18 +89,35 @@ describe("makeRecentQuestionAutocompleteProvider", () => {
     });
 
     it("falls back to fuzzy filter when no prefix hit exists", async () => {
-        const store = seed(["Database", "Caching", "Deployment", "Architecture"]);
-        const provider = makeRecentQuestionAutocompleteProvider(makeCurrent(), store);
-        const result = await provider.getSuggestions(["#arch"], 0, 5, { signal: noAbort });
+        const store = seed([
+            "Database",
+            "Caching",
+            "Deployment",
+            "Architecture",
+        ]);
+        const provider = makeRecentQuestionAutocompleteProvider(
+            makeCurrent(),
+            store,
+        );
+        const result = await provider.getSuggestions(["#arch"], 0, 5, {
+            signal: noAbort,
+        });
         expect(result).not.toBeNull();
         // Fuzzy "arch" should hit "Architecture".
-        expect(result?.items.some((i) => i.value === "Architecture")).toBe(true);
+        expect(result?.items.some((i) => i.value === "Architecture")).toBe(
+            true,
+        );
     });
 
     it("returns all entries in newest-first order when query is empty after #", async () => {
         const store = seed(["A", "B", "C"]);
-        const provider = makeRecentQuestionAutocompleteProvider(makeCurrent(), store);
-        const result = await provider.getSuggestions(["#"], 0, 1, { signal: noAbort });
+        const provider = makeRecentQuestionAutocompleteProvider(
+            makeCurrent(),
+            store,
+        );
+        const result = await provider.getSuggestions(["#"], 0, 1, {
+            signal: noAbort,
+        });
         expect(result).not.toBeNull();
         expect(result?.items.map((i) => i.value)).toEqual(["C", "B", "A"]);
         expect(result?.prefix).toBe("#");
@@ -94,8 +133,13 @@ describe("makeRecentQuestionAutocompleteProvider", () => {
                 return current.getSuggestions(...args);
             },
         };
-        const provider = makeRecentQuestionAutocompleteProvider(currentWithSpy, makeRecentQuestionsStore());
-        const result = await provider.getSuggestions(["#x"], 0, 2, { signal: noAbort });
+        const provider = makeRecentQuestionAutocompleteProvider(
+            currentWithSpy,
+            makeRecentQuestionsStore(),
+        );
+        const result = await provider.getSuggestions(["#x"], 0, 2, {
+            signal: noAbort,
+        });
         expect(called).toBe(true);
         expect(result).toBeNull();
     });
@@ -111,28 +155,36 @@ describe("makeRecentQuestionAutocompleteProvider", () => {
             },
         };
         const store = seed(["Database"]);
-        const provider = makeRecentQuestionAutocompleteProvider(currentWithSpy, store);
-        const result = await provider.getSuggestions(
-            ["#D"],
-            0,
-            2,
-            { signal: { aborted: true } as AbortSignal },
+        const provider = makeRecentQuestionAutocompleteProvider(
+            currentWithSpy,
+            store,
         );
+        const result = await provider.getSuggestions(["#D"], 0, 2, {
+            signal: { aborted: true } as AbortSignal,
+        });
         expect(called).toBe(true);
         expect(result).toBeNull();
     });
 
     it("caps the suggestion list at MAX_SUGGESTIONS", async () => {
         const store = seed(Array.from({ length: 30 }, (_, i) => `Header ${i}`));
-        const provider = makeRecentQuestionAutocompleteProvider(makeCurrent(), store);
-        const result = await provider.getSuggestions(["#"], 0, 1, { signal: noAbort });
+        const provider = makeRecentQuestionAutocompleteProvider(
+            makeCurrent(),
+            store,
+        );
+        const result = await provider.getSuggestions(["#"], 0, 1, {
+            signal: noAbort,
+        });
         expect(result).not.toBeNull();
         expect(result?.items.length).toBeLessThanOrEqual(20);
     });
 
     it("matches a # token on a non-first line", async () => {
         const store = seed(["Database"]);
-        const provider = makeRecentQuestionAutocompleteProvider(makeCurrent(), store);
+        const provider = makeRecentQuestionAutocompleteProvider(
+            makeCurrent(),
+            store,
+        );
         // Multi-line input, cursor on line 1, after "#Da"
         const result = await provider.getSuggestions(
             ["first line of message", "respond to #Da"],
@@ -161,13 +213,30 @@ describe("makeRecentQuestionAutocompleteProvider", () => {
                 return false;
             },
         };
-        const provider = makeRecentQuestionAutocompleteProvider(current, makeRecentQuestionsStore());
+        const provider = makeRecentQuestionAutocompleteProvider(
+            current,
+            makeRecentQuestionsStore(),
+        );
 
-        const applied = provider.applyCompletion!(["a"], 0, 1, { value: "X", label: "X" }, "#X");
+        const applyCompletion = provider.applyCompletion;
+        expect(applyCompletion).toEqual(expect.any(Function));
+        const applied = applyCompletion(
+            ["a"],
+            0,
+            1,
+            { value: "X", label: "X" },
+            "#X",
+        );
         expect(applied.cursorCol).toBe(2);
         expect(calls.apply).toBe(1);
 
-        const triggered = provider.shouldTriggerFileCompletion!(["a"], 0, 1);
+        const shouldTriggerFileCompletion =
+            provider.shouldTriggerFileCompletion;
+        expect(shouldTriggerFileCompletion).toEqual(expect.any(Function));
+        if (!shouldTriggerFileCompletion) {
+            throw new Error("shouldTriggerFileCompletion missing");
+        }
+        const triggered = shouldTriggerFileCompletion(["a"], 0, 1);
         expect(triggered).toBe(false);
         expect(calls.file).toBe(1);
     });

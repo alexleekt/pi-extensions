@@ -20,9 +20,9 @@ npm run check        # dry-run npm pack
 ## Testing
 
 ```bash
-npm run validate           # checks dist exists, placeholder present, binary found
-npm run validate:gui       # same + opens actual WebView for visual check
-npm run test:with-context  # opens WebView with context panel + resizable splitter
+npm run validate           # checks dist/index.html exists and contains ASK_USER_PAYLOAD
+npm run validate:gui       # reminder for manual Pi WebView validation
+npm run check              # full release gate: typecheck, unit tests, build, validate, e2e, pack dry-run
 ```
 
 For manual visual testing, use `/ask-debug` inside a Pi session. It offers five scenarios: `single-select`, `multi-select`, `freeform`, `questionnaire`, and `kitchen-sink` (comprehensive questionnaire with HTML context panel).
@@ -55,6 +55,7 @@ JSON.stringify(payload)
 
 - [ ] `npm run build` passes
 - [ ] `npx tsc --noEmit` passes
-- [ ] `npm run check` shows the expected files (including `constants/`)
+- [ ] `npm run check` passes the full release gate
+- [ ] `npm run check:pack` shows the expected runtime files (including `constants/*.ts`, excluding tests)
 - [ ] `npm run validate` passes
-- [ ] `npm run test:with-context` passes
+- [ ] Manual `/ask-debug kitchen-sink` validation passes inside a Pi session

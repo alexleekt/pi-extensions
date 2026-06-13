@@ -18,6 +18,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 import { STOPWORDS } from "../constants/stopwords.js";
 
+const PROMPT_TIMEOUT_MS = 120_000;
+
 /** Warn once per process when Glimpse is unavailable. */
 let _warnedGlimpseUnavailable = false;
 
@@ -106,10 +108,7 @@ const HTML_TAG_NAMES = [
     "figure",
     "figcaption",
 ];
-const HTML_TAG_RE = new RegExp(
-    `<(${HTML_TAG_NAMES.join("|")})[\\s>/]`,
-    "i",
-);
+const HTML_TAG_RE = new RegExp(`<(${HTML_TAG_NAMES.join("|")})[\\s>/]`, "i");
 
 function looksLikeHtml(text: string): boolean {
     return HTML_TAG_RE.test(text);
@@ -300,14 +299,27 @@ export async function askUserHandler(
         }
 
         let aborted = false;
+        let timeout: ReturnType<typeof setTimeout> | undefined;
         const onAbort = () => {
             aborted = true;
         };
         signal?.addEventListener("abort", onAbort);
 
-        const rawResult = (await prompt(html, { ...windowOptions })) as unknown;
+        const promptResult = prompt(html, { ...windowOptions });
+        const timeoutResult = new Promise<never>((_, reject) => {
+            timeout = setTimeout(
+                () => reject(new Error("Prompt timed out")),
+                PROMPT_TIMEOUT_MS,
+            );
+        });
 
-        signal?.removeEventListener("abort", onAbort);
+        let rawResult: unknown;
+        try {
+            rawResult = await Promise.race([promptResult, timeoutResult]);
+        } finally {
+            if (timeout) clearTimeout(timeout);
+            signal?.removeEventListener("abort", onAbort);
+        }
 
         if (aborted) {
             return {
@@ -321,15 +333,24 @@ export async function askUserHandler(
             };
         }
 
-        if (rawResult === null || (typeof rawResult === "object" && rawResult !== null && (rawResult as Record<string, unknown>).__cancelled === true)) {
+        if (
+            rawResult === null ||
+            (typeof rawResult === "object" &&
+                rawResult !== null &&
+                (rawResult as Record<string, unknown>).__cancelled === true)
+        ) {
             cancelled = true;
             result = null;
         } else if (typeof rawResult === "object" && rawResult !== null) {
             result = rawResult as Record<string, unknown>;
             if (onMetadata) {
                 onMetadata({
-                    theme: ALL_THEME_NAMES.includes(result.__theme as ThemeName) ? result.__theme as ThemeName : undefined,
-                    animationLevel: result.__animationLevel as string | undefined,
+                    theme: ALL_THEME_NAMES.includes(result.__theme as ThemeName)
+                        ? (result.__theme as ThemeName)
+                        : undefined,
+                    animationLevel: result.__animationLevel as
+                        | string
+                        | undefined,
                 });
             }
         } else {

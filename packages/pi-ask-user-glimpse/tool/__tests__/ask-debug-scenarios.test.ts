@@ -21,7 +21,10 @@ describe("ASK_DEBUG_SCENARIOS", () => {
         for (const s of ASK_DEBUG_SCENARIOS) {
             expect(s.value, `value missing for ${s.label}`).toBeTruthy();
             expect(s.label, `label missing for ${s.value}`).toBeTruthy();
-            expect(s.description, `description missing for ${s.value}`).toBeTruthy();
+            expect(
+                s.description,
+                `description missing for ${s.value}`,
+            ).toBeTruthy();
         }
     });
 });
