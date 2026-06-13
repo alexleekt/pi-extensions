@@ -4,3 +4,9 @@ screenshots/*.html
 .p/
 .understand-anything/
 .wireit/
+
+# Ephemeral test plumbing (symlink resolution debugging)
+.test-wiring/
+
+# Reviewer subagent artifacts (transient, kept locally per release cycle)
+review/

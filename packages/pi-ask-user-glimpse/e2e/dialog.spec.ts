@@ -12,7 +12,7 @@ function buildPayload(type: string, overrides = {}) {
             { title: "Option B", description: "Second option" },
             { title: "Option C" },
         ],
-        allowComment: true,
+        allowComment: false,
         allowFreeform: true,
         ...overrides,
     };
@@ -77,8 +77,10 @@ test.describe("single-select dialog", () => {
     });
 
     test("Escape blurs textarea when focused", async ({ page }) => {
-        await page.getByText("Add comment").click();
-        const textarea = page.getByPlaceholder("Optional comment…");
+        const content = injectPayload(html, buildPayload("single-select", { allowComment: true }));
+        await page.setContent(content);
+
+        const textarea = page.getByPlaceholder("Optional additional comments…");
         await textarea.click();
         await expect(textarea).toBeFocused();
 
@@ -138,20 +140,24 @@ test.describe("single-select dialog", () => {
         await expect(page.getByRole("heading", { name: "Unsaved changes" })).toBeVisible();
     });
 
-    test("Cancel triggers confirm when dirty from per-option comment", async ({ page }) => {
+    test("Cancel triggers confirm when dirty from additional comments", async ({ page }) => {
+        const content = injectPayload(html, buildPayload("single-select", { allowComment: true }));
+        await page.setContent(content);
+
         await page.locator("[role='option']").first().click();
-        await page.getByText("Add comment").click();
-        const commentTextarea = page.getByPlaceholder("Optional comment…");
+        const commentTextarea = page.getByPlaceholder("Optional additional comments…");
         await commentTextarea.fill("Dirty comment");
 
         await page.getByRole("button", { name: "Cancel" }).click();
         await expect(page.getByRole("heading", { name: "Unsaved changes" })).toBeVisible();
     });
 
-    test("submits with per-option comment", async ({ page }) => {
+    test("submits with additional comments", async ({ page }) => {
+        const content = injectPayload(html, buildPayload("single-select", { allowComment: true }));
+        await page.setContent(content);
+
         await page.keyboard.press("1");
-        await page.getByText("Add comment").click();
-        const commentTextarea = page.getByPlaceholder("Optional comment…");
+        const commentTextarea = page.getByPlaceholder("Optional additional comments…");
         await commentTextarea.fill("My comment");
 
         await page.getByRole("button", { name: "Submit" }).click();

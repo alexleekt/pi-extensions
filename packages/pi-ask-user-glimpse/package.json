@@ -1,6 +1,6 @@
 {
     "name": "@alexleekt/pi-ask-user-glimpse",
-    "version": "0.5.4",
+    "version": "0.6.0",
     "description": "Ask better questions. Get better answers. Rich native WebView dialogs for the Pi agent.",
     "type": "module",
     "keywords": [
@@ -15,7 +15,8 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/alexleekt/pi-extensions.git"
+        "url": "git+https://github.com/alexleekt/pi-extensions.git",
+        "directory": "packages/pi-ask-user-glimpse"
     },
     "bugs": {
         "url": "https://github.com/alexleekt/pi-extensions/issues"
@@ -31,12 +32,12 @@
     },
     "files": [
         "index.ts",
-        "constants",
-        "tool",
-        "shared",
-        "types",
+        "constants/*.ts",
+        "tool/*.ts",
+        "shared/*.ts",
+        "types/*.d.ts",
         "dist",
-        "prompts",
+        "prompts/*.md",
         "README.md",
         "CHANGELOG.md",
         "CONTRIBUTING.md",
@@ -47,7 +48,7 @@
         "build:css": "wireit",
         "build:webview": "wireit",
         "typecheck": "tsc --noEmit",
-        "check": "npm pack --dry-run",
+        "check": "npm run typecheck && npm test && npm run build && npm run validate && npm run test:e2e && npm run check:pack",
         "prepack": "npm run build",
         "dev:docs": "npx vite --config ./docs/vite.config.ts",
         "build:docs": "wireit",
@@ -56,10 +57,11 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
-        "test:e2e": "playwright test",
+        "test:e2e": "npm run build && playwright test",
         "test:e2e:ui": "playwright test --ui",
         "validate": "test -f dist/index.html && grep -q 'ASK_USER_PAYLOAD' dist/index.html && echo \"✓ dist/index.html ready\" || echo \"✗ Run npm run build first\"",
-        "validate:gui": "echo \"validate:gui requires manual testing with pi extension load\""
+        "validate:gui": "echo \"validate:gui requires manual testing with pi extension load\"",
+        "check:pack": "npm pack --dry-run"
     },
     "wireit": {
         "build": {

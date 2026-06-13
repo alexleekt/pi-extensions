@@ -49,10 +49,15 @@ describe("Freeform", () => {
     });
 
     it("renders additional comments", () => {
-        renderWithFooter(buildPayload());
+        renderWithFooter(buildPayload({ allowComment: true }));
         expect(
             screen.getByText("Additional Comments"),
         ).toBeInTheDocument();
+    });
+
+    it("hides additional comments when allowComment is false", () => {
+        renderWithFooter(buildPayload({ allowComment: false }));
+        expect(screen.queryByText("Additional Comments")).not.toBeInTheDocument();
     });
 
     it("submits text", async () => {
@@ -133,7 +138,7 @@ describe("Freeform", () => {
 
     describe("with additionalComments", () => {
         it("submits additionalComments when provided", async () => {
-            renderWithFooter(buildPayload());
+            renderWithFooter(buildPayload({ allowComment: true }));
 
             const mainTextarea =
                 screen.getByPlaceholderText("Type your answer…");
@@ -163,7 +168,7 @@ describe("Freeform", () => {
         });
 
         it("does not send whitespace-only additionalComments", async () => {
-            renderWithFooter(buildPayload());
+            renderWithFooter(buildPayload({ allowComment: true }));
 
             const mainTextarea =
                 screen.getByPlaceholderText("Type your answer…");
@@ -193,7 +198,7 @@ describe("Freeform", () => {
         });
 
         it("shows cancel confirm when dirty from additionalComments alone", () => {
-            renderWithFooter(buildPayload());
+            renderWithFooter(buildPayload({ allowComment: true }));
 
             const additionalCommentsTextarea =
                 screen.getByPlaceholderText("Optional additional comments…");

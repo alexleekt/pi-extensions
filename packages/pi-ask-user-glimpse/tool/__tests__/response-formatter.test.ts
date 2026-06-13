@@ -57,15 +57,23 @@ describe("formatResponse", () => {
             const result = formatResponse(
                 question,
                 options,
-                { kind: "freeform", text: "My answer", additionalComments: "More details" },
+                {
+                    kind: "freeform",
+                    text: "My answer",
+                    additionalComments: "More details",
+                },
                 false,
             );
 
             expect(result.details?.response?.kind).toBe("freeform");
             expect(result.details?.response?.text).toBe("My answer");
-            expect(result.details?.response?.additionalComments).toBe("More details");
+            expect(result.details?.response?.additionalComments).toBe(
+                "More details",
+            );
             expect(textContent(result)).toContain("My answer");
-            expect(textContent(result)).toContain("Additional Comments: More details");
+            expect(textContent(result)).toContain(
+                "Additional Comments: More details",
+            );
         });
     });
 
@@ -104,15 +112,23 @@ describe("formatResponse", () => {
             const result = formatResponse(
                 question,
                 options,
-                { kind: "selection", selections: ["Option A"], additionalComments: "More context" },
+                {
+                    kind: "selection",
+                    selections: ["Option A"],
+                    additionalComments: "More context",
+                },
                 false,
             );
 
             expect(result.details?.response?.kind).toBe("selection");
             expect(result.details?.response?.selections).toEqual(["Option A"]);
-            expect(result.details?.response?.additionalComments).toBe("More context");
+            expect(result.details?.response?.additionalComments).toBe(
+                "More context",
+            );
             expect(textContent(result)).toContain("Option A");
-            expect(textContent(result)).toContain("Additional Comments: More context");
+            expect(textContent(result)).toContain(
+                "Additional Comments: More context",
+            );
         });
 
         it("handles single selection field instead of selections array", () => {
@@ -185,9 +201,13 @@ describe("formatResponse", () => {
             );
 
             expect(result.details?.response?.kind).toBe("questionnaire");
-            expect(result.details?.response?.additionalComments).toBe("More context");
+            expect(result.details?.response?.additionalComments).toBe(
+                "More context",
+            );
             expect(textContent(result)).toContain("Q1: A");
-            expect(textContent(result)).toContain("Additional Comments: More context");
+            expect(textContent(result)).toContain(
+                "Additional Comments: More context",
+            );
         });
 
         it("handles freeform questionnaire answers", () => {
@@ -211,7 +231,12 @@ describe("formatResponse", () => {
 
             expect(result.details?.response?.kind).toBe("questionnaire");
             expect(result.details?.response?.questionnaireDetails).toEqual([
-                { question: "Q1", answer: "Free answer", kind: "freeform", comment: "Extra note" },
+                {
+                    question: "Q1",
+                    answer: "Free answer",
+                    kind: "freeform",
+                    comment: "Extra note",
+                },
             ]);
             expect(textContent(result)).toContain("Q1: Free answer");
             expect(textContent(result)).toContain("Comment: Extra note");
@@ -248,12 +273,7 @@ describe("formatResponse", () => {
 
     describe("null result", () => {
         it("returns 'No response' when result is null and not cancelled", () => {
-            const result = formatResponse(
-                question,
-                options,
-                null,
-                false,
-            );
+            const result = formatResponse(question, options, null, false);
 
             expect(textContent(result)).toBe("No response");
             expect(result.details?.cancelled).toBe(false);

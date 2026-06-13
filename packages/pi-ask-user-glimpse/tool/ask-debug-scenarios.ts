@@ -24,7 +24,8 @@ export const ASK_DEBUG_SCENARIOS: AutocompleteItem[] = [
     {
         value: "questionnaire",
         label: "questionnaire",
-        description: "Multiple structured questions, progress bar, per-Q counters",
+        description:
+            "Multiple structured questions, progress bar, per-Q counters",
     },
     {
         value: "kitchen-sink",

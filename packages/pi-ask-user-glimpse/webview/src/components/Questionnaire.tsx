@@ -65,15 +65,15 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
             ),
             questionnaireDetails,
         };
-        if (s.additionalComments.trim()) {
+        if (payload.allowComment === true && s.additionalComments.trim()) {
             result.additionalComments = s.additionalComments.trim();
         }
         sendToGlimpse(result);
-    }, []);
+    }, [payload.allowComment]);
 
     const isDirty =
         Object.values(answers).some(isAnswered) ||
-        additionalComments.trim() !== "";
+        (payload.allowComment === true && additionalComments.trim() !== "");
 
     const answeredCount = questions.filter((q) =>
         isAnswered(answers[q.title]),
@@ -154,14 +154,16 @@ export default function Questionnaire({ payload }: QuestionnaireProps) {
                     ))}
                 </div>
             </div>
-            <div className="shrink-0 px-4 py-3">
-                <div className="mt-3 pt-3 border-t border-border">
-                    <AdditionalComments
-                        value={additionalComments}
-                        onChange={setAdditionalComments}
-                    />
+            {payload.allowComment === true && (
+                <div className="shrink-0 px-4 py-3">
+                    <div className="mt-3 pt-3 border-t border-border">
+                        <AdditionalComments
+                            value={additionalComments}
+                            onChange={setAdditionalComments}
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
 
             <CancelConfirmModal
                 isOpen={showCancelConfirm}

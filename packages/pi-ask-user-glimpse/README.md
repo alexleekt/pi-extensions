@@ -209,9 +209,10 @@ npm run dev:webview  # Vite dev server on http://localhost:5173
 ### Validate
 
 ```bash
-npm run validate     # checks dist exists, placeholder present, binary found
-npm run validate:gui # same + opens actual WebView for visual check
-npm run check        # dry-run npm pack
+npm run validate     # checks dist/index.html exists and contains ASK_USER_PAYLOAD
+npm run validate:gui # reminder for manual Pi WebView validation
+npm run check        # full release gate: typecheck, unit tests, build, validate, e2e, pack dry-run
+npm run check:pack   # dry-run npm pack only
 ```
 
 ## Ask-Style Toggle: `/ask-style`
@@ -287,7 +288,7 @@ The **kitchen-sink** option opens a comprehensive questionnaire with an HTML con
 
 ## Editor Autocomplete
 
-The extension layers two completions on top of Pi's built-in slash / path provider via `ctx.ui.addAutocompleteProvider()` (requires `pi-coding-agent ≥ 0.79.1`).
+The extension layers completions on top of Pi's built-in slash / path provider via `ctx.ui.addAutocompleteProvider()` (requires `pi-coding-agent ≥ 0.79.1`).
 
 ### `#<header>` — recall a recent ask_user call
 

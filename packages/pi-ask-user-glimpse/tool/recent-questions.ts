@@ -8,7 +8,11 @@
 
 const MAX_ENTRIES = 20;
 
-export type AskKind = "single-select" | "multi-select" | "freeform" | "questionnaire";
+export type AskKind =
+    | "single-select"
+    | "multi-select"
+    | "freeform"
+    | "questionnaire";
 
 export interface RecentQuestion {
     /** Short label shown in the autocomplete dropdown (the "header"). */
@@ -34,7 +38,10 @@ export class RecentQuestionsStore {
         // design was guarding against.
         this.entries = this.entries.filter(
             (e) =>
-                !(e.toolCallId === entry.toolCallId && e.header === entry.header),
+                !(
+                    e.toolCallId === entry.toolCallId &&
+                    e.header === entry.header
+                ),
         );
         this.entries.push(entry);
         if (this.entries.length > MAX_ENTRIES) {
@@ -71,7 +78,11 @@ export function entriesFromAskUserCall(
     toolCallId: string,
 ): RecentQuestion[] {
     const ts = Date.now();
-    if (kind === "questionnaire" && Array.isArray(params.questions) && params.questions.length > 0) {
+    if (
+        kind === "questionnaire" &&
+        Array.isArray(params.questions) &&
+        params.questions.length > 0
+    ) {
         return params.questions
             .map((q) => (q.title || "").trim())
             .filter((title) => title.length > 0)
@@ -120,7 +131,10 @@ export interface JournalToolCallEntry {
 export function extractAskUserCallsFromJournal(
     entries: ReadonlyArray<JournalToolCallEntry>,
 ): Array<{ toolCallId: string; params: AskUserParamsFromJournal }> {
-    const results: Array<{ toolCallId: string; params: AskUserParamsFromJournal }> = [];
+    const results: Array<{
+        toolCallId: string;
+        params: AskUserParamsFromJournal;
+    }> = [];
     for (const entry of entries) {
         if (entry.type !== "message") continue;
         if (entry.message.role !== "assistant") continue;

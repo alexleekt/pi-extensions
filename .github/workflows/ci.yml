@@ -50,11 +50,23 @@ jobs:
 
             - name: Type check package
               working-directory: packages/${{ matrix.package }}
-              run: npm run typecheck 2>/dev/null || npm run check
+              run: |
+                  if npm run | grep -q " typecheck"; then
+                      npm run typecheck
+                  else
+                      echo "No typecheck script for ${{ matrix.package }}"
+                  fi
 
             - name: Run tests
               working-directory: packages/${{ matrix.package }}
-              run: npm test 2>/dev/null || node test-integration.mjs 2>/dev/null || echo "no tests"
+              run: |
+                  if npm run | grep -q " test"; then
+                      npm test
+                  elif [ -f test-integration.mjs ]; then
+                      node test-integration.mjs
+                  else
+                      echo "No tests for ${{ matrix.package }}"
+                  fi
 
             - name: Dry run publish
               working-directory: packages/${{ matrix.package }}

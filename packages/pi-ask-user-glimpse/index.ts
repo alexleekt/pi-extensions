@@ -29,23 +29,23 @@ import {
 } from "./shared/preamble.js";
 import { loadAskUserPrompt, loadYoloMandate } from "./shared/prompt-loader.js";
 import {
+    ASK_DEBUG_SCENARIOS,
+    filterAskDebugScenarios,
+} from "./tool/ask-debug-scenarios.js";
+import {
     type AskUserMetadata,
     type AskUserParams,
     askUserHandler,
 } from "./tool/ask-user.js";
 import { makeRecentQuestionAutocompleteProvider } from "./tool/extension-autocomplete.js";
 import {
-    entriesFromAskUserCall,
-    makeRecentQuestionsStore,
     type AskKind,
+    entriesFromAskUserCall,
     type JournalToolCallEntry,
+    makeRecentQuestionsStore,
     type RecentQuestionsStore,
     seedStoreFromJournal,
 } from "./tool/recent-questions.js";
-import {
-    ASK_DEBUG_SCENARIOS,
-    filterAskDebugScenarios,
-} from "./tool/ask-debug-scenarios.js";
 
 /** Counter for synthetic toolCallIds used when this extension invokes
  *  ask_user directly (via /ask-debug or /ask) — those code paths never
@@ -678,7 +678,10 @@ export default function (pi: ExtensionAPI) {
      *  `tool_call`). The store dedupes by toolCallId, so an LLM call
      *  recorded through the event won't double-add if it also passes
      *  through `runAskUserWithTheme` later. */
-    function recordAskUserCall(params: AskUserParams, toolCallId: string): void {
+    function recordAskUserCall(
+        params: AskUserParams,
+        toolCallId: string,
+    ): void {
         const newEntries = entriesFromAskUserCall(
             params,
             inferAskKind(params),

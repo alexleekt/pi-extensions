@@ -3,8 +3,8 @@ import {
     entriesFromAskUserCall,
     extractAskUserCallsFromJournal,
     inferAskKindFromParams,
-    makeRecentQuestionsStore,
     type JournalToolCallEntry,
+    makeRecentQuestionsStore,
     type RecentQuestion,
     seedStoreFromJournal,
 } from "../recent-questions.js";
@@ -103,7 +103,11 @@ describe("entriesFromAskUserCall", () => {
             "questionnaire",
             "c-2",
         );
-        expect(out.map((e) => e.header)).toEqual(["Database", "Architecture", "Notes"]);
+        expect(out.map((e) => e.header)).toEqual([
+            "Database",
+            "Architecture",
+            "Notes",
+        ]);
         expect(out.every((e) => e.kind === "questionnaire")).toBe(true);
     });
 
@@ -130,9 +134,9 @@ describe("entriesFromAskUserCall", () => {
 
 describe("inferAskKindFromParams", () => {
     it("returns questionnaire when questions[] is present and non-empty", () => {
-        expect(
-            inferAskKindFromParams({ questions: [{ title: "A" }] }),
-        ).toBe("questionnaire");
+        expect(inferAskKindFromParams({ questions: [{ title: "A" }] })).toBe(
+            "questionnaire",
+        );
     });
     it("returns multi-select when allowMultiple is true", () => {
         expect(
@@ -169,23 +173,21 @@ describe("extractAskUserCallsFromJournal", () => {
     });
 
     it("ignores non-message entries", () => {
-        // biome-ignore lint/suspicious/noExplicitAny: testing defensive type guard
-        const entries: any[] = [
+        const entries = [
             { type: "compaction", summary: "x" },
             { type: "session_info", name: "foo" },
-        ];
+        ] as unknown as Parameters<typeof extractAskUserCallsFromJournal>[0];
         expect(extractAskUserCallsFromJournal(entries)).toEqual([]);
     });
 
     it("ignores user/toolResult messages", () => {
-        // biome-ignore lint/suspicious/noExplicitAny: testing structural type guard
-        const entries: any[] = [
+        const entries = [
             { type: "message", message: { role: "user", content: "hi" } },
             {
                 type: "message",
                 message: { role: "toolResult", toolCallId: "x" },
             },
-        ];
+        ] as unknown as Parameters<typeof extractAskUserCallsFromJournal>[0];
         expect(extractAskUserCallsFromJournal(entries)).toEqual([]);
     });
 
@@ -252,7 +254,9 @@ describe("seedStoreFromJournal", () => {
             type: "message",
             message: {
                 role: "assistant",
-                content: [{ type: "toolCall", id, name: "ask_user", arguments: args }],
+                content: [
+                    { type: "toolCall", id, name: "ask_user", arguments: args },
+                ],
             },
         };
     }
@@ -290,10 +294,7 @@ describe("seedStoreFromJournal", () => {
         const store = makeRecentQuestionsStore();
         const added = seedStoreFromJournal(store, [
             assistantAsk("q-1", {
-                questions: [
-                    { title: "Database" },
-                    { title: "Architecture" },
-                ],
+                questions: [{ title: "Database" }, { title: "Architecture" }],
             }),
         ]);
         expect(added).toBe(2);
@@ -366,4 +367,3 @@ describe("seedStoreFromJournal", () => {
         expect(store.size()).toBe(1);
     });
 });
-

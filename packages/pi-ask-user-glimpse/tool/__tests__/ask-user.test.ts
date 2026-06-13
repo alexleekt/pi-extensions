@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { askUserHandler } from "../ask-user.js";
 
 const mockPrompt = vi.fn();
@@ -17,7 +17,9 @@ function buildCtx(overrides = {}) {
     };
 }
 
-function getText(result: { content: Array<{ type: string; text?: string }> }): string {
+function getText(result: {
+    content: Array<{ type: string; text?: string }>;
+}): string {
     const c = result.content[0];
     return c.type === "text" && c.text ? c.text : "";
 }
@@ -25,6 +27,10 @@ function getText(result: { content: Array<{ type: string; text?: string }> }): s
 describe("askUserHandler", () => {
     beforeEach(() => {
         mockPrompt.mockClear();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
     it("returns cancelled when signal is aborted", async () => {
@@ -51,6 +57,23 @@ describe("askUserHandler", () => {
         );
 
         expect(getText(result)).toContain("No UI available");
+        expect(result.details.cancelled).toBe(true);
+    });
+
+    it("returns cancelled when prompt exceeds the host timeout", async () => {
+        vi.useFakeTimers();
+        mockPrompt.mockImplementation(() => new Promise(() => {}));
+
+        const pending = askUserHandler(
+            { question: "Test?" },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        await vi.advanceTimersByTimeAsync(120_000);
+        const result = await pending;
+
+        expect(getText(result)).toBe("Cancelled");
         expect(result.details.cancelled).toBe(true);
     });
 
@@ -92,7 +115,10 @@ describe("askUserHandler", () => {
     });
 
     it("returns formatted response for selection result", async () => {
-        mockPrompt.mockResolvedValue({ kind: "selection", selections: ["Option A"] });
+        mockPrompt.mockResolvedValue({
+            kind: "selection",
+            selections: ["Option A"],
+        });
 
         const result = await askUserHandler(
             { question: "Test?", options: ["Option A", "Option B"] },
@@ -116,9 +142,7 @@ describe("askUserHandler", () => {
         const result = await askUserHandler(
             {
                 question: "Test?",
-                questions: [
-                    { title: "Q1", options: [{ title: "A" }] },
-                ],
+                questions: [{ title: "Q1", options: [{ title: "A" }] }],
             },
             undefined,
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
@@ -159,7 +183,8 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const lastCall =
+            mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
         const windowOptions = lastCall[1] as Record<string, unknown>;
         expect(windowOptions.followCursor).toBe(true);
     });
@@ -173,7 +198,8 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const lastCall =
+            mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
         const html = lastCall[0] as string;
         expect(html).toContain('"type":"multi-select"');
     });
@@ -181,7 +207,8 @@ describe("askUserHandler", () => {
     it("auto-splits long question into question and context", async () => {
         mockPrompt.mockResolvedValue({ kind: "freeform", text: "My answer" });
 
-        const longQuestion = "What is your opinion on this very important topic that requires a detailed response? Please provide a comprehensive answer with examples and references.";
+        const longQuestion =
+            "What is your opinion on this very important topic that requires a detailed response? Please provide a comprehensive answer with examples and references.";
 
         await askUserHandler(
             { question: longQuestion },
@@ -189,10 +216,15 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const lastCall =
+            mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
         const html = lastCall[0] as string;
-        expect(html).toContain('"question":"What is your opinion on this very important topic that requires a detailed response?"');
-        expect(html).toContain('"context":"Please provide a comprehensive answer with examples and references."');
+        expect(html).toContain(
+            '"question":"What is your opinion on this very important topic that requires a detailed response?"',
+        );
+        expect(html).toContain(
+            '"context":"Please provide a comprehensive answer with examples and references."',
+        );
     });
 
     it("includes options in error response when prompt throws", async () => {
@@ -238,7 +270,9 @@ describe("askUserHandler", () => {
         expect(getText(result)).toBe(
             "No UI available for ask_user dialog. Please ask the user directly in free-form text.",
         );
-        expect((result.details as Record<string, unknown>).error).toBe("No UI available");
+        expect((result.details as Record<string, unknown>).error).toBe(
+            "No UI available",
+        );
     });
 
     it("verifies followCursor is passed through window options", async () => {
@@ -250,7 +284,8 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const lastCall =
+            mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
         const windowOptions = lastCall[1] as Record<string, unknown>;
         expect(windowOptions.followCursor).toBe(true);
         expect(windowOptions.width).toBe(1200);
@@ -266,7 +301,8 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const lastCall =
+            mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
         const windowOptions = lastCall[1] as Record<string, unknown>;
         const title = windowOptions.title as string;
         expect(title).toContain("The");
@@ -274,13 +310,20 @@ describe("askUserHandler", () => {
     });
 
     it("normalizes object-style options", async () => {
-        mockPrompt.mockResolvedValue({ kind: "single-select", selection: "Option A" });
+        mockPrompt.mockResolvedValue({
+            kind: "single-select",
+            selection: "Option A",
+        });
 
         await askUserHandler(
             {
                 question: "Test?",
                 options: [
-                    { title: "Option A", description: "Desc A", recommended: true },
+                    {
+                        title: "Option A",
+                        description: "Desc A",
+                        recommended: true,
+                    },
                     { title: "Option B", description: "Desc B" },
                 ],
             },
@@ -288,7 +331,8 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const lastCall =
+            mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
         const html = lastCall[0] as string;
         expect(html).toContain('"title":"Option A"');
         expect(html).toContain('"description":"Desc A"');
@@ -316,7 +360,8 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const lastCall =
+            mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
         const html = lastCall[0] as string;
         expect(html).toContain('"contextFormat":"markdown"');
     });
@@ -334,7 +379,8 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const lastCall =
+            mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
         const html = lastCall[0] as string;
         expect(html).toContain('"contextFormat":"html"');
     });
@@ -358,7 +404,8 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const lastCall =
+            mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
         const html = lastCall[0] as string;
         // <scenario> is NOT a known HTML tag, so the auto-downgrade fires
         // and the format is now markdown — the user sees parsed text.
@@ -395,12 +442,15 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        const lastCall = mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
+        const lastCall =
+            mockPrompt.mock.calls[mockPrompt.mock.calls.length - 1];
         const html = lastCall[0] as string;
         // The first sentence end outside the code block is the "." after
         // "characters." — that's where the split happens. The "1.2.3" inside
         // the code block must NOT have been treated as a split point.
-        expect(html).toContain('"question":"Here is my proposed plan, with extensive detail so the question\\ntriggers the auto-split threshold of 120 characters."');
+        expect(html).toContain(
+            '"question":"Here is my proposed plan, with extensive detail so the question\\ntriggers the auto-split threshold of 120 characters."',
+        );
         // Context should include the code block and the trailing sentence
         expect(html).toContain('"context":"');
         // Specifically, the version "1.2.3" must be in the context, not in the question
