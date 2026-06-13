@@ -47,9 +47,9 @@
 | **HTML context** | When `contextFormat: "html"`, the `context` field renders inside a sandboxed iframe (`sandbox="allow-scripts"`) instead of markdown. Inherits the wrapper's CSS variables and content zoom for automatic light/dark/readability consistency. |
 | **Readable question context** | Guidance pattern for agent-authored context: use markdown by default; add Mermaid or HTML only when structure, diagrams, metrics, or visual comparison make the decision easier to parse. |
 | **Recommendation badge** | A "Recommended" badge shown next to options marked with `recommended: true`. |
-| **Kitchen sink** | The `kitchen-sink` option in `/ask-debug` opens a comprehensive questionnaire demonstrating every major feature in one dialog. |
+| **Kitchen sink** | Developer-only `/ask-debug` scenario that opens a comprehensive questionnaire demonstrating every major feature in one dialog. |
 | **Per-option comments** | A comment textarea attached to individual options (not the global AdditionalComments that was removed in v0.5.2). |
-| **YOLO mode** | `/ask-style` state that tells the agent to proceed without asking. Injects a mandate: "Do NOT ask the user for input or confirmation." |
+| **Ask Last** | `/ask` command flow that turns the last assistant request into a clean dialog, using an optional cleanup adapter and falling back to freeform when needed. |
 
 ## Security & Architecture
 

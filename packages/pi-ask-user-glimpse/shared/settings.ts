@@ -1,13 +1,14 @@
 /**
  * Settings file for pi-ask-user-glimpse.
  *
- * Stored at ~/.pi/agent/pi-ask-user-glimpse.json
- * and read/written at runtime.
+ * Stored at ~/.pi/agent/pi-ask-user-glimpse.json and read at runtime.
+ * The slash-command config UI was removed when the extension was narrowed
+ * to dialog rendering, but the legacy askUserPrompt key is still honored.
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
 const SETTINGS_PATH = join(
     homedir(),
@@ -17,10 +18,8 @@ const SETTINGS_PATH = join(
 );
 
 export interface AskUserSettings {
-    /** Direct path to a custom ask-user.md prompt file. Overrides bundled default. */
+    /** Legacy direct path to a custom ask-user.md prompt file. Overrides bundled default. */
     askUserPrompt?: string;
-    /** Direct path to a custom yolo-mandate.md prompt file. Overrides bundled default. */
-    yoloMandatePrompt?: string;
 }
 
 export function isAskUserSettings(value: unknown): value is AskUserSettings {
@@ -28,24 +27,10 @@ export function isAskUserSettings(value: unknown): value is AskUserSettings {
     if (Array.isArray(value)) return false;
     const candidate = value as Record<string, unknown>;
 
-    for (const key of ["askUserPrompt", "yoloMandatePrompt"] as const) {
-        if (
-            candidate[key] !== undefined &&
-            typeof candidate[key] !== "string"
-        ) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-function ensureSettingsDir(): void {
-    try {
-        mkdirSync(dirname(SETTINGS_PATH), { recursive: true });
-    } catch {
-        // ignore
-    }
+    return (
+        candidate.askUserPrompt === undefined ||
+        typeof candidate.askUserPrompt === "string"
+    );
 }
 
 export function readAskUserSettings(): AskUserSettings {
@@ -60,14 +45,5 @@ export function readAskUserSettings(): AskUserSettings {
         return parsed;
     } catch {
         return {};
-    }
-}
-
-export function writeAskUserSettings(settings: AskUserSettings): void {
-    try {
-        ensureSettingsDir();
-        writeFileSync(SETTINGS_PATH, `${JSON.stringify(settings, null, 2)}\n`);
-    } catch (error) {
-        console.error("[pi-ask-user-glimpse] Failed to write settings:", error);
     }
 }

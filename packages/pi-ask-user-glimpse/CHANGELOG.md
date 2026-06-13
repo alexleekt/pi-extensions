@@ -2,6 +2,16 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## Unreleased
+
+### Changed
+- **Dialog-renderer-only command surface** — Removed `/ask-style`, YOLO mandate injection, and `/ask-user-config` from the public slash-command surface. The extension now focuses on rendering `ask_user` dialogs instead of changing agent asking policy.
+- **`/ask` Ask Last cleanup pipeline** — `/ask` now builds a validated Ask Last payload with an adapter seam for host/external cleanup and a deterministic freeform fallback. It no longer relies on `?` sentence splitting.
+- **Developer-only `/ask-debug`** — `/ask-debug` is registered only when `PI_ASK_USER_DEBUG=1`, `true`, or `yes` is set.
+
+### Removed
+- Removed the bundled `prompts/yolo-mandate.md` and the unused abbreviation-based question splitter.
+
 ## [0.6.0] — 2026-06-11
 
 ### Added

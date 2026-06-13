@@ -226,41 +226,9 @@ npm run check        # full release gate: typecheck, unit tests, build, validate
 npm run check:pack   # dry-run npm pack only
 ```
 
-## Ask-Style Toggle: `/ask-style`
-
-By default, the agent asks questions as free-form text. You can change this per-session:
-
-```
-/ask-style
-```
-
-Cycles through two states:
-
-| State | Behavior |
-|-------|----------|
-| **Plain Text** *(default)* | Agent writes questions as free-form text |
-| **YOLO** | Agent proceeds with its best recommendation without asking |
-
-The setting is persisted in the session and survives restarts.
-
-### YOLO style
-
-When YOLO is active, the extension injects a mandate telling the agent **not** to ask for input or confirmation. Instead, the agent goes with its best recommendation and keeps moving. It will only use `ask_user` if the action would cause irreversible harm, data loss, or security compromise.
-
-Use this when you trust the agent's judgment and want maximum speed:
-
-```
-/ask-style
-→ ask_user style: YOLO — go with your recommendation
-```
-
-### Token cost
-
-The injected mandate is ~100 tokens. It is appended on every turn when `ask_user` is available in the tool set.
-
 ## Slash Command: `/ask`
 
-When the assistant writes a question as free-form text (bypassing `ask_user`), use this command to retroactively open the rich dialog:
+Use `/ask` when the assistant asked for input in plain text and you want to answer in a dialog:
 
 ```
 /ask
@@ -269,33 +237,33 @@ When the assistant writes a question as free-form text (bypassing `ask_user`), u
 ### How it works
 
 1. Finds the last assistant message in the session
-2. Extracts all sentences ending with `?`
-3. If one question → opens a **freeform** dialog with the full message as context
-4. If multiple questions → opens a **questionnaire** with each question as an item
+2. Asks the Ask Last cleanup adapter to turn that request into a clean `ask_user` payload
+3. Opens the best matching dialog: freeform, single-select, multi-select, or questionnaire
+4. Falls back to a simple freeform dialog when cleanup is unavailable or invalid
 5. Sends your answer back into the conversation as a user message
 
-This is useful when:
-- A skill or the agent itself wrote a question as plain text
-- You want to answer via the rich WebView instead of typing inline
-- The agent asked multiple things and you want to answer them all at once
+The extension does **not** change the agent's asking policy. It only renders dialogs. If you want the agent to ask less often, configure that in your agent instructions or skills.
 
-## Slash Command: `/ask-debug`
+### Optional cleanup command
 
-Open a debug prompt that lets you manually test each dialog type:
+By default, `/ask` uses the deterministic fallback. To experiment with LLM cleanup, set `PI_ASK_USER_CLEANUP_COMMAND` to a command that reads a JSON request from stdin and writes an `ask_user` payload as JSON to stdout. Invalid output is ignored and `/ask` falls back safely.
+
+## Developer Command: `/ask-debug`
+
+`/ask-debug` is hidden by default. Enable it for local QA with:
+
+```bash
+PI_ASK_USER_DEBUG=1 pi
+```
+
+Then open a debug prompt that lets you manually test each dialog type:
 
 ```
 /ask-debug
-```
-
-The command also supports a `getArgumentCompletions` autocomplete — type `/ask-debug kit<Tab>` and the editor completes it to `kitchen-sink`. Try `/ask-debug readable-context` for a markdown + Mermaid decision prompt or `/ask-debug html-decision` for a focused HTML visualization prompt. Passing the scenario as the argument skips the select dialog:
-
-```
 /ask-debug kitchen-sink
 ```
 
-Options: `single-select`, `multi-select`, `freeform`, `questionnaire`, `kitchen-sink`. The result is shown as a Pi notification.
-
-The **kitchen-sink** option opens a comprehensive questionnaire with an HTML context panel, recommended badges, multi-select, freeform, comments, and skip — every major feature in one dialog.
+The command supports argument completions. Type `/ask-debug kit<Tab>` to complete `kitchen-sink`. Try `/ask-debug readable-context` for a markdown + Mermaid decision prompt or `/ask-debug html-decision` for a focused HTML visualization prompt.
 
 ## Editor Autocomplete
 
@@ -331,7 +299,8 @@ See [Slash Command: `/ask-debug`](#slash-command-ask-debug) above.
 
 ```
 index.ts              → Pi extension entrypoint (tool + command registration)
-constants/            → STOPWORDS, PROTECTED_ABBREVIATIONS
+constants/            → STOPWORDS and other text helpers
+tool/ask-last.ts      → builds /ask Ask Last payloads with cleanup adapter + fallback
 tool/ask-user.ts      → constructs payload, injects into HTML, calls glimpseui.prompt()
 tool/response-formatter.ts → normalizes WebView response for Pi
 (no terminal fallback — fast-escape with error when UI unavailable)

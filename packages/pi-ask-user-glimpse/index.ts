@@ -2,11 +2,6 @@
  * pi-ask-user-glimpse — Pi extension that replaces ask_user with native WebView dialogs via glimpseui.
  */
 
-import {
-    type CustomJournalEntry,
-    isCustomEntry,
-} from "@alexleekt/pi-shared/types";
-
 import { StringEnum, Type } from "@earendil-works/pi-ai";
 import type {
     ExtensionAPI,
@@ -14,7 +9,6 @@ import type {
     ToolCallEvent,
 } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
-import { PROTECTED_ABBREVIATIONS } from "./constants/abbreviations.js";
 import {
     ALL_THEME_NAMES,
     type AnimationLevel,
@@ -27,11 +21,12 @@ import {
     mergeContextWithPreamble,
     stripThinkingBlocks,
 } from "./shared/preamble.js";
-import { loadAskUserPrompt, loadYoloMandate } from "./shared/prompt-loader.js";
+import { loadAskUserPrompt } from "./shared/prompt-loader.js";
 import {
     ASK_DEBUG_SCENARIOS,
     filterAskDebugScenarios,
 } from "./tool/ask-debug-scenarios.js";
+import { answerPrefix, buildAskLastParams } from "./tool/ask-last.js";
 import {
     type AskUserMetadata,
     type AskUserParams,
@@ -77,28 +72,22 @@ let _pi: ExtensionAPI | undefined;
 /* ── Session-scoped store of recent ask_user calls (powers `#<header>` autocomplete) ── */
 const recentQuestionsStore: RecentQuestionsStore = makeRecentQuestionsStore();
 
-/* ── Style constants ── */
-
-type StyleMode = "plain" | "yolo";
-
 function findCustomData(
     entries: unknown[],
     customType: string,
 ): Record<string, unknown> | undefined {
     const entry = entries.find(
-        (e): e is CustomJournalEntry =>
-            isCustomEntry(e) && e.customType === customType,
+        (candidate): candidate is { customType: string; data?: unknown } => {
+            if (typeof candidate !== "object" || candidate === null)
+                return false;
+            return (
+                (candidate as Record<string, unknown>).customType === customType
+            );
+        },
     );
-    return entry?.data as Record<string, unknown> | undefined;
-}
-
-function getStyleMode(entries: unknown[]): StyleMode {
-    const data = findCustomData(entries, "ask-user-style");
-    const mode = data?.mode;
-    if (mode === "plain" || mode === "yolo") {
-        return mode;
-    }
-    return "plain";
+    return entry?.data && typeof entry.data === "object"
+        ? (entry.data as Record<string, unknown>)
+        : undefined;
 }
 
 function getThemeSettings(entries: unknown[]): {
@@ -182,98 +171,9 @@ async function runAskUserWithTheme(
     return result;
 }
 
-/* ── /ask: extract explicit questions only ── */
-
-function splitSentences(text: string): string[] {
-    const PLACEHOLDER = "\x00";
-
-    let buffer = text.replace(/\b(e\.g\.|i\.e\.)\b/gi, (m) =>
-        m.replace(/\./g, PLACEHOLDER),
-    );
-
-    buffer = buffer.replace(/\b([a-zA-Z]{1,4})\./g, (match, abbr) =>
-        PROTECTED_ABBREVIATIONS.has(abbr.toLowerCase())
-            ? match.replace(".", PLACEHOLDER)
-            : match,
-    );
-
-    buffer = buffer.replace(/\d+\.\d+/g, (m) => m.replace(/\./g, PLACEHOLDER));
-    buffer = buffer.replace(/https?:\/\/\S+/g, (m) =>
-        m.replace(/\./g, PLACEHOLDER),
-    );
-    buffer = buffer.replace(/\b\w\.\w\./g, (m) =>
-        m.replace(/\./g, PLACEHOLDER),
-    );
-
-    return buffer
-        .split(/(?<=[.!?])\s+/)
-        .map((s) => s.trim().replace(new RegExp(PLACEHOLDER, "g"), "."))
-        .filter((s) => s.length > 0);
-}
-
-function hasQuotedQuestion(sentence: string): boolean {
-    return /["'`].*\?.*["'`]/.test(sentence) && !sentence.endsWith("?");
-}
-
-function looksLikeTernary(sentence: string): boolean {
-    return /\?\s*[:;]/.test(sentence) || /=\s*\S+\s*\?/.test(sentence);
-}
-
-/** Extract only explicit questions (sentences ending in ?).
- *  Implicit requests like "let me know" are ignored — the freeform textarea
- *  already handles open-ended input without creating phantom questionnaire rows. */
-function extractQuestions(text: string): string[] {
-    return splitSentences(text).filter((sentence) => {
-        if (!sentence.endsWith("?")) return false;
-        if (hasQuotedQuestion(sentence)) return false;
-        if (looksLikeTernary(sentence)) return false;
-        if (sentence.length < 3) return false;
-        return true;
-    });
-}
-
-function truncate(str: string, max: number): string {
-    return str.length > max ? `${str.slice(0, max - 3)}...` : str;
-}
-
-function buildAskLastParams(
-    questions: string[],
-    fullText: string,
-): AskUserParams {
-    const cleanContext = stripThinkingBlocks(fullText);
-    if (questions.length === 0) {
-        return {
-            question: "The assistant would like your input on the following:",
-            context: cleanContext,
-            allowFreeform: true,
-        };
-    }
-    if (questions.length === 1) {
-        return {
-            question: questions[0],
-            context: cleanContext,
-            allowFreeform: true,
-        };
-    }
-    return {
-        question: "The assistant asked multiple questions",
-        context: cleanContext,
-        questions: questions.map((q) => ({
-            title: truncate(q, 60),
-            description: q,
-        })),
-        allowComment: true,
-        allowSkip: true,
-    };
-}
-
-/** Build a user-facing prefix for an auto-caught or manual /ask answer. */
-function answerPrefix(questionCount: number): string {
-    if (questionCount === 0) {
-        return "Responding to your last message:";
-    }
-    const plural = questionCount > 1 ? "s" : "";
-    return `Answering the question${plural} from your last message:`;
+export function isAskDebugEnabled(): boolean {
+    const value = process.env.PI_ASK_USER_DEBUG?.toLowerCase();
+    return value === "1" || value === "true" || value === "yes";
 }
 
 function buildDebugParams(mode: string): AskUserParams | null {
@@ -384,16 +284,19 @@ flowchart LR
                 options: [
                     {
                         title: "Phased rollout",
-                        description: "Gradual exposure with time to observe regressions.",
+                        description:
+                            "Gradual exposure with time to observe regressions.",
                         recommended: true,
                     },
                     {
                         title: "Big bang",
-                        description: "Fastest path, but requires high confidence before launch.",
+                        description:
+                            "Fastest path, but requires high confidence before launch.",
                     },
                     {
                         title: "Dark launch",
-                        description: "Safest path for infrastructure-heavy or reversible backend work.",
+                        description:
+                            "Safest path for infrastructure-heavy or reversible backend work.",
                     },
                 ],
                 allowFreeform: true,
@@ -428,16 +331,19 @@ flowchart LR
                 options: [
                     {
                         title: "Managed",
-                        description: "Lowest operational burden; recommended for small teams.",
+                        description:
+                            "Lowest operational burden; recommended for small teams.",
                         recommended: true,
                     },
                     {
                         title: "Self-hosted",
-                        description: "Maximum control, higher maintenance burden.",
+                        description:
+                            "Maximum control, higher maintenance burden.",
                     },
                     {
                         title: "Hybrid",
-                        description: "Keep core managed while self-hosting sensitive pieces.",
+                        description:
+                            "Keep core managed while self-hosting sensitive pieces.",
                     },
                 ],
                 allowFreeform: true,
@@ -806,53 +712,8 @@ export default function (pi: ExtensionAPI) {
         }
     });
 
-    // ── Inject mandate based on ask style ──
-    pi.on("before_agent_start", async (event, ctx) => {
-        const hasAskUser =
-            event.systemPromptOptions.selectedTools?.includes("ask_user");
-        if (!hasAskUser) {
-            return;
-        }
-
-        // Don't force ask_user in headless environments — the tool can't render dialogs
-        if (!ctx.hasUI) {
-            return;
-        }
-
-        const styleMode = getStyleMode(ctx.sessionManager.getEntries());
-
-        if (styleMode === "yolo") {
-            const yoloMandate = loadYoloMandate();
-            return { systemPrompt: `${event.systemPrompt}\n${yoloMandate}` };
-        }
-        // "plain" → no injection; silently return undefined
-    });
-
-    // ── Manual style toggle ──
-    pi.registerCommand("ask-style", {
-        description: "Cycle ask_user style: Plain Text → YOLO → Plain Text",
-        handler: async (_args, ctx) => {
-            const styleMode = getStyleMode(ctx.sessionManager.getEntries());
-
-            let nextMode: StyleMode;
-            let label: string;
-
-            if (styleMode === "plain") {
-                nextMode = "yolo";
-                label = "YOLO — go with your recommendation";
-            } else {
-                nextMode = "plain";
-                label = "Plain Text (no dialog injection)";
-            }
-
-            await pi.appendEntry("ask-user-style", { mode: nextMode });
-            ctx.ui.notify(`ask_user style: ${label}`, "info");
-        },
-    });
-
     pi.registerCommand("ask", {
-        description:
-            "Extract questions from the last assistant message and ask them via ask_user",
+        description: "Open a dialog for the last assistant request",
         handler: async (_args, ctx) => {
             if (!ctx.hasUI) {
                 console.warn(
@@ -881,9 +742,7 @@ export default function (pi: ExtensionAPI) {
                 return;
             }
 
-            const questions = extractQuestions(fullText);
-
-            const askLastParams = buildAskLastParams(questions, fullText);
+            const askLastParams = await buildAskLastParams(fullText, ctx);
             // Record before running so a cancelled dialog still seeds the
             // store — the question is what the user is trying to ask.
             recordAskUserCall(askLastParams, makeSyntheticAskUserId());
@@ -903,120 +762,65 @@ export default function (pi: ExtensionAPI) {
             const answer = textContent?.type === "text" ? textContent.text : "";
             if (!answer) return;
 
-            await deliverAnswer(answerPrefix(questions.length), answer, ctx);
+            await deliverAnswer(answerPrefix(askLastParams), answer, ctx);
         },
     });
 
-    pi.registerCommand("ask-debug", {
-        description: "Open a debug prompt to test each ask_user dialog type",
-        getArgumentCompletions: (argumentPrefix) =>
-            filterAskDebugScenarios(argumentPrefix),
-        handler: async (_args, ctx) => {
-            if (!ctx.hasUI) {
-                console.warn(
-                    "[pi-ask-user-glimpse] ask-debug requires interactive mode",
-                );
-                return;
-            }
-
-            // Prefer the scenario passed via the slash-command argument (autocompleted),
-            // falling back to a select dialog so the command still works with no args.
-            const argMode = _args?.trim();
-            const isValidArg = ASK_DEBUG_SCENARIOS.some(
-                (s) => s.value === argMode,
-            );
-            const mode =
-                isValidArg && argMode
-                    ? argMode
-                    : await ctx.ui.select(
-                          "Choose a prompt type to test:",
-                          ASK_DEBUG_SCENARIOS.map((s) => s.value),
-                      );
-            if (!mode) return;
-
-            const params = buildDebugParams(mode);
-            if (!params) return;
-
-            const result = await runAskUserWithTheme(params, undefined, ctx);
-            const textContent = result.content[0];
-            const text =
-                textContent.type === "text" ? textContent.text : "No response";
-
-            // Render debug result in the conversation thread without triggering AI processing
-            _pi?.sendMessage(
-                {
-                    customType: "ask-debug-result",
-                    content: [
-                        { type: "text", text: `[debug] ${mode} → ${text}` },
-                    ],
-                    display: true,
-                },
-                { triggerTurn: false },
-            );
-        },
-    });
-
-    pi.registerCommand("ask-user-config", {
-        description: "Configure ask_user prompt file paths",
-        handler: async (_args, ctx) => {
-            const { readAskUserSettings, writeAskUserSettings } = await import(
-                "./shared/settings.js"
-            );
-            const { getPromptOverrideStatus } = await import(
-                "./shared/prompt-loader.js"
-            );
-            const settings = readAskUserSettings();
-            const status = getPromptOverrideStatus();
-
-            const choice = await ctx.ui.select(
-                "ask_user prompt file configuration:",
-                [
-                    "Set ask-user prompt file",
-                    "Set yolo mandate file",
-                    "Clear all overrides",
-                    "View current config",
-                    "Done",
-                ],
-            );
-            if (!choice) return;
-
-            const handleInput = async (
-                label: string,
-                key: "askUserPrompt" | "yoloMandatePrompt",
-            ): Promise<void> => {
-                const current = settings[key] || "";
-                const newPath = await ctx.ui.input(label, current);
-                if (newPath === null || newPath === undefined) return;
-                const trimmed = newPath.trim();
-                if (trimmed) {
-                    writeAskUserSettings({ ...settings, [key]: trimmed });
-                    ctx.ui.notify(`${key} set to ${trimmed}`, "info");
-                } else if (current) {
-                    writeAskUserSettings({ ...settings, [key]: undefined });
-                    ctx.ui.notify(`${key} cleared`, "info");
+    if (isAskDebugEnabled()) {
+        pi.registerCommand("ask-debug", {
+            description:
+                "Open a debug prompt to test each ask_user dialog type",
+            getArgumentCompletions: (argumentPrefix) =>
+                filterAskDebugScenarios(argumentPrefix),
+            handler: async (_args, ctx) => {
+                if (!ctx.hasUI) {
+                    console.warn(
+                        "[pi-ask-user-glimpse] ask-debug requires interactive mode",
+                    );
+                    return;
                 }
-            };
 
-            if (choice === "Set ask-user prompt file") {
-                await handleInput("Path to ask-user.md", "askUserPrompt");
-            } else if (choice === "Set yolo mandate file") {
-                await handleInput(
-                    "Path to yolo-mandate.md",
-                    "yoloMandatePrompt",
+                // Prefer the scenario passed via the slash-command argument (autocompleted),
+                // falling back to a select dialog so the command still works with no args.
+                const argMode = _args?.trim();
+                const isValidArg = ASK_DEBUG_SCENARIOS.some(
+                    (s) => s.value === argMode,
                 );
-            } else if (choice === "Clear all overrides") {
-                writeAskUserSettings({});
-                ctx.ui.notify("All overrides cleared", "info");
-            } else if (choice === "View current config") {
-                const lines = [
-                    "ask_user prompt configuration:",
-                    `  askUserPrompt:     ${settings.askUserPrompt || "(default)"}`,
-                    `  yoloMandatePrompt: ${settings.yoloMandatePrompt || "(default)"}`,
-                    `  askUser:           ${status.askUser}`,
-                    `  yoloMandate:       ${status.yoloMandate}`,
-                ];
-                ctx.ui.notify(lines.join("\n"), "info");
-            }
-        },
-    });
+                const mode =
+                    isValidArg && argMode
+                        ? argMode
+                        : await ctx.ui.select(
+                              "Choose a prompt type to test:",
+                              ASK_DEBUG_SCENARIOS.map((s) => s.value),
+                          );
+                if (!mode) return;
+
+                const params = buildDebugParams(mode);
+                if (!params) return;
+
+                const result = await runAskUserWithTheme(
+                    params,
+                    undefined,
+                    ctx,
+                );
+                const textContent = result.content[0];
+                const text =
+                    textContent.type === "text"
+                        ? textContent.text
+                        : "No response";
+
+                // Render debug result in the conversation thread without triggering AI processing
+                _pi?.sendMessage(
+                    {
+                        customType: "ask-debug-result",
+                        content: [
+                            { type: "text", text: `[debug] ${mode} → ${text}` },
+                        ],
+                        display: true,
+                    },
+                    { triggerTurn: false },
+                );
+            },
+        });
+    }
 }

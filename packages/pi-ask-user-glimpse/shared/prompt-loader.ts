@@ -1,10 +1,8 @@
 /**
  * Runtime prompt loader for pi-ask-user-glimpse.
  *
- * Reads prompt files from individual paths configured in settings,
- * or falls back to the bundled prompts/ directory.
- *
- * All reads are runtime — no rebuild needed to iterate on prompts.
+ * Reads the bundled ask_user prompt, with optional legacy support for
+ * an askUserPrompt path in the settings file.
  */
 
 import { readFileSync } from "node:fs";
@@ -158,59 +156,4 @@ export function loadAskUserPrompt(): PromptSections {
         description,
         guidelines,
     };
-}
-
-/** Parse the yolo-mandate.md file into the mandate text. */
-export function loadYoloMandate(): string {
-    const settings = readAskUserSettings();
-    const raw = readPromptFile("yolo-mandate.md", settings.yoloMandatePrompt);
-    if (!raw) {
-        console.warn(
-            "[pi-ask-user-glimpse] Using fallback YOLO mandate — could not load yolo-mandate.md",
-        );
-        return "You are in YOLO style. Do NOT ask the user for input or confirmation. Go with your best recommendation and proceed immediately.";
-    }
-
-    const sections = parseSections(raw);
-    const text = sections.get("text") || "";
-
-    if (!text) {
-        console.warn(
-            "[pi-ask-user-glimpse] yolo-mandate.md has no ## Text section — using fallback",
-        );
-        return "You are in YOLO style. Do NOT ask the user for input or confirmation. Go with your best recommendation and proceed immediately.";
-    }
-
-    return text;
-}
-
-/** User override status for diagnostics (e.g., /ask-debug or status commands). */
-export function getPromptOverrideStatus(): {
-    askUser: "bundled" | "user";
-    yoloMandate: "bundled" | "user";
-} {
-    const settings = readAskUserSettings();
-
-    let askUser: "bundled" | "user" = "bundled";
-    let yoloMandate: "bundled" | "user" = "bundled";
-
-    if (settings.askUserPrompt) {
-        try {
-            readFileSync(settings.askUserPrompt, "utf-8");
-            askUser = "user";
-        } catch {
-            // individual path specified but unreadable
-        }
-    }
-
-    if (settings.yoloMandatePrompt) {
-        try {
-            readFileSync(settings.yoloMandatePrompt, "utf-8");
-            yoloMandate = "user";
-        } catch {
-            // individual path specified but unreadable
-        }
-    }
-
-    return { askUser, yoloMandate };
 }
