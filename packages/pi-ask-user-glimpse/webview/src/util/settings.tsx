@@ -27,6 +27,17 @@ export function getSystemMode(): "light" | "dark" {
 
 const THEME_FAMILY_KEY = "pi-ask-user-glimpse:theme-family";
 const MODE_KEY = "pi-ask-user-glimpse:mode";
+const CONTENT_ZOOM_KEY = "pi-ask-user-glimpse:content-zoom";
+
+export const MIN_CONTENT_ZOOM = 50;
+export const MAX_CONTENT_ZOOM = 250;
+export const DEFAULT_CONTENT_ZOOM = 100;
+export const CONTENT_ZOOM_STEP = 10;
+
+export function clampContentZoom(value: number): number {
+    const rounded = Math.round(value / CONTENT_ZOOM_STEP) * CONTENT_ZOOM_STEP;
+    return Math.max(MIN_CONTENT_ZOOM, Math.min(MAX_CONTENT_ZOOM, rounded));
+}
 
 function loadSavedThemeFamily(): ThemeFamilyId | null {
     try {
@@ -74,6 +85,26 @@ function saveMode(mode: ThemeMode) {
     }
 }
 
+function loadSavedContentZoom(): number | null {
+    try {
+        const raw = localStorage.getItem(CONTENT_ZOOM_KEY);
+        if (!raw) return null;
+        const parsed = Number(raw);
+        if (Number.isFinite(parsed)) return clampContentZoom(parsed);
+    } catch {
+        // ignore
+    }
+    return null;
+}
+
+function saveContentZoom(zoom: number) {
+    try {
+        localStorage.setItem(CONTENT_ZOOM_KEY, String(zoom));
+    } catch {
+        // ignore
+    }
+}
+
 /* ── Context Type ── */
 
 export interface SettingsState {
@@ -82,6 +113,11 @@ export interface SettingsState {
     mode: ThemeMode;
     resolvedMode: "light" | "dark";
     animationLevel: AnimationLevel;
+    contentZoom: number;
+    setContentZoom: (zoom: number) => void;
+    zoomIn: () => void;
+    zoomOut: () => void;
+    resetZoom: () => void;
     setThemeFamily: (family: ThemeFamilyId) => void;
     setMode: (mode: ThemeMode) => void;
     setAnimationLevel: (level: AnimationLevel) => void;
@@ -105,6 +141,7 @@ const settingsRef = {
     currentThemeId: "tokyo-night" as ThemeId,
     currentMode: "system" as ThemeMode,
     currentAnimationLevel: "all" as AnimationLevel,
+    currentContentZoom: DEFAULT_CONTENT_ZOOM,
 };
 
 export function getCurrentMode(): ThemeMode {
@@ -117,6 +154,10 @@ export function getCurrentAnimationLevel(): AnimationLevel {
 
 export function getCurrentThemeName(): ThemeId {
     return settingsRef.currentThemeId;
+}
+
+export function getCurrentContentZoom(): number {
+    return settingsRef.currentContentZoom;
 }
 
 interface SettingsProviderProps {
@@ -140,6 +181,9 @@ export function SettingsProvider({
     );
     const [animationLevel, setAnimationLevelState] = useState<AnimationLevel>(
         initialAnimationLevel ?? "all",
+    );
+    const [contentZoom, setContentZoomState] = useState<number>(
+        loadSavedContentZoom() ?? DEFAULT_CONTENT_ZOOM,
     );
     const [previewThemeFamily, setPreviewThemeFamily] = useState<ThemeFamilyId | null>(null);
     const [previewModeValue, setPreviewModeValue] = useState<ThemeMode | null>(null);
@@ -167,7 +211,14 @@ export function SettingsProvider({
         }
 
         notifyIframeThemeChange();
-    }, [themeId, resolvedMode]);
+    }, [themeId, resolvedMode, contentZoom]);
+
+    useEffect(() => {
+        const root = document.documentElement;
+        root.style.setProperty("--content-zoom", String(contentZoom / 100));
+        root.style.setProperty("--content-font-size", `${contentZoom}%`);
+        notifyIframeThemeChange();
+    }, [contentZoom]);
 
     // System appearance listener
     useEffect(() => {
@@ -198,6 +249,7 @@ export function SettingsProvider({
     settingsRef.currentThemeId = themeId;
     settingsRef.currentMode = mode;
     settingsRef.currentAnimationLevel = animationLevel;
+    settingsRef.currentContentZoom = contentZoom;
 
     const setThemeFamily = (family: ThemeFamilyId) => {
         setThemeFamilyState(family);
@@ -213,6 +265,17 @@ export function SettingsProvider({
         setAnimationLevelState(level);
         settingsRef.currentAnimationLevel = level;
     };
+
+    const setContentZoom = (zoom: number) => {
+        const clamped = clampContentZoom(zoom);
+        setContentZoomState(clamped);
+        settingsRef.currentContentZoom = clamped;
+        saveContentZoom(clamped);
+    };
+
+    const zoomIn = () => setContentZoom(contentZoom + CONTENT_ZOOM_STEP);
+    const zoomOut = () => setContentZoom(contentZoom - CONTENT_ZOOM_STEP);
+    const resetZoom = () => setContentZoom(DEFAULT_CONTENT_ZOOM);
 
     const previewTheme = (family: ThemeFamilyId) => {
         setPreviewThemeFamily(family);
@@ -246,6 +309,11 @@ export function SettingsProvider({
                 mode,
                 resolvedMode,
                 animationLevel,
+                contentZoom,
+                setContentZoom,
+                zoomIn,
+                zoomOut,
+                resetZoom,
                 setThemeFamily,
                 setMode,
                 setAnimationLevel,
@@ -282,6 +350,7 @@ function notifyIframeThemeChange() {
                 type: "THEME_CHANGED",
                 cssVars: vars,
                 isDark: root.classList.contains("dark"),
+                contentZoom: settingsRef.currentContentZoom,
             },
             "*",
         );

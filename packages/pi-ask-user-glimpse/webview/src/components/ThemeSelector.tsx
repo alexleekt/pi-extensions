@@ -43,6 +43,22 @@ function ModeIcon({ mode }: { mode: ThemeMode }) {
     );
 }
 
+function ZoomOutIcon() {
+    return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M3 8h10" />
+        </svg>
+    );
+}
+
+function ZoomInIcon() {
+    return (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M3 8h10M8 3v10" />
+        </svg>
+    );
+}
+
 /** Color swatch using the theme's actual token colors */
 function ThemeSwatch({ themeDef, isDark }: { themeDef: ThemeDefinition; isDark: boolean }) {
     const variant = isDark ? getDarkVariant(themeDef) : getLightVariant(themeDef);
@@ -75,6 +91,10 @@ export default function ThemeSelector({ buttonClassName }: ThemeSelectorProps) {
         themeFamily,
         mode,
         resolvedMode,
+        contentZoom,
+        zoomIn,
+        zoomOut,
+        resetZoom,
         setThemeFamily,
         setMode,
         previewTheme,
@@ -384,7 +404,46 @@ export default function ThemeSelector({ buttonClassName }: ThemeSelectorProps) {
                             </div>
                         </div>
 
+
                         <div className="shrink-0 border-b border-border mx-3" />
+
+                        {/* Content zoom controls */}
+                        <div className="shrink-0 p-3 py-2" role="group" aria-labelledby="zoom-label">
+                            <div id="zoom-label" className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                Zoom
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={zoomOut}
+                                    className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                                    disabled={contentZoom <= 50}
+                                    aria-label="Zoom out"
+                                    title="Zoom out (⌘/Ctrl -)"
+                                >
+                                    <ZoomOutIcon />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={resetZoom}
+                                    className="flex h-8 flex-1 items-center justify-center rounded-md border border-border px-2 text-xs font-medium text-foreground hover:bg-accent"
+                                    aria-label={`Reset zoom from ${contentZoom}% to 100%`}
+                                    title="Reset zoom (⌘/Ctrl 0)"
+                                >
+                                    {contentZoom}%
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={zoomIn}
+                                    className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                                    disabled={contentZoom >= 250}
+                                    aria-label="Zoom in"
+                                    title="Zoom in (⌘/Ctrl +)"
+                                >
+                                    <ZoomInIcon />
+                                </button>
+                            </div>
+                        </div>
 
                         {/* Scrollable palette area */}
                         <div className="flex-1 overflow-y-auto p-3 pt-2 shadow-[inset_0_-20px_16px_-16px_rgba(0,0,0,0.3)]" role="group" aria-labelledby="palette-label">

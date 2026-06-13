@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { SettingsProvider } from "./util/settings";
 
 // Mock dialog components before importing App
 const mockSelectDialog = vi.fn();
@@ -58,7 +59,11 @@ function createPayload(type: string, extra?: Record<string, unknown>) {
 // Dynamic import to ensure mocks are set up before App imports the components
 async function renderApp() {
     const { default: App } = await import("./App");
-    return render(<App />);
+    return render(
+        <SettingsProvider>
+            <App />
+        </SettingsProvider>,
+    );
 }
 
 describe("App", () => {
@@ -136,21 +141,33 @@ describe("App", () => {
     it("renders error message when payload is invalid", async () => {
         (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = null;
         const { default: App } = await import("./App");
-        render(<App />);
+        render(
+            <SettingsProvider>
+                <App />
+            </SettingsProvider>,
+        );
         expect(screen.getByText(/Missing or invalid ask_user payload/i)).toBeInTheDocument();
     });
 
     it("renders error message when payload is missing", async () => {
         delete (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__;
         const { default: App } = await import("./App");
-        render(<App />);
+        render(
+            <SettingsProvider>
+                <App />
+            </SettingsProvider>,
+        );
         expect(screen.getByText(/Missing or invalid ask_user payload/i)).toBeInTheDocument();
     });
 
     it("renders unknown type message for unrecognized payload type", async () => {
         (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = createPayload("unknown-type");
         const { default: App } = await import("./App");
-        render(<App />);
+        render(
+            <SettingsProvider>
+                <App />
+            </SettingsProvider>,
+        );
         expect(screen.getByText(/Unknown prompt type: unknown-type/i)).toBeInTheDocument();
     });
 
@@ -210,7 +227,11 @@ describe("App", () => {
     it("renders error message with correct border and background classes", async () => {
         (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = null;
         const { default: App } = await import("./App");
-        const { container } = render(<App />);
+        const { container } = render(
+            <SettingsProvider>
+                <App />
+            </SettingsProvider>,
+        );
         const errorBox = container.querySelector(".border-destructive");
         expect(errorBox).toBeInTheDocument();
         expect(errorBox).toHaveClass("bg-destructive/10");
@@ -244,4 +265,21 @@ describe("App", () => {
         expect(resizer).toHaveAttribute("aria-valuenow", "60");
         expect(resizer).toHaveAttribute("title", "Drag to resize · Double-click to collapse");
     });
+
+    it("handles global content zoom shortcuts", async () => {
+        (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = createPayload("single-select");
+        const { container } = await renderApp();
+        const root = container.querySelector(".h-screen");
+        expect(root).toHaveClass("text-[length:var(--content-font-size,100%)]");
+
+        fireEvent.keyDown(window, { key: "+", metaKey: true });
+        expect(document.documentElement.style.getPropertyValue("--content-font-size")).toBe("110%");
+
+        fireEvent.keyDown(window, { key: "-", metaKey: true });
+        expect(document.documentElement.style.getPropertyValue("--content-font-size")).toBe("100%");
+
+        fireEvent.keyDown(window, { key: "0", ctrlKey: true });
+        expect(document.documentElement.style.getPropertyValue("--content-font-size")).toBe("100%");
+    });
+
 });

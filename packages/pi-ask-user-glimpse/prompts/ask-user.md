@@ -31,7 +31,9 @@ MANDATORY: Use this tool whenever you encounter ANY of the following conditions.
 
 Before calling, gather context with tools (read/web/ref) and pass a short summary via the context field.
 
-The context panel supports Mermaid diagrams (flowcharts, sequence diagrams, etc.) — wrap them in ```mermaid code blocks.
+Use **readable question context**: markdown by default, with headings, bullets, and tables that make the decision easy to scan. The context panel supports Mermaid diagrams (flowcharts, sequence diagrams, etc.) — wrap them in ```mermaid code blocks when a flow or dependency graph is easier than prose.
+
+Use contextFormat: 'html' only when richer visual structure materially improves comprehension: comparison tables, charts, metrics, timelines, pros/cons, color-coded groups, or dashboard-like summaries. HTML context inherits the wrapper's theme and dialog zoom. Use CSS variables such as `hsl(var(--background))`, `hsl(var(--foreground))`, and `hsl(var(--primary))` instead of fixed light/dark colors.
 
 For richer visualizations, use contextFormat: 'html' with the built-in pi charting helpers:
   - `pi.table(['Feature','A','B'], [['Auth','OAuth','SAML']], {highlightColumn:1})` — comparison tables
@@ -49,16 +51,17 @@ All helpers auto-theme to light/dark mode.
 2. If the user has given a clear, specific, unambiguous directive that leaves no room for interpretation, you may proceed without asking.
 3. Keep the question field short and focused (ideally one sentence). Put background, examples, or elaboration in the context field.
    **Auto-captured preamble:** if you don't pass an explicit `context` field, the most recent text you streamed will be automatically captured and shown in the left panel. You usually don't need to repeat your plan/analysis in the context — just call `ask_user` with the question and the user will see what you just said. Pass an explicit `context` only when you want to override or supplement the auto-capture.
-4. Include Mermaid diagrams in the context field when visualizing architecture, data flows, or decision trees would help the user understand the question.
-5. Use contextFormat: 'html' for rich visualizations (comparison tables, bar charts, pros/cons lists, metric cards, timelines, and layouts) that help the user understand trade-offs and make faster decisions. The iframe inherits the wrapper's CSS variables for automatic theme consistency.
-6. When comparing 3+ options, render a comparison table with `pi.table(headers, rows, {highlightColumn: recommendedIndex})`.
-7. When showing quantitative data or performance metrics, use `pi.barChart()` or `pi.metrics()` to visualize the numbers.
-8. When weighing trade-offs, use `pi.prosCons()` to show a side-by-side comparison.
-9. Pass a concise question and, when applicable, a list of options with short titles and optional longer descriptions.
-10. List options from most recommended to least recommended.
-11. Set allowMultiple: true when more than one choice is valid.
-12. Set allowFreeform: true (default) when the user might want to answer in their own words.
-13. ANTI-PATTERNS — DO NOT ask the user:
+4. Write context as readable markdown by default: short summary first, then bullets/tables for evidence and trade-offs.
+5. Include Mermaid diagrams in the context field when visualizing architecture, data flows, or decision trees would help the user understand the question.
+6. Use contextFormat: 'html' for rich visualizations (comparison tables, bar charts, pros/cons lists, metric cards, timelines, and layouts) that help the user understand trade-offs and make faster decisions. The iframe inherits the wrapper's CSS variables and dialog zoom for automatic theme/readability consistency.
+7. When comparing 3+ options, render a comparison table with `pi.table(headers, rows, {highlightColumn: recommendedIndex})`.
+8. When showing quantitative data or performance metrics, use `pi.barChart()` or `pi.metrics()` to visualize the numbers.
+9. When weighing trade-offs, use `pi.prosCons()` to show a side-by-side comparison.
+10. Pass a concise question and, when applicable, a list of options with short titles and optional longer descriptions.
+11. List options from most recommended to least recommended.
+12. Set allowMultiple: true when more than one choice is valid.
+13. Set allowFreeform: true (default) when the user might want to answer in their own words.
+14. ANTI-PATTERNS — DO NOT ask the user:
     - Vague questions like "What would you like?" without context or options.
     - Questions where the answer is obvious from the conversation history.
     - Questions that could be answered by reading the codebase or documentation.

@@ -358,6 +358,91 @@ function buildDebugParams(mode: string): AskUserParams | null {
                 ],
                 allowComment: true,
             };
+        case "readable-context":
+            return {
+                question: "Which rollout path should we take?",
+                context: `## Recommendation
+
+Choose **Phased rollout** unless there is a hard launch deadline.
+
+| Path | Speed | Risk | Best when |
+| --- | --- | --- | --- |
+| Big bang | Fast | High | Internal-only tools |
+| Phased rollout | Medium | Low | Customer-facing changes |
+| Dark launch | Slow | Lowest | Backend migrations |
+
+~~~mermaid
+flowchart LR
+  A[Build] --> B[Internal QA]
+  B --> C{Risk accepted?}
+  C -- yes --> D[10% rollout]
+  C -- no --> E[Fix blockers]
+  D --> F[100% rollout]
+~~~
+
+**Decision needed:** pick the rollout path and note any blocker that changes the recommendation.`,
+                options: [
+                    {
+                        title: "Phased rollout",
+                        description: "Gradual exposure with time to observe regressions.",
+                        recommended: true,
+                    },
+                    {
+                        title: "Big bang",
+                        description: "Fastest path, but requires high confidence before launch.",
+                    },
+                    {
+                        title: "Dark launch",
+                        description: "Safest path for infrastructure-heavy or reversible backend work.",
+                    },
+                ],
+                allowFreeform: true,
+                allowComment: true,
+            };
+        case "html-decision":
+            return {
+                question: "Which architecture option is easiest to operate?",
+                contextFormat: "html",
+                context: `<div style="font-family: ui-sans-serif, system-ui, sans-serif; line-height: 1.5;">
+  <h2 style="margin: 0 0 0.75rem; color: hsl(var(--primary));">Readable HTML decision context</h2>
+  <p style="color: hsl(var(--muted-foreground)); margin-bottom: 1rem;">
+    Use HTML when visual grouping, metrics, or color-coded comparisons make the decision faster to parse.
+  </p>
+  <div id="metrics" style="margin-bottom: 1rem;"></div>
+  <div id="table" style="margin-bottom: 1rem;"></div>
+  <div id="tradeoffs"></div>
+  <script>
+    pi.metrics('#metrics', [
+      {label: 'Migration time', value: '2 weeks', change: '-40%', trend: 'down'},
+      {label: 'Ops risk', value: 'Low', change: 'stable', trend: 'neutral'},
+      {label: 'Monthly cost', value: '$420', change: '+8%', trend: 'up'}
+    ], {title: 'Operational snapshot'});
+    pi.table('#table', ['Criterion', 'Managed', 'Self-hosted', 'Hybrid'], [
+      ['Setup', 'Fast', 'Slow', 'Medium'],
+      ['Control', 'Medium', 'High', 'High'],
+      ['On-call load', 'Low', 'High', 'Medium']
+    ], {title: 'Option comparison', highlightColumn: 1, compact: true});
+    pi.prosCons('#tradeoffs', ['Lower on-call load', 'Backups included', 'Clear upgrade path'], ['Higher vendor cost', 'Less low-level control'], {title: 'Managed option trade-offs'});
+  </script>
+</div>`,
+                options: [
+                    {
+                        title: "Managed",
+                        description: "Lowest operational burden; recommended for small teams.",
+                        recommended: true,
+                    },
+                    {
+                        title: "Self-hosted",
+                        description: "Maximum control, higher maintenance burden.",
+                    },
+                    {
+                        title: "Hybrid",
+                        description: "Keep core managed while self-hosting sensitive pieces.",
+                    },
+                ],
+                allowFreeform: true,
+                allowComment: true,
+            };
         case "kitchen-sink":
             return {
                 question: "Kitchen Sink: Every Feature",

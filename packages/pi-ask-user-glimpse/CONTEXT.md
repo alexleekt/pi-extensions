@@ -23,7 +23,7 @@
 | **OptionCard** | Shared component for rendering options with `role="option"`, `aria-selected`, recommendation badges, number badges. |
 | **QuestionCard** | Shared component for questionnaire questions with progress indicator, inline markdown titles. |
 | **CancelConfirmModal** | Modal shown when user presses Escape or clicks Cancel with unsaved changes. |
-| **SettingsButton** | Dropdown for theme mode (dark/light/system) and animation level (none/minimal/all). |
+| **SettingsButton** | Dropdown for theme mode (dark/light/system), palette, and dialog zoom controls. |
 
 ## Data & State
 
@@ -33,6 +33,8 @@
 | **Theme mode** | One of `light`, `dark`, `system`. Controls the webview color scheme. Persisted in localStorage. |
 | **Resolved theme** | The actual `light` or `dark` value computed from the theme mode. `system` resolves via `prefers-color-scheme`. |
 | **Animation level** | One of `none`, `minimal`, `all`. Controls CSS transition intensity across the UI. |
+| **Dialog zoom** | Persistent user display preference controlled from settings or Cmd/Ctrl `+`, `-`, `0`. Scales dialog content without resizing the native window or panel split. |
+| **Content zoom** | CSS-driven text/content scale shared by markdown context, HTML context, options, forms, and footer. Range is 50%–250% in 10% steps. |
 | **Session name** | User-defined display name of the Pi session, sourced from `sessionManager.getSessionName()`. Used in the native window title. |
 | **Stopword** | Common English word (e.g., "the", "is", "which") filtered out when generating a short title from the question text for the native window title bar. |
 
@@ -42,7 +44,8 @@
 |------|-----------|
 | **Auto-split** | When a question exceeds 120 characters with no separate `context`, the first sentence becomes the title and the remainder flows to the context panel. |
 | **Select-all option** | A multi-select option whose title matches patterns like "All of the above" or "Select all". Renders as a radio-style toggle that selects all regular options at once. |
-| **HTML context** | When `contextFormat: "html"`, the `context` field renders inside a sandboxed iframe (`sandbox="allow-scripts"`) instead of markdown. Inherits the wrapper's CSS variables for automatic light/dark theme consistency. |
+| **HTML context** | When `contextFormat: "html"`, the `context` field renders inside a sandboxed iframe (`sandbox="allow-scripts"`) instead of markdown. Inherits the wrapper's CSS variables and content zoom for automatic light/dark/readability consistency. |
+| **Readable question context** | Guidance pattern for agent-authored context: use markdown by default; add Mermaid or HTML only when structure, diagrams, metrics, or visual comparison make the decision easier to parse. |
 | **Recommendation badge** | A "Recommended" badge shown next to options marked with `recommended: true`. |
 | **Kitchen sink** | The `kitchen-sink` option in `/ask-debug` opens a comprehensive questionnaire demonstrating every major feature in one dialog. |
 | **Per-option comments** | A comment textarea attached to individual options (not the global AdditionalComments that was removed in v0.5.2). |

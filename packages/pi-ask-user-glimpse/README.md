@@ -114,6 +114,17 @@ When text and Mermaid diagrams aren't enough, render rich HTML in the context pa
 
 The `context` HTML renders inside a **sandboxed iframe** (`sandbox="allow-scripts"`) in the left panel. It inherits the wrapper's CSS variables (`--background`, `--foreground`, `--primary`, etc.) for automatic light/dark theme consistency. The iframe auto-updates its theme class when the user toggles settings. This is ideal for throwaway bar charts, tables, decision trees, or any visualization that helps the user decide.
 
+### Readable Question Context
+
+Use the context panel to reduce decision friction, not to decorate the dialog. Prefer **markdown by default** because it is easy to skim, sanitize, and maintain. Add structure when it helps the user parse the trade-off quickly:
+
+- Use headings, bullets, and tables for most decision summaries.
+- Use Mermaid code blocks for flows, state machines, and dependency diagrams.
+- Use `contextFormat: "html"` when visual comparison, metrics, color-coded grouping, pros/cons, timelines, or charts make the choice easier to understand.
+- Keep the question itself short; put background detail in `context`.
+
+HTML context inherits the active theme and the user's dialog zoom setting, so custom snippets should use CSS variables such as `hsl(var(--background))`, `hsl(var(--foreground))`, and `hsl(var(--primary))` instead of fixed light/dark colors.
+
 **Security:** The iframe is isolated from the wrapper app. It cannot access `localStorage`, cookies, or the parent DOM. Only inline scripts are permitted (for animations/interactivity). The agent should not include `<script src="...">` tags that load external resources — inline JS and CSS only.
 
 **Glimpse behavior:** The HTML context panel runs inside Glimpse's native WebView host (WKWebView on macOS, WebView2 on Windows). The iframe receives an opaque ("null") origin because Glimpse loads the page via `loadHTMLString` without a base URL. This means `window.location.origin` is `null`, and `localStorage` access throws a `SecurityError`. Theme changes are propagated via `postMessage` instead of DOM sharing.
@@ -276,7 +287,7 @@ Open a debug prompt that lets you manually test each dialog type:
 /ask-debug
 ```
 
-The command also supports a `getArgumentCompletions` autocomplete — type `/ask-debug kit<Tab>` and the editor completes it to `kitchen-sink`. Passing the scenario as the argument skips the select dialog:
+The command also supports a `getArgumentCompletions` autocomplete — type `/ask-debug kit<Tab>` and the editor completes it to `kitchen-sink`. Try `/ask-debug readable-context` for a markdown + Mermaid decision prompt or `/ask-debug html-decision` for a focused HTML visualization prompt. Passing the scenario as the argument skips the select dialog:
 
 ```
 /ask-debug kitchen-sink

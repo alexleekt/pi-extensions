@@ -28,6 +28,16 @@ export const ASK_DEBUG_SCENARIOS: AutocompleteItem[] = [
             "Multiple structured questions, progress bar, per-Q counters",
     },
     {
+        value: "readable-context",
+        label: "readable-context",
+        description: "Readable markdown context with structure + Mermaid flow",
+    },
+    {
+        value: "html-decision",
+        label: "html-decision",
+        description: "HTML context for visual comparisons and metrics",
+    },
+    {
         value: "kitchen-sink",
         label: "kitchen-sink",
         description: "Every feature: HTML context, charts, comparison tables",

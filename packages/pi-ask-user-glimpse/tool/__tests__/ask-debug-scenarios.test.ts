@@ -5,7 +5,7 @@ import {
 } from "../ask-debug-scenarios.js";
 
 describe("ASK_DEBUG_SCENARIOS", () => {
-    it("has 5 scenarios matching the /ask-debug select dialog options", () => {
+    it("has 7 scenarios matching the /ask-debug select dialog options", () => {
         // The select dialog fallback in the ask-debug handler uses these values.
         // If you add or remove a scenario, update both this list and buildDebugParams().
         expect(ASK_DEBUG_SCENARIOS.map((s) => s.value)).toEqual([
@@ -13,6 +13,8 @@ describe("ASK_DEBUG_SCENARIOS", () => {
             "multi-select",
             "freeform",
             "questionnaire",
+            "readable-context",
+            "html-decision",
             "kitchen-sink",
         ]);
     });
@@ -44,7 +46,7 @@ describe("filterAskDebugScenarios", () => {
         const result = filterAskDebugScenarios("");
         expect(result).not.toBe(ASK_DEBUG_SCENARIOS);
         result.pop();
-        expect(ASK_DEBUG_SCENARIOS).toHaveLength(5);
+        expect(ASK_DEBUG_SCENARIOS).toHaveLength(7);
     });
 
     it("filters by value prefix (case-insensitive)", () => {

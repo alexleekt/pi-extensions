@@ -7,6 +7,7 @@ import Freeform from "./components/Freeform";
 import Questionnaire from "./components/Questionnaire";
 import SelectDialog from "./components/SelectDialog";
 import { sendToGlimpseSafe } from "./util/glimpse";
+import { useSettings } from "./util/settings";
 
 function getPayload(): AskUserPayload {
     const raw = (window as unknown as Record<string, unknown>)
@@ -47,6 +48,7 @@ export default function App() {
     const [isDragging, setIsDragging] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [footerNode, setFooterNode] = useState<ReactNode>(null);
+    const { zoomIn, zoomOut, resetZoom } = useSettings();
 
     let payload: AskUserPayload;
     try {
@@ -62,6 +64,24 @@ export default function App() {
             </div>
         );
     }
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+            if (e.key === "+" || e.key === "=") {
+                e.preventDefault();
+                zoomIn();
+            } else if (e.key === "-" || e.key === "_") {
+                e.preventDefault();
+                zoomOut();
+            } else if (e.key === "0") {
+                e.preventDefault();
+                resetZoom();
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown, true);
+        return () => window.removeEventListener("keydown", handleKeyDown, true);
+    }, [zoomIn, zoomOut, resetZoom]);
 
     useEffect(() => {
         if (!isDragging) return;
@@ -90,7 +110,7 @@ export default function App() {
 
     return (
         <FooterContext.Provider value={footerContextValue}>
-            <div className="flex h-screen flex-col overflow-hidden">
+            <div className="flex h-screen flex-col overflow-hidden text-[length:var(--content-font-size,100%)]">
                 {/* Top area: context + dialog side by side */}
                 <div className="flex flex-1 overflow-hidden">
                     {/* Left panel — always present; shows question + context when available */}

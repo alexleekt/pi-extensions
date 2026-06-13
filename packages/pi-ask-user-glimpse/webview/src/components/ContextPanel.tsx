@@ -73,7 +73,23 @@ function buildCssVarBlock(): string {
     return `:root {\n${entries}\n}`;
 }
 
-const IFRAME_CSS = `body {
+const IFRAME_CSS = `html {
+    min-height: 100%;
+    background-color: hsl(var(--background));
+    color-scheme: light;
+    font-size: var(--content-font-size, 100%);
+}
+
+html.dark {
+    color-scheme: dark;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
@@ -93,15 +109,20 @@ const IFRAME_SCRIPT = `window.addEventListener("message", function(e) {
         for (var key in e.data.cssVars) {
             root.style.setProperty(key, e.data.cssVars[key]);
         }
-        // Toggle dark class
+        // Toggle dark class and inherit parent content zoom
+        root.classList.toggle("dark", e.data.isDark);
         document.body.classList.toggle("dark", e.data.isDark);
+        if (e.data.contentZoom) {
+            root.style.setProperty("--content-font-size", e.data.contentZoom + "%");
+            root.style.setProperty("--content-zoom", String(e.data.contentZoom / 100));
+        }
     }
 });`;
 
-function buildIframeSrcdoc(rawHtml: string, isDark: boolean): string {
+function buildIframeSrcdoc(rawHtml: string, isDark: boolean, contentZoom: number): string {
     const sanitized = sanitizeHtmlContext(rawHtml);
     return `<!DOCTYPE html>
-<html>
+<html class="${isDark ? 'dark' : ''}" style="--content-font-size: ${contentZoom}%; --content-zoom: ${contentZoom / 100};">
 <head>
 <meta charset="utf-8">
 <style>
@@ -124,17 +145,19 @@ ${IFRAME_SCRIPT}
 function HtmlContext({
     html,
     resolvedMode,
+    contentZoom,
 }: {
     html: string;
     resolvedMode: "light" | "dark";
+    contentZoom: number;
 }) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [loaded, setLoaded] = useState(false);
     const isDark = resolvedMode === "dark";
 
     const srcdoc = useMemo(
-        () => buildIframeSrcdoc(html, isDark),
-        [html, isDark],
+        () => buildIframeSrcdoc(html, isDark, contentZoom),
+        [html, isDark, contentZoom],
     );
 
     // The iframe has an opaque origin (sandbox without allow-same-origin), so we
@@ -144,8 +167,8 @@ function HtmlContext({
     useEffect(() => {
         const cw = iframeRef.current?.contentWindow;
         if (!cw || !loaded) return;
-        cw.postMessage({ type: "THEME_CHANGED", isDark }, "*");
-    }, [isDark, loaded]);
+        cw.postMessage({ type: "THEME_CHANGED", isDark, contentZoom }, "*");
+    }, [isDark, contentZoom, loaded]);
 
     return (
         <iframe
@@ -153,7 +176,7 @@ function HtmlContext({
             sandbox="allow-scripts"
             csp="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'"
             srcDoc={srcdoc}
-            className="flex-1 w-full border-0 min-h-0"
+            className="flex-1 w-full border-0 min-h-0 bg-background"
             title="HTML context"
             data-context-panel=""
             onLoad={() => setLoaded(true)}
@@ -174,7 +197,7 @@ export default function ContextPanel({
     question,
 }: ContextPanelProps) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const { resolvedMode } = useSettings();
+    const { resolvedMode, contentZoom } = useSettings();
     // Skip expensive markdown parsing when context is raw HTML
     const html = useMemo(
         () => (contextFormat === "html" ? "" : renderContextMarkdown(context)),
@@ -205,7 +228,7 @@ export default function ContextPanel({
     }, [context, resolvedMode, contextFormat]);
 
     return (
-        <div className="flex h-full flex-col">
+        <div className="flex h-full flex-col bg-background text-foreground">
             {question && (
                 <div className="shrink-0 border-b border-border bg-card/50">
                     <div className="flex items-start justify-between p-4 gap-3">
@@ -233,7 +256,7 @@ export default function ContextPanel({
             {/* Scrollable context: markdown or HTML iframe */}
             <div className={`flex-1 ${contextFormat === "html" ? "overflow-hidden flex flex-col" : "overflow-y-auto scrollbar-hover"}`}>
                 {contextFormat === "html" ? (
-                    <HtmlContext html={context} resolvedMode={resolvedMode} />
+                    <HtmlContext html={context} resolvedMode={resolvedMode} contentZoom={contentZoom} />
                 ) : (
                     <div
                         ref={containerRef}
