@@ -268,17 +268,22 @@ describe("App", () => {
 
     it("handles global content zoom shortcuts", async () => {
         (window as unknown as Record<string, unknown>).__ASK_USER_PAYLOAD__ = createPayload("single-select");
-        const { container } = await renderApp();
-        const root = container.querySelector(".h-screen");
-        expect(root).toHaveClass("text-[length:var(--content-font-size,100%)]");
+        await renderApp();
+
+        // Zoom should now scale via root <html> font-size so rem-based sizes
+        // (text-sm, text-xs, etc.) cascade uniformly across all elements.
+        expect(document.documentElement.style.fontSize).toBe("100%");
 
         fireEvent.keyDown(window, { key: "+", metaKey: true });
+        expect(document.documentElement.style.fontSize).toBe("110%");
         expect(document.documentElement.style.getPropertyValue("--content-font-size")).toBe("110%");
 
         fireEvent.keyDown(window, { key: "-", metaKey: true });
+        expect(document.documentElement.style.fontSize).toBe("100%");
         expect(document.documentElement.style.getPropertyValue("--content-font-size")).toBe("100%");
 
         fireEvent.keyDown(window, { key: "0", ctrlKey: true });
+        expect(document.documentElement.style.fontSize).toBe("100%");
         expect(document.documentElement.style.getPropertyValue("--content-font-size")).toBe("100%");
     });
 

@@ -55,7 +55,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        expect(screen.getByTitle("Color palette")).toBeInTheDocument();
+        expect(screen.getByTitle("Settings")).toBeInTheDocument();
     });
 
     it("opens dropdown on click", () => {
@@ -64,7 +64,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         expect(screen.getByText("Palette")).toBeInTheDocument();
         expect(screen.getByText("Mode")).toBeInTheDocument();
     });
@@ -75,7 +75,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        const trigger = screen.getByTitle("Color palette");
+        const trigger = screen.getByTitle("Settings");
         fireEvent.click(trigger);
         expect(screen.getByText("Palette")).toBeInTheDocument();
         fireEvent.keyDown(window, { key: "Escape" });
@@ -89,7 +89,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
         const themes = options.filter((el) => el.getAttribute("data-type") === "theme");
         expect(themes.length).toBe(10);
@@ -111,7 +111,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
         const lightOption = options.find((el) => el.getAttribute("data-type") === "mode" && el.textContent?.includes("Light"));
         expect(lightOption).toBeTruthy();
@@ -125,7 +125,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
         const nordOption = options.find((el) => el.getAttribute("data-type") === "theme" && el.textContent?.includes("Nord"));
         expect(nordOption).toBeTruthy();
@@ -139,7 +139,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
         // Initially focused on "Dark" mode (index 1) because that's the current mode
         expect(options[1]).toHaveAttribute("tabIndex", "0");
@@ -156,7 +156,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
         // Initially focused on "Dark" mode (index 1)
         expect(options[1]).toHaveAttribute("tabIndex", "0");
@@ -173,7 +173,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
         // Initially focused on "Dark" mode (index 1)
         expect(options[1]).toHaveAttribute("tabIndex", "0");
@@ -189,7 +189,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
         // Initially focused on "Dark" mode (index 1)
         expect(options[1]).toHaveAttribute("tabIndex", "0");
@@ -205,7 +205,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
 
         // Navigate to first theme (index 3, after 3 mode buttons)
@@ -223,7 +223,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
 
         // Navigate to first theme (index 3, after 3 mode buttons)
@@ -241,7 +241,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
         // Initially focused on "Dark" mode (index 1)
         expect(options[1]).toHaveAttribute("tabIndex", "0");
@@ -257,7 +257,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
         // Initially focused on "Dark" mode (index 1)
         expect(options[1]).toHaveAttribute("tabIndex", "0");
@@ -274,7 +274,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         expect(screen.getByText("Palette")).toBeInTheDocument();
 
         const backdrop = document.querySelector('[data-overlay="true"]');
@@ -289,7 +289,7 @@ describe("ThemeSelector", () => {
                 <ThemeSelector />
             </SettingsProvider>,
         );
-        fireEvent.click(screen.getByTitle("Color palette"));
+        fireEvent.click(screen.getByTitle("Settings"));
         const options = screen.getAllByRole("menuitemradio");
         const defaultTheme = options.find((el) => el.getAttribute("data-type") === "theme" && el.textContent?.includes("Default"));
         const nordTheme = options.find((el) => el.getAttribute("data-type") === "theme" && el.textContent?.includes("Nord"));

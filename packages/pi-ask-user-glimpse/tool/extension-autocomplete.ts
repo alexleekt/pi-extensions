@@ -80,6 +80,29 @@ export function makeRecentQuestionAutocompleteProvider(
         },
 
         applyCompletion(lines, cursorLine, cursorCol, item, prefix) {
+            // If the prefix starts with `#`, replace it with the selected value.
+            // The built-in Pi provider doesn't know how to handle #-prefix
+            // replacements for non-file/non-command prefixes.
+            if (prefix.startsWith("#")) {
+                const line = lines[cursorLine] ?? "";
+                const beforeCursor = line.slice(0, cursorCol);
+                const afterCursor = line.slice(cursorCol);
+                const prefixIndex = beforeCursor.lastIndexOf(prefix);
+                if (prefixIndex >= 0) {
+                    const newLine =
+                        beforeCursor.slice(0, prefixIndex) +
+                        item.value +
+                        afterCursor;
+                    const newLines = [...lines];
+                    newLines[cursorLine] = newLine;
+                    return {
+                        lines: newLines,
+                        cursorLine,
+                        cursorCol: prefixIndex + item.value.length,
+                    };
+                }
+            }
+            // Fallback: delegate to the default provider for non-# prefixes
             return current.applyCompletion(
                 lines,
                 cursorLine,

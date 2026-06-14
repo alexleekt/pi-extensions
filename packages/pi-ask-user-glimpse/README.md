@@ -34,12 +34,13 @@ The agent gets a clean selection back. You get a decision made in seconds, not m
 
 - **Single-select** — searchable option list with inline descriptions, numbered option badges (① ② ③), inline markdown rendering, and search highlight
 - **Multi-select** — checkbox-style selection with quick-select all/none links, numbered badges, and inline markdown
-- **Freeform** — textarea input with live character counter and platform-aware keyboard shortcuts. Empty submissions are allowed (useful when the agent asks an open question but you have nothing to add)
+- **Freeform** — textarea input with live character counter and platform-aware keyboard hints. Empty submissions are allowed (useful when the agent asks an open question but you have nothing to add)
 - **Questionnaire** — cards in a vertical list for structured questions, with required-field badges, per-question character counters, numbered option badges, and inline markdown in option text
 - **Theme toggle** — dark / light / system mode switcher in the dialog header
 - **Animation levels** — none / minimal / all, controlling transition intensity across the UI
-- **Keyboard shortcuts legend** — press `?` in the header bar to see all available shortcuts
-- **Prominent question header** — full non-truncated question text in the header bar, with settings cog and keyboard-shortcuts help
+- **Keyboard shortcuts** — every dialog type shows a keyboard hint bar in the footer with relevant shortcuts (Esc, ↑↓, 1–9, Enter, ⌘/Ctrl+Enter, etc.)
+- **Content zoom** — press ⌘/Ctrl+Plus/Minus/Zero to zoom content in/out/reset; zoom controls are also available in the palette dropdown
+- **Prominent question header** — full non-truncated question text in the header bar, with palette icon for theme, zoom, and color settings
 - **Native WebView** — renders in a real window (macOS WKWebView / Linux GTK4 / Windows WebView2)
 - **Graceful degradation** — returns clear error when no UI is available, prompting the agent to ask in free-form text
 
@@ -292,7 +293,7 @@ See [Slash Command: `/ask-debug`](#slash-command-ask-debug) above.
 - **Context panel** — 50/50 split by default; drag the handle to resize, double-click to collapse
 - **Scrollbars** — hidden by default, appear on hover (macOS-style overlay)
 - **Cursor follow** — off by default; enable with `followCursor: true`
-- **Dark mode** — togglable via the settings cog: dark, light, or system (follows OS preference)
+- **Dark mode** — togglable via the palette dropdown: dark, light, or system (follows OS preference)
 - **Theme persistence** — theme and animation choices survive across dialogs and session restarts
 
 ## Architecture

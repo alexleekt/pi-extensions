@@ -215,6 +215,11 @@ export function SettingsProvider({
 
     useEffect(() => {
         const root = document.documentElement;
+        // Set root font-size so ALL rem-based sizes (Tailwind text-sm, etc.)
+        // scale uniformly across both panels, the footer, and all UI elements.
+        // rem units are relative to the root <html> font-size, so changing a
+        // child div's font-size doesn't cascade to rem-based values.
+        root.style.fontSize = `${contentZoom}%`;
         root.style.setProperty("--content-zoom", String(contentZoom / 100));
         root.style.setProperty("--content-font-size", `${contentZoom}%`);
         notifyIframeThemeChange();

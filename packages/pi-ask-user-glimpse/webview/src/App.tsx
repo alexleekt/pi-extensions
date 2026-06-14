@@ -110,7 +110,7 @@ export default function App() {
 
     return (
         <FooterContext.Provider value={footerContextValue}>
-            <div className="flex h-screen flex-col overflow-hidden text-[length:var(--content-font-size,100%)]">
+            <div className="flex h-screen flex-col overflow-hidden">
                 {/* Top area: context + dialog side by side */}
                 <div className="flex flex-1 overflow-hidden">
                     {/* Left panel — always present; shows question + context when available */}

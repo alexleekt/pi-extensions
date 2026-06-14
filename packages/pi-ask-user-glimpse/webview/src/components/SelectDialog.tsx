@@ -209,7 +209,8 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                 return;
             }
 
-            if (e.key === "-" || e.key === "_") {
+            // Bare -/_ toggles freeform; Cmd/Ctrl variants are zoom hotkeys handled by App.tsx
+            if ((e.key === "-" || e.key === "_") && !(e.ctrlKey || e.metaKey)) {
                 if (s.allowFreeform) {
                     e.preventDefault();
                     toggle(FREEFORM_OPTION_TITLE);
