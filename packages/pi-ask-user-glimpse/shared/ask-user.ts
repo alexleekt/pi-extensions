@@ -67,6 +67,7 @@ export interface AskUserPayload {
     theme?: ThemeName;
     mode?: ThemeMode;
     animationLevel?: AnimationLevel;
+    contentZoom?: number;
 }
 
 export interface QuestionnaireDetail {

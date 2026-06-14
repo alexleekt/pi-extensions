@@ -93,12 +93,17 @@ function findCustomData(
 function getThemeSettings(entries: unknown[]): {
     theme?: ThemeName;
     animationLevel?: AnimationLevel;
+    contentZoom?: number;
 } {
     const data = findCustomData(entries, "ask-user-theme");
     const theme = typeof data?.theme === "string" ? data.theme : undefined;
     const animationLevel =
         typeof data?.animationLevel === "string"
             ? data.animationLevel
+            : undefined;
+    const contentZoom =
+        typeof data?.contentZoom === "number"
+            ? (data.contentZoom as number)
             : undefined;
     return {
         theme: ALL_THEME_NAMES.includes(theme as ThemeName)
@@ -110,26 +115,28 @@ function getThemeSettings(entries: unknown[]): {
             animationLevel === "all"
                 ? animationLevel
                 : undefined,
+        contentZoom,
     };
 }
 
 /* ── Shared helpers for consistent ask_user UX across all entry points ── */
 
-/** Enrich raw ask_user params with persisted theme/animation settings. */
+/** Enrich raw ask_user params with persisted theme/animation/zoom settings. */
 function enrichWithThemeSettings(
     params: AskUserParams,
     entries: unknown[],
 ): AskUserParams {
-    const { theme, animationLevel } = getThemeSettings(entries);
-    return { ...params, theme, animationLevel };
+    const { theme, animationLevel, contentZoom } = getThemeSettings(entries);
+    return { ...params, theme, animationLevel, contentZoom };
 }
 
-/** Persist theme/animation changes back to the session journal. */
+/** Persist theme/animation/zoom changes back to the session journal. */
 function saveThemeMetadata(metadata: AskUserMetadata) {
-    if ((metadata.theme || metadata.animationLevel) && _pi) {
+    if ((metadata.theme || metadata.animationLevel || metadata.contentZoom !== undefined) && _pi) {
         _pi.appendEntry("ask-user-theme", {
             theme: metadata.theme,
             animationLevel: metadata.animationLevel,
+            contentZoom: metadata.contentZoom,
         });
     }
 }

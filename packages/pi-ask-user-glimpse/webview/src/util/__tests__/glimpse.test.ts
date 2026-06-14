@@ -4,6 +4,7 @@ import { sendToGlimpse, sendCancelled } from "../glimpse.js";
 vi.mock("../settings.js", () => ({
     getCurrentMode: () => "system",
     getCurrentAnimationLevel: () => "all",
+    getCurrentContentZoom: () => 100,
 }));
 
 describe("glimpse", () => {
@@ -29,6 +30,7 @@ describe("glimpse", () => {
                 foo: "bar",
                 __theme: "system",
                 __animationLevel: "all",
+                __contentZoom: 100,
             }),
         );
     });
@@ -50,6 +52,7 @@ describe("glimpse", () => {
                 __cancelled: true,
                 __theme: "system",
                 __animationLevel: "all",
+                __contentZoom: 100,
             }),
         );
     });

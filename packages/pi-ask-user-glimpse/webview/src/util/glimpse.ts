@@ -1,8 +1,8 @@
-import { getCurrentAnimationLevel, getCurrentMode } from "./settings";
+import { getCurrentAnimationLevel, getCurrentContentZoom, getCurrentMode } from "./settings";
 
 /**
  * Send data to the Glimpse native host through the global window.glimpse bridge.
- * Automatically appends current theme and animation level metadata.
+ * Automatically appends current theme, animation level, and zoom metadata.
  */
 export function sendToGlimpse(data: unknown): void {
     const record =
@@ -13,6 +13,7 @@ export function sendToGlimpse(data: unknown): void {
         ...record,
         __theme: getCurrentMode(),
         __animationLevel: getCurrentAnimationLevel(),
+        __contentZoom: getCurrentContentZoom(),
     };
     const bridge = (window as unknown as Record<string, unknown>).glimpse as
         | { send: (data: unknown) => void }

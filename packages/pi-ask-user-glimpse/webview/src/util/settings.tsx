@@ -164,6 +164,7 @@ interface SettingsProviderProps {
     initialThemeFamily?: ThemeFamilyId;
     initialMode?: ThemeMode;
     initialAnimationLevel?: AnimationLevel;
+    initialContentZoom?: number;
     children: React.ReactNode;
 }
 
@@ -171,6 +172,7 @@ export function SettingsProvider({
     initialThemeFamily,
     initialMode,
     initialAnimationLevel,
+    initialContentZoom,
     children,
 }: SettingsProviderProps) {
     const [themeFamily, setThemeFamilyState] = useState<ThemeFamilyId>(
@@ -183,7 +185,7 @@ export function SettingsProvider({
         initialAnimationLevel ?? "all",
     );
     const [contentZoom, setContentZoomState] = useState<number>(
-        loadSavedContentZoom() ?? DEFAULT_CONTENT_ZOOM,
+        initialContentZoom ?? loadSavedContentZoom() ?? DEFAULT_CONTENT_ZOOM,
     );
     const [previewThemeFamily, setPreviewThemeFamily] = useState<ThemeFamilyId | null>(null);
     const [previewModeValue, setPreviewModeValue] = useState<ThemeMode | null>(null);

@@ -49,6 +49,7 @@ ReactDOM.createRoot(rootEl).render(
                 initialThemeFamily={initialThemeFamily}
                 initialMode={initialMode}
                 initialAnimationLevel={(payload.animationLevel as "none" | "minimal" | "all") ?? undefined}
+                initialContentZoom={typeof payload.contentZoom === "number" ? payload.contentZoom : undefined}
             >
                 <App />
             </SettingsProvider>

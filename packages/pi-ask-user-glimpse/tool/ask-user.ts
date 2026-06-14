@@ -176,11 +176,13 @@ export interface AskUserParams {
     followCursor?: boolean;
     theme?: ThemeName;
     animationLevel?: AnimationLevel;
+    contentZoom?: number;
 }
 
 export interface AskUserMetadata {
     theme?: ThemeName;
     animationLevel?: string;
+    contentZoom?: number;
 }
 
 export async function askUserHandler(
@@ -267,6 +269,7 @@ export async function askUserHandler(
         sessionName: ctx.sessionManager.getSessionName(),
         theme: params.theme,
         animationLevel: params.animationLevel,
+        contentZoom: params.contentZoom,
     };
 
     let result: Record<string, unknown> | null = null;
@@ -351,6 +354,9 @@ export async function askUserHandler(
                     animationLevel: result.__animationLevel as
                         | string
                         | undefined,
+                    contentZoom: typeof result.__contentZoom === "number"
+                        ? (result.__contentZoom as number)
+                        : undefined,
                 });
             }
         } else {
