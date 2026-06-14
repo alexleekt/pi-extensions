@@ -35,4 +35,11 @@ The Pi API call `pi.registerProvider("event-horizon/<name>", { ... })` that make
 
 ### Status Widget
 
-The transient UI component displayed by the `/event-horizon` command. A non-blocking widget above the editor that shows the instance list immediately and updates each row's health status asynchronously as checks resolve.
+The non-blocking widget above the editor shown by the `/event-horizon` command. Displays the instance list immediately; updates each row as its `/health` check resolves.
+
+**Dismissal contract.** The widget is dismissed on the earliest of:
+- **`agent_start`** — the next agent turn begins (the user has moved on to a new task). This is the canonical "the user is done looking" signal.
+- **`input`** — the user starts typing a prompt. Defense-in-depth fallback.
+- **A new `/event-horizon` invocation** — the new run clears the previous widget, aborts any in-flight checks via `AbortController`, and re-renders from scratch.
+
+The widget is *not* auto-cleared on a timer. It persists until one of the above signals fires, so the user has time to read the final row state without the layout being yanked away mid-read. The per-instance promise chain checks `signal.aborted` between every `await` to suppress stale `updateWidget()` callbacks from a cancelled invocation. The status-mode handler is wrapped in `try/finally` to guarantee a final `updateWidget()` flush, which preserves partial-state diagnostic info when some rows are still "checking" at end.

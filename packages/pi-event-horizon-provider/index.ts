@@ -13,6 +13,9 @@ const CONFIG_PATH = join(CONFIG_DIR, "instances.yaml");
 
 const DEBUG = process.env.EVENTHORIZON_DEBUG === "1";
 
+/** Widget key for the /event-horizon status surface. */
+const STATUS_WIDGET_KEY = "pi-event-horizon:status";
+
 const DEFAULT_INSTANCE = {
     url: "http://localhost:4000",
     api: "openai-completions" as const,
@@ -367,6 +370,13 @@ async function checkInstance(
 // Extension factory
 // ---------------------------------------------------------------------------
 
+/**
+ * AbortController for the currently in-flight /event-horizon status checks.
+ * Held at module scope so a re-invocation of the command can cancel the prior
+ * run's per-instance promises before they call updateWidget().
+ */
+let currentAbort: AbortController | null = null;
+
 export default async function (pi: ExtensionAPI) {
     const config = await ensureConfig();
     const createdDefault =
@@ -416,9 +426,17 @@ export default async function (pi: ExtensionAPI) {
         }
     });
 
-    // Clear the status widget when the user sends any input
+    // Clear the status widget when the user sends any input (defense in depth)
     pi.on("input", async (_event, ctx) => {
-        ctx.ui.setWidget("pi-event-horizon:status", undefined);
+        ctx.ui.setWidget(STATUS_WIDGET_KEY, undefined);
+    });
+
+    // Dismiss the status widget at the next agent turn boundary.
+    // This is the canonical "the user has moved on" signal: as soon as the
+    // user starts a new turn, the widget is no longer useful context.
+    // No-op if no widget is set.
+    pi.on("agent_start", async (_event, ctx) => {
+        ctx.ui.setWidget(STATUS_WIDGET_KEY, undefined);
     });
 
     // Status command
@@ -428,8 +446,13 @@ export default async function (pi: ExtensionAPI) {
             const theme = ctx.ui.theme;
             const trimmed = args.trim();
 
-            // 1. Clear any stale widget
-            ctx.ui.setWidget("pi-event-horizon:status", undefined);
+            // 1. Clear any stale widget and cancel any in-flight checks
+            //    from a prior invocation, so a slow prior run can't overwrite
+            //    this invocation's row state.
+            ctx.ui.setWidget(STATUS_WIDGET_KEY, undefined);
+            currentAbort?.abort();
+            currentAbort = new AbortController();
+            const signal = currentAbort.signal;
 
             // 2. Read fresh config
             const freshConfig = await ensureConfig();
@@ -629,30 +652,40 @@ export default async function (pi: ExtensionAPI) {
             // Show initial "checking..." widget
             updateWidget();
 
-            // Fire checks in parallel; update widget as each resolves
-            const promises = instances.map(
-                async ([name, instance], index) => {
-                    const baseUrl = instance.url.replace(/\/$/, "");
-                    const check = await checkInstance(
-                        name,
-                        instance.url,
-                    );
-                    const specs = await discoverModelSpecs(
-                        baseUrl,
-                        instance,
-                        check.response,
-                    );
+            // Fire checks in parallel; update widget as each resolves.
+            // try/finally ensures we always render the final state (including
+            // partial state when some rows are still "checking" at end).
+            try {
+                const promises = instances.map(
+                    async ([name, instance], index) => {
+                        // Skip work if a newer invocation has already taken over
+                        if (signal.aborted) return;
+                        const baseUrl = instance.url.replace(/\/$/, "");
+                        const check = await checkInstance(
+                            name,
+                            instance.url,
+                        );
+                        if (signal.aborted) return;
+                        const specs = await discoverModelSpecs(
+                            baseUrl,
+                            instance,
+                            check.response,
+                        );
+                        if (signal.aborted) return;
 
-                    rows[index].reachable = check.reachable;
-                    rows[index].targetModel = check.targetModel;
-                    rows[index].error = check.error;
-                    rows[index].specs = specs;
+                        rows[index].reachable = check.reachable;
+                        rows[index].targetModel = check.targetModel;
+                        rows[index].error = check.error;
+                        rows[index].specs = specs;
 
-                    updateWidget();
-                },
-            );
+                        updateWidget();
+                    },
+                );
 
-            await Promise.allSettled(promises);
+                await Promise.allSettled(promises);
+            } finally {
+                updateWidget();
+            }
         },
     });
 }

@@ -4,6 +4,8 @@
 
 Accepted
 
+> **Superseded in part by [0002-widget-dismissal-lifecycle.md](./0002-widget-dismissal-lifecycle.md).** The "Mitigations" section below claimed `try/finally` and "auto-clear after a short delay" were implemented; they were not. ADR 0002 records the actual dismissal contract.
+
 ## Context
 
 The `/event-horizon` command blocks the user until all server health checks complete. For multiple instances, this can take 5–10 seconds before any output appears. We need to show the server list immediately and populate health status asynchronously.
