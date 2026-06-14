@@ -90,7 +90,7 @@ function findCustomData(
         : undefined;
 }
 
-function getThemeSettings(entries: unknown[]): {
+function getPersistedSettings(entries: unknown[]): {
     theme?: ThemeName;
     animationLevel?: AnimationLevel;
     contentZoom?: number;
@@ -122,16 +122,16 @@ function getThemeSettings(entries: unknown[]): {
 /* ── Shared helpers for consistent ask_user UX across all entry points ── */
 
 /** Enrich raw ask_user params with persisted theme/animation/zoom settings. */
-function enrichWithThemeSettings(
+function enrichWithPersistedSettings(
     params: AskUserParams,
     entries: unknown[],
 ): AskUserParams {
-    const { theme, animationLevel, contentZoom } = getThemeSettings(entries);
+    const { theme, animationLevel, contentZoom } = getPersistedSettings(entries);
     return { ...params, theme, animationLevel, contentZoom };
 }
 
 /** Persist theme/animation/zoom changes back to the session journal. */
-function saveThemeMetadata(metadata: AskUserMetadata) {
+function savePersistedSettings(metadata: AskUserMetadata) {
     if ((metadata.theme || metadata.animationLevel || metadata.contentZoom !== undefined) && _pi) {
         _pi.appendEntry("ask-user-theme", {
             theme: metadata.theme,
@@ -151,7 +151,7 @@ async function runAskUserWithTheme(
     ctx: ExtensionContext,
 ): Promise<ReturnType<typeof askUserHandler>> {
     const entries = ctx.sessionManager.getEntries();
-    const params = enrichWithThemeSettings(rawParams, entries);
+    const params = enrichWithPersistedSettings(rawParams, entries);
     let metadata: AskUserMetadata = {};
 
     // 1. Strip reasoning chains from explicitly-passed context
@@ -174,7 +174,7 @@ async function runAskUserWithTheme(
     const result = await askUserHandler(cleanedParams, signal, ctx, (m) => {
         metadata = m;
     });
-    saveThemeMetadata(metadata);
+    savePersistedSettings(metadata);
     return result;
 }
 

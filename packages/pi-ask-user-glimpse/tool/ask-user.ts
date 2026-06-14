@@ -185,6 +185,23 @@ export interface AskUserMetadata {
     contentZoom?: number;
 }
 
+/** Extract settings metadata (theme, animation level, zoom) from a dialog result.
+ *  Called from both the normal submit path and the cancel path to ensure
+ *  settings persist across dialog opens regardless of how the dialog closes. */
+function extractSettingsFromResult(
+    result: Record<string, unknown>,
+): AskUserMetadata {
+    return {
+        theme: ALL_THEME_NAMES.includes(result.__theme as ThemeName)
+            ? (result.__theme as ThemeName)
+            : undefined,
+        animationLevel: result.__animationLevel as string | undefined,
+        contentZoom: typeof result.__contentZoom === "number"
+            ? (result.__contentZoom as number)
+            : undefined,
+    };
+}
+
 export async function askUserHandler(
     params: AskUserParams,
     signal: AbortSignal | undefined,
@@ -342,7 +359,7 @@ export async function askUserHandler(
                 rawResult !== null &&
                 (rawResult as Record<string, unknown>).__cancelled === true)
         ) {
-            // Even when cancelled, capture settings metadata (zoom, theme, animation)
+            // Even when cancelled, capture settings metadata via the helper
             // so they persist to the next dialog. Without this, a cancel-and-reopen
             // loop resets zoom/theme/animation to defaults.
             if (typeof rawResult === "object" && rawResult !== null && onMetadata) {
@@ -351,15 +368,7 @@ export async function askUserHandler(
                     (rr.__contentZoom !== undefined ||
                      rr.__theme !== undefined ||
                      rr.__animationLevel !== undefined)) {
-                    onMetadata({
-                        theme: ALL_THEME_NAMES.includes(rr.__theme as ThemeName)
-                            ? (rr.__theme as ThemeName)
-                            : undefined,
-                        animationLevel: rr.__animationLevel as string | undefined,
-                        contentZoom: typeof rr.__contentZoom === "number"
-                            ? (rr.__contentZoom as number)
-                            : undefined,
-                    });
+                    onMetadata(extractSettingsFromResult(rr));
                 }
             }
             cancelled = true;
@@ -367,17 +376,7 @@ export async function askUserHandler(
         } else if (typeof rawResult === "object" && rawResult !== null) {
             result = rawResult as Record<string, unknown>;
             if (onMetadata) {
-                onMetadata({
-                    theme: ALL_THEME_NAMES.includes(result.__theme as ThemeName)
-                        ? (result.__theme as ThemeName)
-                        : undefined,
-                    animationLevel: result.__animationLevel as
-                        | string
-                        | undefined,
-                    contentZoom: typeof result.__contentZoom === "number"
-                        ? (result.__contentZoom as number)
-                        : undefined,
-                });
+                onMetadata(extractSettingsFromResult(result));
             }
         } else {
             // Primitive or unexpected return value — treat as no response

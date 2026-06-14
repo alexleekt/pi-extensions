@@ -227,6 +227,7 @@ describe("makeRecentQuestionAutocompleteProvider", () => {
             { value: "X", label: "X" },
             "#X",
         );
+        // `#X` not found in the line `"a"` — falls back to current
         expect(applied.cursorCol).toBe(2);
         expect(calls.apply).toBe(1);
 
@@ -239,5 +240,87 @@ describe("makeRecentQuestionAutocompleteProvider", () => {
         const triggered = shouldTriggerFileCompletion(["a"], 0, 1);
         expect(triggered).toBe(false);
         expect(calls.file).toBe(1);
+    });
+
+    it("replaces #prefix with selected value in applyCompletion", () => {
+        const current = makeCurrent();
+        const store = seed(["Which database should we use?"]);
+        const provider = makeRecentQuestionAutocompleteProvider(
+            current,
+            store,
+        );
+
+        // Simulate user typing "#Da" and selecting "Which database should we use?"
+        // cursorCol is right after "#Da" in "tell me about #Da and more"
+        const input = "tell me about #Da and more";
+        const cursorAt = input.indexOf("#Da") + "#Da".length;  // 18
+        const lines = [input];
+        const result = provider.applyCompletion(
+            lines,
+            0,
+            cursorAt,
+            { value: "Which database should we use?", label: "#Which database should we use?" },
+            "#Da",
+        );
+
+        const expectedLine = "tell me about Which database should we use? and more";
+        expect(result.lines).toEqual([expectedLine]);
+        // Cursor should be right after the inserted value, not at end of line
+        expect(result.cursorCol).toBe(14 + "Which database should we use?".length);
+        expect(result.cursorLine).toBe(0);
+    });
+
+    it("replaces # prefix at start of line", () => {
+        const current = makeCurrent();
+        const store = seed(["Database"]);
+        const provider = makeRecentQuestionAutocompleteProvider(
+            current,
+            store,
+        );
+
+        const lines = ["#Database rest of message"];
+        const result = provider.applyCompletion(
+            lines,
+            0,
+            9,  // cursor at end of "#Database"
+            { value: "Database", label: "#Database" },
+            "#Database",
+        );
+
+        expect(result.lines).toEqual(["Database rest of message"]);
+        expect(result.cursorCol).toBe("Database".length);
+    });
+
+    it("falls back to current provider when prefix does not start with #", () => {
+        let callbackCount = 0;
+        const current: AutocompleteProvider = {
+            async getSuggestions() {
+                return null;
+            },
+            applyCompletion(lines, line, col) {
+                callbackCount++;
+                return { lines, cursorLine: line, cursorCol: col + 10 };
+            },
+            shouldTriggerFileCompletion() {
+                return true;
+            },
+        };
+        const provider = makeRecentQuestionAutocompleteProvider(
+            current,
+            makeRecentQuestionsStore(),
+        );
+
+        // Non-# prefix should delegate to current
+        const lines = ["/command foo"];
+        const result = provider.applyCompletion(
+            lines,
+            0,
+            8,
+            { value: "/command expanded", label: "/command" },
+            "/command",
+        );
+
+        expect(callbackCount).toBe(1);
+        expect(result.cursorCol).toBe(18); // col + 10 from mock
     });
 });
