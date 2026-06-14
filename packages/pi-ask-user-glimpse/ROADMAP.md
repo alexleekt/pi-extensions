@@ -9,29 +9,23 @@
 
 | Version | Date | Status |
 |---------|------|--------|
-| v0.5.3 | 2026-06-01 | 🟢 Released |
-| v0.5.4 | — | 🔴 Active development (unreleased) |
+| v0.6.1 | — | 🔴 Active development (unreleased) |
+| v0.6.0 | 2026-06-11 | 🟢 Released |
 
 ## Known Issues
 
 ### 🟢 Image Attachment Bug in `ask_user` Responses
 - **Severity:** Medium
 - **Status:** Defensively mitigated in extension; upstream fix still required
-- **Description:** When the user responds with plain text, the system sometimes injects `(see attached image)` into the assistant's context even though no image was sent. This breaks the grilling session flow.
+- **Description:** When the user responds with plain text, the system sometimes injects `(see attached image)` into the assistant's context even though no image was sent.
 - **Root cause:** `pi-ai` package uses `(see attached image)` as a hardcoded fallback when tool result text is empty. Gated by `hasImages` in `google-shared.js` and `mistral.js`, but **not** in `openai-completions.js` or `anthropic.js`.
 - **Mitigation:** `responseToText()` in `tool/response-formatter.ts` never returns empty text — returns `"No response"` instead.
 - **Upstream:** Pending fix in `pi-ai` package.
 
-### 🟡 Questionnaire ignores `allowSkip` — EMPTY SUBMISSION
-- **Severity:** Medium
-- **Status:** Documented, not yet fixed
-- **Description:** `submitDisabled` is never passed to `useBaseDialog`, so empty questionnaires can be submitted even when `allowSkip: false`.
-- **File:** `webview/src/components/Questionnaire.tsx`
-
 ### 🟡 Freeform allows empty text
 - **Severity:** Low
 - **Status:** By design (low-severity UX)
-- **Description:** `submitDisabled` is not set, so empty freeform submissions are always possible.
+- **Description:** `submitDisabled` is not set, so empty freeform submissions are always possible. This is intentional — the user may have nothing to add to an open question.
 
 ### 🟡 SelectDialog fallback selection
 - **Severity:** Low
@@ -41,38 +35,15 @@
 ### 🟡 Glimpse bridge unavailability — user stuck
 - **Severity:** Low
 - **Status:** Mitigated
-- **Description:** If `window.glimpse` is undefined, `sendToGlimpse` throws, `useBaseDialog` catches it, and the dialog stays open. The user is stuck.
+- **Description:** If `window.glimpse` is undefined, `sendToGlimpse` throws, `useBaseDialog` catches it, and the dialog stays open.
 - **Mitigation:** `sendToGlimpse()` now validates `window.glimpse` exists before calling `send()`.
-
-### 🟡 `isSubmitting` is never reset after successful submit
-- **Severity:** Medium
-- **Status:** Not yet fixed
-- **Description:** If the host does not close the webview, the dialog is permanently locked. No cancel, no retry.
-- **File:** `webview/src/components/useBaseDialog.tsx`
-
-### 🟡 `CancelConfirmModal` re-registers capture listener every render
-- **Severity:** Low
-- **Status:** Not yet fixed
-- **Description:** `onStay` dependency is recreated each render, causing a brief gap where no capture listener is active. Escape could leak.
-
-## In Progress
-
-### v0.5.3 — Error Handling & Race Conditions
-
-- [ ] Fix `handleCancel`/`handleDiscard` try-catch gaps in `useBaseDialog`
-- [ ] Add global error handler in `main.tsx` for unhandled errors/rejections
-- [ ] Send `__error` from `App.tsx` and `main.tsx` payload validation failures
-- [ ] Add `showCancelConfirm` guard to `SelectDialog` local keydown listener
-- [ ] Stabilize `CancelConfirmModal` listener dependencies
-- [ ] Consider submission timeout / watchdog for `isSubmitting` lock
 
 ## Next Up
 
-### v0.6.0 — Unified Dialog Architecture
+### v0.6.x — Unified Dialog Architecture
 
 - [ ] Centralize keyboard listeners from components into `App.tsx` or a provider context
 - [ ] Unify empty-submit behavior across all dialog types
-- [ ] Remove remaining dead code (ShortcutsModal, renderOptionText)
 - [ ] Add per-option comment visibility consistency
 
 ### v0.7.0 — Prompt Engineering Overhaul
@@ -88,9 +59,19 @@
 
 ## Completed
 
+- [x] Content zoom (50–250%) persisted across dialogs — v0.6.x
+- [x] Agent preamble capture — v0.6.0
+- [x] HTML context auto-downgrade — v0.6.0
+- [x] `#<header>` autocomplete + journal re-seed — v0.6.0
+- [x] `/ask-debug` argument completion — v0.6.0
+- [x] Keyboard shortcuts (1-9, arrows, Enter, Esc, ⌘Enter) — v0.1.1
+- [x] Multi-theme support (20+ themes) — v0.6.x
+- [x] Error handling & race condition hardening (hasSent guard, timeout/watchdog, try-catch, `__error`) — v0.5.2–v0.6.0
+- [x] Questionnaire `allowSkip` submit gating — v0.6.0
 - [x] HTML context iframe with theme propagation — v0.4.0
 - [x] Mermaid diagram support in markdown context — v0.3.0
 - [x] Auto-catch free-form questions — v0.4.0 (removed in v0.5.0)
 - [x] Security hardening (DOMPurify, CSP, XSS test suite) — v0.5.2
 - [x] Form consolidation (850 lines deduplicated) — v0.5.2
-- [x] Test coverage 98%+ across 29 files — v0.5.2
+- [x] Dead code removal (ShortcutsModal, renderOptionText) — v0.5.2
+- [x] Test coverage 98%+ across 35 files (438 tests) — v0.6.x

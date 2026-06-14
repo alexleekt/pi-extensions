@@ -2,12 +2,24 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
-## Unreleased
+## [0.6.1] — Unreleased
+
+### Added
+- **Content zoom (50–250%)** — Press ⌘/Ctrl+Plus/Minus/Zero to zoom dialog content in/out/reset. Zoom controls are also available in the settings palette dropdown. Zoom level persists across dialog opens via the session journal, including on cancel. CSS-driven text/content scale shared by markdown context, HTML context, options, forms, and footer in 10% steps.
+- **Gear icon** — SettingsButton replaced with a compact gear icon in the header bar, opening the ThemeSelector palette dropdown.
+
+### Fixed
+- **Zoom persisted on cancel** — Settings metadata (theme, animation level, zoom) is now extracted from cancelled dialogs too, so zoom/theme choices survive a cancel-and-reopen loop.
+- **Zoom persisted across dialog opens** — Content zoom is read from session journal entries on each dialog open, so it doesn't reset between calls.
+- **Autocomplete completion handling** — `#<header>` autocomplete provider now returns completion items that Pi can resolve.
+- **Hotkey conflict** — The `-` key (toggle freeform) no longer conflicts with ⌘/Ctrl+Minus (zoom out).
+- **Zoom scaling** — Dialog content now scales correctly at all zoom levels.
 
 ### Changed
 - **Dialog-renderer-only command surface** — Removed `/ask-style`, YOLO mandate injection, and `/ask-user-config` from the public slash-command surface. The extension now focuses on rendering `ask_user` dialogs instead of changing agent asking policy.
 - **`/ask` Ask Last cleanup pipeline** — `/ask` now builds a validated Ask Last payload with an adapter seam for host/external cleanup and a deterministic freeform fallback. It no longer relies on `?` sentence splitting.
 - **Developer-only `/ask-debug`** — `/ask-debug` is registered only when `PI_ASK_USER_DEBUG=1`, `true`, or `yes` is set.
+- **Refactored settings persistence** — Extracted `extractSettingsFromResult` helper and renamed `enrichWithThemeSettings` → `enrichWithPersistedSettings`, `createThemeSaver` → `savePersistedSettings`.
 
 ### Removed
 - Removed the bundled `prompts/yolo-mandate.md` and the unused abbreviation-based question splitter.
