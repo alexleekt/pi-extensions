@@ -1,69 +1,48 @@
-# ask_user Tool Prompt
-
 ## Snippet
-
-STOP and ask the user whenever ambiguity, missing information, or multiple valid approaches exist. NEVER guess or make assumptions about user preferences. Use this tool BEFORE proceeding with any action that depends on unstated user intent.
+Ask one focused question with optional multiple-choice answers. Use when the user knows something you can't infer; skip when the directive is clear and unambiguous.
 
 ## Description
+`ask_user` renders your question as a native dialog with a context panel for evidence, trade-off analysis, and visual aids. The tool is your decision-presentation canvas: when you do need the user to choose, you can give them comparison tables, Mermaid diagrams, HTML charts, pros/cons layouts, and structured options — all auto-themed to their environment.
 
-MANDATORY: Use this tool whenever you encounter ANY of the following conditions. NEVER proceed with assumptions.
+**When to ask.** Call `ask_user` when the user's answer has zero error rate and your best guess does not. Concretely:
 
-**Why asking is your best strategy:**
-- **Accuracy:** The user has context you cannot infer. Your guess has a non-zero error rate; the user's answer has zero error rate.
-- **Efficiency:** A 30-second question prevents 10 minutes of rework. If you guess wrong, you will need to undo, redo, and re-ask anyway.
-- **User preference:** The user prefers to be consulted on decisions that affect their work. Asking is a signal of competence, not incompetence.
+1. **Ambiguity** — The request could mean 2+ different things.
+2. **Multiple valid approaches** — 2+ libraries, architectures, or implementations are reasonable.
+3. **Preference** — Style, naming, UX, color, or behavior where the user may have a preference.
+4. **Missing information** — You need context not available in the conversation history.
+5. **Trade-offs** — Performance vs. readability, cost vs. features, speed vs. accuracy.
+6. **Irreversible action** — Modifying existing code, deleting files, changing configs, deploying.
+7. **Underspecified request** — "fix it", "improve this", "refactor this" without success criteria.
 
-**TRIGGER CONDITIONS — You MUST call ask_user when:**
-1. **Ambiguity:** The user's request could be interpreted in 2+ different ways.
-2. **Multiple valid options:** There are 2+ reasonable approaches, libraries, architectures, or implementations.
-3. **Preference needed:** Style, naming, formatting, color, theme, UX, or behavior choices where the user may have a preference.
-4. **Missing context:** You need information that was not provided in the conversation history to answer correctly.
-5. **Trade-off decisions:** Performance vs. readability, cost vs. features, speed vs. accuracy, security vs. convenience.
-6. **Confirmation required:** The action would modify existing code, delete files, change configurations, or have side effects.
-7. **Unclear scope:** The user said "fix it", "improve this", "make it better", "update it", or "refactor this" without specifying what success looks like.
+**When not to ask.** Skip `ask_user` and proceed directly when:
 
-**EXAMPLES — When you see these user inputs, you MUST ask:**
-- "Fix the bug" → Ask: "Which bug?" with options: [Login error, Rendering issue, Both]
-- "Which database should I use?" → Ask: "What's your priority?" with options: [Performance, Ease of setup, Cost, Familiarity]
-- "Refactor this" → Ask: "What should the refactor prioritize?" with options: [Readability, Performance, Type safety, Testability]
-- "Deploy this" → Ask: "This will replace the current production build. Are you sure?" with options: [Yes, deploy now, No, review first]
-- "Add auth" → Ask: "What authentication method do you prefer?" with context: comparison table of OAuth vs SAML vs JWT.
+- The user gave a specific, unambiguous directive ("rename X to Y in file Z").
+- The answer is obvious from conversation history or a quick codebase inspection.
+- The user already authorized the action ("go ahead", "approved", "ship it").
+- The choice is trivial and your default has near-zero risk of being wrong.
+- The user signaled low-friction execution ("just do it", "don't ask", "no questions").
 
-Before calling, gather context with tools (read/web/ref) and pass a short summary via the context field.
+**Examples of effective `ask_user` calls:**
 
-Use **readable question context**: markdown by default, with headings, bullets, and tables that make the decision easy to scan. The context panel supports Mermaid diagrams (flowcharts, sequence diagrams, etc.) — wrap them in ```mermaid code blocks when a flow or dependency graph is easier than prose.
+- "Fix the bug" → "Which bug? I found two." with options: [Login crash (null user), Dashboard flicker (missing key)]
+- "Add auth" → "Which auth approach fits your scale?" with a comparison table in context: JWT vs OAuth vs SAML
+- "Which database?" → "Here are the trade-offs:" with a Mermaid decision flowchart and a `pi.table()` comparison
+- "Refactor this" → "What should the refactor prioritize?" with options: [Readability, Performance, Type safety]
 
-Use contextFormat: 'html' only when richer visual structure materially improves comprehension: comparison tables, charts, metrics, timelines, pros/cons, color-coded groups, or dashboard-like summaries. HTML context inherits the wrapper's theme and dialog zoom. Use CSS variables such as `hsl(var(--background))`, `hsl(var(--foreground))`, and `hsl(var(--primary))` instead of fixed light/dark colors.
-
-For richer visualizations, use contextFormat: 'html' with the built-in pi charting helpers:
-  - `pi.table(['Feature','A','B'], [['Auth','OAuth','SAML']], {highlightColumn:1})` — comparison tables
-  - `pi.barChart('#chart', [{label:'A',value:30},{label:'B',value:80}], {highlightIndex:1})` — bar charts
-  - `pi.prosCons('#pc', ['Fast','Simple'], ['Expensive','Locked'], {})` — trade-offs
-  - `pi.metrics('#m', [{label:'Uptime',value:'99.9%',change:'+0.1%',trend:'up'}])` — KPI cards
-  - `pi.pieChart('#pie', [{label:'X',value:30},{label:'Y',value:70}], {donut:true})` — distributions
-  - `pi.timeline('#t', [{date:'Q1',title:'Plan',status:'complete'},{date:'Q2',title:'Build',status:'current'}])` — roadmaps
-
-All helpers auto-theme to light/dark mode.
+**When you do ask:** Put evidence and analysis in the context panel. Use markdown (with Mermaid for flows) by default; switch to `contextFormat: 'html'` for charts and dashboards. Always provide clear, actionable options sorted by recommendation.
 
 ## Guidelines
-
-1. STOP and ask — NEVER guess. If ANY trigger condition applies, you MUST call ask_user immediately. Do NOT proceed with assumptions.
-2. If the user has given a clear, specific, unambiguous directive that leaves no room for interpretation, you may proceed without asking.
-3. Keep the question field short and focused (ideally one sentence). Put background, examples, or elaboration in the context field.
-   **Auto-captured preamble:** if you don't pass an explicit `context` field, the most recent text you streamed will be automatically captured and shown in the left panel. You usually don't need to repeat your plan/analysis in the context — just call `ask_user` with the question and the user will see what you just said. Pass an explicit `context` only when you want to override or supplement the auto-capture.
-4. Write context as readable markdown by default: short summary first, then bullets/tables for evidence and trade-offs.
-5. Include Mermaid diagrams in the context field when visualizing architecture, data flows, or decision trees would help the user understand the question.
-6. Use contextFormat: 'html' for rich visualizations (comparison tables, bar charts, pros/cons lists, metric cards, timelines, and layouts) that help the user understand trade-offs and make faster decisions. The iframe inherits the wrapper's CSS variables and dialog zoom for automatic theme/readability consistency.
-7. When comparing 3+ options, render a comparison table with `pi.table(headers, rows, {highlightColumn: recommendedIndex})`.
-8. When showing quantitative data or performance metrics, use `pi.barChart()` or `pi.metrics()` to visualize the numbers.
-9. When weighing trade-offs, use `pi.prosCons()` to show a side-by-side comparison.
-10. Pass a concise question and, when applicable, a list of options with short titles and optional longer descriptions.
-11. List options from most recommended to least recommended.
-12. Set allowMultiple: true when more than one choice is valid.
-13. Set allowFreeform: true (default) when the user might want to answer in their own words.
-14. ANTI-PATTERNS — DO NOT ask the user:
-    - Vague questions like "What would you like?" without context or options.
-    - Questions where the answer is obvious from the conversation history.
-    - Questions that could be answered by reading the codebase or documentation.
-    - For confirmation when the user has already explicitly approved the action.
-    - To choose between options without explaining the trade-offs or consequences.
+1. When the user gives a specific, unambiguous directive, execute it without asking.
+2. Keep the question to one sentence. Move background, evidence, and analysis to the context field.
+3. Provide concrete options whenever possible — even for open-ended questions, suggest a few likely answers.
+4. List options from most recommended to least recommended, and mark top picks with `recommended: true`.
+5. Set `allowMultiple: true` when the user might reasonably choose several valid options.
+6. Keep `allowFreeform: true` (the default) so the user can override your suggestions.
+7. When comparing 3+ options, render a table with `pi.table(headers, rows, {highlightColumn: recommendedIndex})`.
+8. When presenting quantitative data, use `pi.barChart()` or `pi.metrics()`.
+9. When weighing trade-offs, use `pi.prosCons('#id', pros, cons, {})` for side-by-side comparison.
+10. Use `contextFormat: 'html'` with `pi.timeline()` for roadmaps and `pi.pieChart()` for distributions.
+11. Include Mermaid diagrams in markdown context to visualize flows, architectures, and decision trees.
+12. DO NOT ask vague questions like "What would you like?" without context or structured options.
+13. DO NOT ask for confirmation the user already gave.
+14. DO NOT present options without explaining the trade-offs — the context panel is your canvas.
