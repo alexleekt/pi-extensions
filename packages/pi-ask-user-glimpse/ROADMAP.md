@@ -9,7 +9,7 @@
 
 | Version | Date | Status |
 |---------|------|--------|
-| v0.6.1 | — | 🔴 Active development (unreleased) |
+| v0.7.0 | — | 🔴 Active development (unreleased) |
 | v0.6.0 | 2026-06-11 | 🟢 Released |
 
 ## Known Issues
@@ -48,9 +48,9 @@
 
 ### v0.7.0 — Prompt Engineering Overhaul
 
-- [ ] Redraft `ask_user` prompt incorporating identity framing, imperative default, specific triggers
-- [ ] A/B test new prompt vs current prompt
-- [ ] Measure tool invocation rate, user response rate, downstream task success
+- [x] Redraft `ask_user` prompt incorporating identity framing, calibrated triggers, capability guidance
+- [x] A/B test new prompt vs current prompt (89% vs 58% accuracy, 25% vs 50% over-ask, 0% vs 33% under-ask)
+- [ ] Measure tool invocation rate, user response rate, downstream task success (ongoing)
 
 ## Icebox
 
@@ -59,6 +59,7 @@
 
 ## Completed
 
+- [x] Prompt engineering overhaul (redraft + A/B test) — v0.7.0
 - [x] Content zoom (50–250%) persisted across dialogs — v0.6.x
 - [x] Agent preamble capture — v0.6.0
 - [x] HTML context auto-downgrade — v0.6.0

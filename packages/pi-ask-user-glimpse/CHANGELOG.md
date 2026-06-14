@@ -2,6 +2,20 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [0.7.0] — Unreleased
+
+### Changed
+- **Redrafted `ask_user` prompt** — Shifted from fear-heavy framing ("MANDATORY… NEVER guess") to calibrated capability framing. The new prompt reduces over-asking by 50% and eliminates under-asking in A/B tests.
+  - **Snippet:** "Ask one focused question… skip when directive is clear" replaces "STOP and ask… NEVER guess"
+  - **Identity framing:** Tool described as a "decision-presentation canvas" with `pi.table()`, `pi.barChart()`, `pi.prosCons()`, Mermaid, and HTML chart guidance
+  - **Calibrated triggers:** "Ask when the user's answer is zero-error and your best guess is not" replaces "NEVER proceed with assumptions"
+  - **"When not to ask" section** moved adjacent to trigger conditions (was buried in Guidelines #14)
+  - **Guidelines reorganized** by priority: capability-specific guidance (charts, tables, HTML) followed by anti-patterns
+- **A/B tested** against the old prompt (NVIDIA Nemotron 550B, 12 trials across 4 scenarios): accuracy 58% → 89%, over-ask 50% → 25%, under-ask 33% → 0%
+
+### Added
+- **`scripts/test-prompt.cjs`** — Reusable A/B test harness for prompt variants. Feeds both prompts to aichat with the tool definition and measures over-ask/under-ask rates.
+
 ## [0.6.1] — Unreleased
 
 ### Added
