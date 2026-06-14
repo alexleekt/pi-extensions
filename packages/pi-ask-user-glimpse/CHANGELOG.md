@@ -2,7 +2,7 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
-## [0.7.0] — Unreleased
+## [0.7.0] — 2026-06-14
 
 ### Changed
 - **Redrafted `ask_user` prompt** — Shifted from fear-heavy framing ("MANDATORY… NEVER guess") to calibrated capability framing. The new prompt reduces over-asking by 50% and eliminates under-asking in A/B tests.
