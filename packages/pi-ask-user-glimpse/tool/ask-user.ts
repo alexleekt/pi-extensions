@@ -342,6 +342,26 @@ export async function askUserHandler(
                 rawResult !== null &&
                 (rawResult as Record<string, unknown>).__cancelled === true)
         ) {
+            // Even when cancelled, capture settings metadata (zoom, theme, animation)
+            // so they persist to the next dialog. Without this, a cancel-and-reopen
+            // loop resets zoom/theme/animation to defaults.
+            if (typeof rawResult === "object" && rawResult !== null && onMetadata) {
+                const rr = rawResult as Record<string, unknown>;
+                if (rr.__cancelled === true &&
+                    (rr.__contentZoom !== undefined ||
+                     rr.__theme !== undefined ||
+                     rr.__animationLevel !== undefined)) {
+                    onMetadata({
+                        theme: ALL_THEME_NAMES.includes(rr.__theme as ThemeName)
+                            ? (rr.__theme as ThemeName)
+                            : undefined,
+                        animationLevel: rr.__animationLevel as string | undefined,
+                        contentZoom: typeof rr.__contentZoom === "number"
+                            ? (rr.__contentZoom as number)
+                            : undefined,
+                    });
+                }
+            }
             cancelled = true;
             result = null;
         } else if (typeof rawResult === "object" && rawResult !== null) {
