@@ -55,9 +55,9 @@ describe("Freeform", () => {
         ).toBeInTheDocument();
     });
 
-    it("hides additional comments when allowComment is false", () => {
+    it("shows additional comments section even when allowComment is false", () => {
         renderWithFooter(buildPayload({ allowComment: false }));
-        expect(screen.queryByText("Additional Comments")).not.toBeInTheDocument();
+        expect(screen.getByText("Additional Comments")).toBeInTheDocument();
     });
 
     it("submits text", async () => {

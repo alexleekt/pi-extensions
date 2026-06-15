@@ -1,5 +1,20 @@
 import { forwardRef } from "react";
 
+/**
+ * AdditionalComments — global, always-present textarea for supplementary user input.
+ *
+ * ## Invariant
+ * This component MUST be rendered unconditionally in every dialog style
+ * (select, multi-select, questionnaire, freeform). It is NOT gated by any
+ * payload flag — particularly NOT by `allowComment` (which controls
+ * per-option toggle comments, a separate concern).
+ *
+ * If you need to conditionally hide this section, discuss with the team first
+ * and update the invariant test in the component test files.
+ *
+ * @see [[ask-user-form-unified-empty-submit-pattern]] in project memex
+ */
+
 interface AdditionalCommentsProps {
     value: string;
     onChange: (value: string) => void;

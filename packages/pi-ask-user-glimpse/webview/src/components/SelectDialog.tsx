@@ -41,7 +41,6 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         activeIndex: -1,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
-        allowComment: payload.allowComment,
         selectAllOption: undefined as typeof selectAllOption,
         mode,
     });
@@ -52,7 +51,6 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         activeIndex,
         options: payload.options,
         allowFreeform: payload.allowFreeform,
-        allowComment: payload.allowComment,
         selectAllOption,
         mode,
     };
@@ -98,7 +96,7 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
         const s = stateRef.current;
 
         const send = (result: Record<string, unknown>) => {
-            if (s.allowComment && s.additionalComments.trim()) {
+            if (s.additionalComments.trim()) {
                 result.additionalComments = s.additionalComments.trim();
             }
             sendToGlimpse(result);
@@ -141,8 +139,8 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
     }, []);
 
     const isDirty = isSingle
-        ? selected !== null || (payload.allowComment === true && additionalComments.trim() !== "")
-        : selectedSet.size > 0 || (payload.allowComment === true && additionalComments.trim() !== "");
+        ? selected !== null || additionalComments.trim() !== ""
+        : selectedSet.size > 0 || additionalComments.trim() !== "";
 
     const {
         showCancelConfirm,
@@ -453,14 +451,12 @@ export default function SelectDialog({ payload, mode }: SelectDialogProps) {
                 </div>
             </div>
 
-            {payload.allowComment === true && (
-                <div className="shrink-0 px-4 py-3">
-                    <AdditionalComments
-                        value={additionalComments}
-                        onChange={setAdditionalComments}
-                    />
-                </div>
-            )}
+            <div className="shrink-0 border-t border-border px-4 py-3">
+                <AdditionalComments
+                    value={additionalComments}
+                    onChange={setAdditionalComments}
+                />
+            </div>
 
             <CancelConfirmModal
                 isOpen={showCancelConfirm}

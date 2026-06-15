@@ -158,12 +158,12 @@ describe("SelectDialog", () => {
             ).not.toBeInTheDocument();
         });
 
-        it("hides additional comments section when allowComment is false", () => {
+        it("shows additional comments section even when allowComment is false", () => {
             renderWithFooter(
                 "single",
                 buildPayload("single", { allowComment: false }),
             );
-            expect(screen.queryByText("Additional Comments")).not.toBeInTheDocument();
+            expect(screen.getByText("Additional Comments")).toBeInTheDocument();
         });
 
         it("ArrowDown moves focus to next option", async () => {

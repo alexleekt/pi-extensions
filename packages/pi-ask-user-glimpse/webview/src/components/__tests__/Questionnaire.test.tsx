@@ -124,6 +124,11 @@ describe("Questionnaire", () => {
         expect(sent.additionalComments).toBe("My additional comment");
     });
 
+    it("always renders AdditionalComments section regardless of payload flags", () => {
+        renderWithFooter(buildPayload({ allowComment: false }));
+        expect(screen.getByText("Additional Comments")).toBeInTheDocument();
+    });
+
     it("submits empty questionnaire when no answers provided", async () => {
         renderWithFooter(buildPayload());
 
