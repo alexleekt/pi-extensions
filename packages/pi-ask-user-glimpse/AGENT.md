@@ -23,6 +23,7 @@ This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](.
 - `dist/` is gitignored — it can disappear after `git clean`, fresh clones, or switching worktrees
 - **When starting work** on this package, verify the artifact exists: `ls dist/`
 - **If missing, rebuild immediately** before testing the extension: `npm run build`
+- **If the live dialog behavior disagrees with source code**, suspect a stale ignored `dist/index.html` before changing React components. Check `ls -l dist/index.html`, verify expected strings with `grep`, then run `npm run build` and re-test the rendered DOM.
 - `npm run build` is safe to run repeatedly — Vite's `emptyOutDir: true` handles cleanup
 - **Each worktree has its own `node_modules/glimpseui/`** — the compiled `src/glimpse` binary is NOT shared across worktrees. After `wt switch --create` you may need to recompile Glimpse in the new worktree: `cd packages/pi-ask-user-glimpse/../.. && swiftc -O node_modules/glimpseui/src/glimpse.swift -o node_modules/glimpseui/src/glimpse`. Symptom of missing binary: `ask_user` returns the "No UI available..." fast-escape error, and Glimpse-related skills hint at "compiled" or "swiftc" in the message.
 
@@ -31,8 +32,9 @@ This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](.
 1. **Self-contained bundle** — `dist/index.html` must have zero external network requests. All JS, CSS, and assets inlined.
 2. **Payload injection contract** — The `/*ASK_USER_PAYLOAD*/` placeholder replacement MUST escape `<`, `>`, and `&` as `\u003c`, `\u003e`, `\u0026` to prevent HTML injection.
 3. **Fast-escape on UI failure** — If `glimpseui.prompt()` throws and no UI is available, return an explicit error telling the agent to ask in free-form text. Never crash Pi.
-4. **No setTimeout in extension factory** — The factory function must never use `setTimeout`, `setImmediate`, or deferred callbacks. Unhandled errors in deferred callbacks crash Pi.
-5. **`noEmit` tsconfig** — Pi loads `.ts` files directly. Do NOT add `outDir` or `declaration` settings.
+4. **Global Additional Comments** — The `AdditionalComments` textarea must render in every dialog type regardless of `allowComment`. `allowComment` only controls per-question/per-option comment toggles. E2E tests must assert this with `allowComment: false`.
+5. **No setTimeout in extension factory** — The factory function must never use `setTimeout`, `setImmediate`, or deferred callbacks. Unhandled errors in deferred callbacks crash Pi.
+6. **`noEmit` tsconfig** — Pi loads `.ts` files directly. Do NOT add `outDir` or `declaration` settings.
 
 ## Critical Rules
 

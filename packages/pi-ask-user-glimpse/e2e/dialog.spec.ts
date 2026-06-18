@@ -44,10 +44,11 @@ test.describe("single-select dialog", () => {
         await expect(page.getByText("Option C")).toBeVisible();
     });
 
-    test("does not render additional comments section", async ({ page }) => {
+    test("renders additional comments section when allowComment is false", async ({ page }) => {
+        await expect(page.getByText("Additional Comments")).toBeVisible();
         await expect(
-            page.getByText("Additional Comments"),
-        ).not.toBeVisible();
+            page.getByPlaceholder("Optional additional comments…"),
+        ).toBeVisible();
     });
 
     test("keyboard navigation with arrow keys", async ({ page }) => {
@@ -177,10 +178,11 @@ test.describe("multi-select dialog", () => {
         await expect(page.getByText("Option B")).toBeVisible();
     });
 
-    test("does not render additional comments section", async ({ page }) => {
+    test("renders additional comments section when allowComment is false", async ({ page }) => {
+        await expect(page.getByText("Additional Comments")).toBeVisible();
         await expect(
-            page.getByText("Additional Comments"),
-        ).not.toBeVisible();
+            page.getByPlaceholder("Optional additional comments…"),
+        ).toBeVisible();
     });
 
     test("space toggles option selection", async ({ page }) => {
@@ -233,10 +235,11 @@ test.describe("freeform dialog", () => {
         await expect(page.getByPlaceholder("Type your answer…")).toBeVisible();
     });
 
-    test("does not render additional comments section", async ({ page }) => {
+    test("renders additional comments section when allowComment is false", async ({ page }) => {
+        await expect(page.getByText("Additional Comments")).toBeVisible();
         await expect(
-            page.getByText("Additional Comments"),
-        ).not.toBeVisible();
+            page.getByPlaceholder("Optional additional comments…"),
+        ).toBeVisible();
     });
 
     test("submits with text", async ({ page }) => {
@@ -300,10 +303,11 @@ test.describe("questionnaire dialog", () => {
         await expect(page.getByText("Q3", { exact: true })).toBeVisible();
     });
 
-    test("does not render additional comments section", async ({ page }) => {
+    test("renders additional comments section when allowComment is false", async ({ page }) => {
+        await expect(page.getByText("Additional Comments")).toBeVisible();
         await expect(
-            page.getByText("Additional Comments"),
-        ).not.toBeVisible();
+            page.getByPlaceholder("Optional additional comments…"),
+        ).toBeVisible();
     });
 
     test("submits with answers", async ({ page }) => {
