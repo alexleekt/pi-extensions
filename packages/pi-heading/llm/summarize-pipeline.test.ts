@@ -53,10 +53,10 @@ const mockCtx = {
     model: { id: "test-model" },
     modelRegistry: {
         getAvailable: () => [
-            { id: "test-model", api: "openai" },
-            { id: "model-a", api: "openai" },
-            { id: "model-b", api: "openai" },
-            { id: "anthropic.claude-haiku-4-5", api: "anthropic" },
+            { id: "test-model", api: "openai-completions" },
+            { id: "model-a", api: "openai-completions" },
+            { id: "model-b", api: "openai-completions" },
+            { id: "anthropic.claude-haiku-4-5", api: "anthropic-messages" },
         ],
         getApiKeyAndHeaders: async () => ({
             ok: true,

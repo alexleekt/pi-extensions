@@ -42,6 +42,20 @@ function maxTokensForSummary(maxWords: number): number {
     return Math.min(128, maxWords * 2 + 8);
 }
 
+// `response_format: { type: "json_object" }` is an OpenAI *Chat-Completions*
+// field. Sending it to any other provider yields an HTTP 400 that completeSimple
+// surfaces as an empty-content "error" message — which the caller reads as an
+// empty heading and silently drops. Restrict it to chat-completions providers.
+export function supportsResponseFormat(model: Model<Api>): boolean {
+    return model.api === "openai-completions";
+}
+
+// The OpenAI Responses API rejects `temperature` outright (HTTP 400). Every
+// other provider we target accepts it.
+export function supportsTemperature(model: Model<Api>): boolean {
+    return model.api !== "openai-responses";
+}
+
 export async function runPrompt(
     ctx: ExtensionContext,
     fileName: string,
@@ -100,13 +114,15 @@ export async function runPrompt(
             apiKey: auth.apiKey,
             headers: auth.headers || {},
             maxTokens: maxTokensForSummary(promptFile.maxWords),
-            temperature: 0,
+            ...(supportsTemperature(model) ? { temperature: 0 } : {}),
             ...thinkingOffOpts(model),
             onPayload: (payload: unknown) => {
-                return {
-                    ...(payload as Record<string, unknown>),
-                    response_format: { type: "json_object" },
-                };
+                const p = payload as Record<string, unknown>;
+                // Only OpenAI chat-completions accepts response_format; other
+                // providers 400 on it. Extraction still works everywhere via the
+                // strict-JSON system prompt + the parse.ts fenced/raw fallbacks.
+                if (!supportsResponseFormat(model)) return p;
+                return { ...p, response_format: { type: "json_object" } };
             },
         },
     );
