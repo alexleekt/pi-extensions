@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-07-04
+
+### Fixed
+
+- **Provider-specific request params** — `response_format` is now only sent to OpenAI chat-completions providers, and `temperature` is suppressed for OpenAI responses API. Fixes HTTP 400 errors on Anthropic and OpenAI Responses providers.
+
 ## [Unreleased]
 
 ### Fixed
