@@ -24,8 +24,11 @@
     "files": [
         "index.ts",
         "config.json",
+        "handlers",
         "state",
+        "types.ts",
         "ui",
+        "util",
         "llm",
         "prompts",
         "tools",
