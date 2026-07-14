@@ -83,8 +83,8 @@ async function headingToolExecute(
         };
     }
 
-    const leafId = ctx.sessionManager.getLeafId();
-    const state = leafId ? getState(leafId) : undefined;
+    const sessionId = ctx.sessionManager.getSessionId();
+    const state = sessionId ? getState(sessionId) : undefined;
 
     if (!state) {
         return {

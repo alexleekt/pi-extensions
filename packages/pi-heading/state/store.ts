@@ -9,20 +9,20 @@ import type { HeadingExposure, State, WidgetMode } from "../types.js";
 
 const STATE_KEY = "heading";
 
-/** In-memory store keyed by branch leaf ID. */
+/** In-memory store keyed by stable session ID. */
 const memory = new Map<string, State>();
 
-export function getState(leafId: string): State | undefined {
-    return memory.get(leafId);
+export function getState(sessionId: string): State | undefined {
+    return memory.get(sessionId);
 }
 
-export function setState(leafId: string, state: State): void {
-    memory.set(leafId, state);
+export function setState(sessionId: string, state: State): void {
+    memory.set(sessionId, state);
 }
 
-/** Delete a single leaf's in-memory state. */
-export function deleteState(leafId: string): void {
-    memory.delete(leafId);
+/** Delete a single session's in-memory state. */
+export function deleteState(sessionId: string): void {
+    memory.delete(sessionId);
 }
 
 /** Clear all in-memory state (useful for testing). */
@@ -73,8 +73,8 @@ export function replayBranch(ctx: ExtensionContext): State | undefined {
     const branch = ctx.sessionManager.getBranch();
     if (!branch?.length) return;
 
-    const leafId = ctx.sessionManager.getLeafId();
-    if (!leafId) return;
+    const sessionId = ctx.sessionManager.getSessionId();
+    if (!sessionId) return;
 
     for (let i = branch.length - 1; i >= 0; i--) {
         const entry = branch[i];
@@ -98,7 +98,7 @@ export function replayBranch(ctx: ExtensionContext): State | undefined {
                             ? p.achievement
                             : undefined,
                 };
-                memory.set(leafId, state);
+                memory.set(sessionId, state);
                 return state;
             }
         }

@@ -13,11 +13,16 @@ import {
 } from "./store.js";
 
 function makeCtx(entries: unknown[]): {
-    sessionManager: { getBranch: () => unknown[]; getLeafId: () => string };
+    sessionManager: {
+        getBranch: () => unknown[];
+        getSessionId: () => string;
+        getLeafId: () => string;
+    };
 } {
     return {
         sessionManager: {
             getBranch: () => entries,
+            getSessionId: () => "leaf-1",
             getLeafId: () => "leaf-1",
         },
     };

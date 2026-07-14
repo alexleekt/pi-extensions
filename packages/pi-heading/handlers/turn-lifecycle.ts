@@ -30,8 +30,8 @@ export function handleTurnStart(
 ): void {
     if (!ctx.hasUI) return;
 
-    const leafId = ctx.sessionManager.getLeafId();
-    const state = leafId ? getState(leafId) : undefined;
+    const sessionId = ctx.sessionManager.getSessionId();
+    const state = sessionId ? getState(sessionId) : undefined;
     // If a placeholder from the current turn is active, don't overwrite it
     // with stale state from a previous turn.
     if (sharedState.currentPlaceholder) {
@@ -83,8 +83,8 @@ export function handleTurnEnd(
 ): void {
     if (!ctx.hasUI) return;
 
-    const leafId = ctx.sessionManager.getLeafId();
-    const existing = leafId ? getState(leafId) : undefined;
+    const sessionId = ctx.sessionManager.getSessionId();
+    const existing = sessionId ? getState(sessionId) : undefined;
 
     const hasToolResults = event.toolResults && event.toolResults.length > 0;
 
@@ -136,7 +136,7 @@ export function handleTurnEnd(
 
             // Re-read fresh state in case the before_agent_start summarization
             // already updated the goal for the next turn while we were async.
-            const fresh = leafId ? getState(leafId) : undefined;
+            const fresh = sessionId ? getState(sessionId) : undefined;
 
             const state = {
                 topic: fresh?.topic ?? existing?.topic ?? "",
@@ -144,8 +144,8 @@ export function handleTurnEnd(
                 achievement,
             };
 
-            if (leafId) {
-                setState(leafId, state);
+            if (sessionId) {
+                setState(sessionId, state);
                 // Persist if anything changed vs the fresh (or captured) state
                 const prior = fresh ?? existing;
                 if (

@@ -13,6 +13,7 @@ mock.module("./skill-loader.js", () => ({
 function makeMockCtx(leafId: string | undefined) {
     return {
         sessionManager: {
+            getSessionId: () => leafId,
             getLeafId: () => leafId,
         },
     };

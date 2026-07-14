@@ -152,6 +152,7 @@ function makeMockCtx(
         notifyCalls,
         workingMessageCalls,
         sessionManager: {
+            getSessionId: () => "leaf-1",
             getLeafId: () => leafId,
             getBranch: () => branch,
         },
@@ -455,6 +456,28 @@ describe("headingExtension", () => {
         expect(
             ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
         ).toBe(true);
+    });
+
+    test("heading tool sees first-message state after the leaf advances", async () => {
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        let leafId = "leaf-1";
+        ctx.sessionManager.getLeafId = () => leafId;
+
+        pi.handlers.before_agent_start[0](
+            { prompt: "help with docker", systemPrompt: "base" },
+            ctx,
+        );
+        leafId = "assistant-leaf";
+
+        const result = await pi.tools[0].execute(
+            "id",
+            { action: "get" },
+            undefined,
+            undefined,
+            ctx,
+        );
+        expect(result.content[0].text).toContain("Goal: help with docker");
     });
 
     test("before_agent_start does nothing for empty prompt", () => {

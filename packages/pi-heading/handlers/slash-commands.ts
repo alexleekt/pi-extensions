@@ -32,16 +32,16 @@ export async function handleHeading(
     if (!input?.trim()) return;
 
     const goal = input.trim();
-    const leafId = ctx.sessionManager.getLeafId();
-    const existing = leafId ? getState(leafId) : undefined;
+    const sessionId = ctx.sessionManager.getSessionId();
+    const existing = sessionId ? getState(sessionId) : undefined;
     const state = {
         topic: existing?.topic ?? "manual",
         goal,
         achievement: existing?.achievement,
     };
 
-    if (leafId) {
-        setState(leafId, state);
+    if (sessionId) {
+        setState(sessionId, state);
         persistState(pi, state);
     }
     setHeadingMessage(ctx, goal);

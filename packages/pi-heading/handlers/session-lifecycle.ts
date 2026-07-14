@@ -43,7 +43,7 @@ export function handleSessionStart(
     sharedState.lastExposed = undefined;
     sharedState.staleLogged = false;
     sharedState.stalenessTracker.reset();
-    const leafId = ctx.sessionManager.getLeafId();
+    const sessionId = ctx.sessionManager.getSessionId();
     const replayed = replayBranch(ctx);
     if (replayed?.goal) {
         const mode = replayed.achievement ? "achievement" : "goal";
@@ -52,7 +52,7 @@ export function handleSessionStart(
     } else {
         clearHeading(ctx);
         clearExposure(pi);
-        if (leafId) deleteState(leafId);
+        if (sessionId) deleteState(sessionId);
     }
 }
 

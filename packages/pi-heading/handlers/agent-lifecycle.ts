@@ -30,8 +30,8 @@ export function handleAgentEnd(
     sharedState.agentStartedForCurrentTurn = false;
     sharedState.agentEndGeneration++;
     sharedState.currentPlaceholder = undefined;
-    const leafId = ctx.sessionManager.getLeafId();
-    const state = leafId ? getState(leafId) : undefined;
+    const sessionId = ctx.sessionManager.getSessionId();
+    const state = sessionId ? getState(sessionId) : undefined;
     if (state?.goal) {
         setHeadingMessage(ctx, state.goal, "goal");
         exposeHeading(pi, state, state.achievement ? "achievement" : "goal");
@@ -61,8 +61,8 @@ export function handleAgentStart(
     if (!ctx.hasUI) return;
     sharedState.agentStartedForCurrentTurn = true;
 
-    const leafId = ctx.sessionManager.getLeafId();
-    const state = leafId ? getState(leafId) : undefined;
+    const sessionId = ctx.sessionManager.getSessionId();
+    const state = sessionId ? getState(sessionId) : undefined;
     // If a placeholder from the current turn is active, don't overwrite it
     // with stale state from a previous turn.
     if (sharedState.currentPlaceholder) {
@@ -86,10 +86,10 @@ export function handleBeforeAgentStart(
     const myAgentEndGeneration = sharedState.agentEndGeneration;
     sharedState.agentStartedForCurrentTurn = false;
 
-    const leafId = ctx.sessionManager.getLeafId();
+    const sessionId = ctx.sessionManager.getSessionId();
 
     // Inject current goal into system prompt so the LLM sees it as context.
-    const existing = leafId ? getState(leafId) : undefined;
+    const existing = sessionId ? getState(sessionId) : undefined;
     const systemPrompt = existing?.goal
         ? `${event.systemPrompt}\n\n## Session Focus\nCurrent goal: ${existing.goal}. Stay focused on this goal. If the user shifts topic, acknowledge the shift and update the heading.`
         : undefined;
@@ -102,8 +102,8 @@ export function handleBeforeAgentStart(
 
     // Store placeholder as temporary state so the heading tool can see it
     // while the async summarize is still in progress.
-    if (leafId) {
-        setState(leafId, {
+    if (sessionId) {
+        setState(sessionId, {
             topic: existing?.topic ?? "General",
             goal: placeholder,
             achievement: existing?.achievement,
@@ -118,7 +118,7 @@ export function handleBeforeAgentStart(
             // If agent_end already fired for this turn, don't clobber the final display.
             if (myAgentEndGeneration !== sharedState.agentEndGeneration) return;
 
-            const existing = leafId ? getState(leafId) : undefined;
+            const existing = sessionId ? getState(sessionId) : undefined;
 
             if (!result.goal.trim()) {
                 // LLM returned an empty goal — promote the placeholder to the
@@ -129,8 +129,8 @@ export function handleBeforeAgentStart(
                     goal: fallbackGoal,
                     achievement: existing?.achievement,
                 };
-                if (leafId) {
-                    setState(leafId, state);
+                if (sessionId) {
+                    setState(sessionId, state);
                     if (
                         existing?.topic !== state.topic ||
                         existing?.goal !== state.goal ||
@@ -158,8 +158,8 @@ export function handleBeforeAgentStart(
                 achievement: existing?.achievement,
             };
 
-            if (leafId) {
-                setState(leafId, state);
+            if (sessionId) {
+                setState(sessionId, state);
                 if (
                     existing?.topic !== state.topic ||
                     existing?.goal !== state.goal ||
@@ -183,7 +183,7 @@ export function handleBeforeAgentStart(
             if (myAgentEndGeneration !== sharedState.agentEndGeneration) return;
             const msg = (err as Error).message ?? String(err);
             ctx.ui.notify(`[pi-heading] Summarize failed: ${msg}`, "error");
-            const existing = leafId ? getState(leafId) : undefined;
+            const existing = sessionId ? getState(sessionId) : undefined;
             logDebug(makeDebugEntryError(prompt, existing, msg, ctx.model?.id));
         }
     })();
