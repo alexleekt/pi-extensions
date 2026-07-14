@@ -17,25 +17,19 @@ function createMockCtx() {
 }
 
 describe("setHeadingMessage", () => {
-    test("renders goal by default", () => {
+    test("renders goal text without a decorative prefix", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Fix the bug");
-        expect(ctx._workingMessages).toEqual(["▸ Fix the bug"]);
+        expect(ctx._workingMessages).toEqual(["Fix the bug"]);
     });
 
-    test("renders text in achievement mode as goal", () => {
+    test("renders achievement text through the same working message", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Bug is fixed", "achievement");
-        expect(ctx._workingMessages).toEqual(["▸ Bug is fixed"]);
+        expect(ctx._workingMessages).toEqual(["Bug is fixed"]);
     });
 
-    test("renders text in goal mode", () => {
-        const ctx = createMockCtx();
-        setHeadingMessage(ctx, "Fix the bug", "goal");
-        expect(ctx._workingMessages).toEqual(["▸ Fix the bug"]);
-    });
-
-    test("renders text in working mode without prefix", () => {
+    test("renders working text through the same working message", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Working on it", "working");
         expect(ctx._workingMessages).toEqual(["Working on it"]);
@@ -62,7 +56,7 @@ describe("setHeadingMessage", () => {
     test("trims text before rendering", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "  Fix the bug  ");
-        expect(ctx._workingMessages).toEqual(["▸ Fix the bug"]);
+        expect(ctx._workingMessages).toEqual(["Fix the bug"]);
     });
 });
 
@@ -71,6 +65,6 @@ describe("clearHeading", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Fix the bug");
         clearHeading(ctx);
-        expect(ctx._workingMessages).toEqual(["▸ Fix the bug", ""]);
+        expect(ctx._workingMessages).toEqual(["Fix the bug", ""]);
     });
 });

@@ -3,8 +3,8 @@
 
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { Text } from "@earendil-works/pi-tui";
+import { clearState, setState } from "../state/store.js";
 import { registerHeadingTool } from "./heading-tool.js";
-import { setState, clearState } from "../state/store.js";
 
 mock.module("./skill-loader.js", () => ({
     getHeadingSkillDocument: () => "# Session Heading\n\nSkill doc from file.",
@@ -15,6 +15,7 @@ function makeMockCtx(leafId: string | undefined) {
         sessionManager: {
             getSessionId: () => leafId,
             getLeafId: () => leafId,
+            getBranch: () => [],
         },
     };
 }
@@ -30,7 +31,7 @@ function makeMockPi() {
 }
 
 const theme = {
-    fg: (style: string, text: string) => text,
+    fg: (_style: string, text: string) => text,
     bold: (text: string) => text,
 };
 

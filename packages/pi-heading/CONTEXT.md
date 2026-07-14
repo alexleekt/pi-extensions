@@ -4,21 +4,22 @@
 
 | Term | Definition |
 |------|------------|
-| **Topic** | A 2-4 word label derived from the user's last message. Used for pane naming, branch labeling, and quick visual grouping. Kept stable across turns unless the conversation clearly changes subject. |
-| **Goal** | A one-sentence description of what the user is currently trying to achieve, displayed above the editor. Rewritten after every user message. Reuses the user's exact terminology. |
-| **Heading entry** | A `pi.appendEntry("heading", { topic, goal })` persisted per branch. Survives session restarts, visible in the conversation tree. |
-| **Prompt file** | A markdown file with YAML frontmatter containing the LLM prompt template plus a `max_words` constraint. Three prompt files: `topic.md` (max 4 words), `goal.md` (max 12 words), and `achievement.md` (max 12 words, uses `{goal}` placeholder). User-editable, extension-reloads on `/reload` or restart. |
-| **Topic guard** | A deterministic string-similarity filter that prevents the topic from jittering between semantically-equivalent labels ("docker setup" vs "docker config"). Preserves original capitalization of proper nouns. |
-| **Execution phase** | The conversational state the widget reflects: **goal-displayed** (static ▸), **working** (animated ⠋ spinner), or **achievement-displayed** (static ✓). Transitions are driven by Pi lifecycle events (`agent_start`, `turn_end`). |
-| **Working indicator** | The animated Braille spinner prefix (`⠋`) shown on the goal line while the agent is actively executing. Updates via rapid `setWidget()` calls. Plain-text only — no pi-tui components. |
-| **Complete indicator** | The static checkmark prefix (`✓`) shown on the achievement line after the agent finishes its turn. Signals completion of the current cycle. |
-| **Debug mode** | Structured logging of every LLM call (prompts, responses, errors) to a temp file. Toggled via `/heading-debug on|off`. Default is off. |
-| **Debug entry** | A JSON-line record in the debug log containing timestamp, input, full prompts, raw/final topic/goal/achievement, model ID, stream metadata, and any error. |
-| **Widget line** | The single-line string rendered above the editor via `ctx.ui.setWidget()`. Plain text, no borders, no pi-tui components. |
+| **Topic** | A stable 2–4 word label derived from the user's current task. Exposed to other extensions for grouping and pane naming. |
+| **Goal** | A concise statement of the current intent, shown through Pi's native working-message row while the agent runs. |
+| **Achievement** | A past-tense summary generated from the final assistant turn and shown in the same working-message row after completion. |
+| **Heading entry** | A `pi.appendEntry("heading", state)` custom entry. It persists state without adding content to the model context. |
+| **Transient heading** | In-memory placeholder or summary state attached to an entry while asynchronous summarization is still running. |
+| **Branch replay** | Resolution of the newest transient or persisted heading on the active session branch, including after `/tree` navigation. |
+| **Settled run** | Pi's `agent_settled` point, when no retry, compaction retry, or queued follow-up remains. |
+| **Working message** | Pi's built-in `ctx.ui.setWorkingMessage()` surface. It is the only surface used to display goal and achievement text. |
+| **Heading exposure** | A `heading:state` event with `{ topic, goal, achievement?, mode }` for passive extension composition. |
+| **Debug mode** | Opt-in structured logging of prompts, user input, responses, and errors to a user-private file under Pi's agent directory. |
 
 ## Boundaries
 
-- **One line only.** No bordered panels, no multi-row history, no keyboard focus.
-- **Plain-text animation only.** Animation is permitted via character rotation in a single-line `setWidget()` string. No pi-tui components, no timers that invalidate outside the widget line.
-- **Passive display.** The widget never intercepts input. There are no hotkeys for the widget itself.
-- **Per-branch state.** Topic and goal are scoped to the current branch via `appendEntry`. Switching branches restores that branch's heading.
+- **One line only.** No bordered panels, custom widgets, or multi-row history.
+- **Native indicator only.** Pi owns loader animation through its working indicator; pi-heading supplies text only.
+- **No transcript duplication.** Achievements stay in the working message and persisted custom state, not custom chat messages.
+- **Non-blocking.** Topic, goal, and achievement calls are fire-and-forget and receive Pi's active `AbortSignal`.
+- **Branch-aware.** Session resume and `/tree` navigation replay the selected branch's latest persisted heading.
+- **Passive integration.** Other extensions consume `heading:state`; pi-heading has no direct multiplexer dependency.

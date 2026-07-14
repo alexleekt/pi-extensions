@@ -13,7 +13,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Adopt Pi 0.80.4's `agent_settled` lifecycle event so headings are not finalized between retries, compaction retries, or queued follow-ups.
+- Render goal and achievement text exclusively through Pi's native working-message row; remove decorative phase prefixes and transcript achievement cards.
+- Resolve user configuration and prompt overrides through Pi's `getAgentDir()` API.
+- Use the Pi 0.80-compatible `@earendil-works/pi-ai/compat` completion import and TypeBox 1 schema API.
+
+### Added
+
+- Restore branch-specific headings after `/tree` navigation.
+- Forward Pi's active `AbortSignal` to summary model calls.
+- Add packed-install import smoke coverage and declare all Pi-provided peers.
+- Add regression coverage for state lookup after the session leaf advances.
+
 ### Fixed
+
+- Include `handlers/`, `util/`, and `types.ts` in the npm tarball; published 0.1.3 artifacts omitted required runtime modules.
+- Keep prompt-derived placeholders transient and use a non-sensitive fallback when summarization returns an empty goal.
+- Clear stale achievements when a new goal begins.
+- Resolve transient state from ancestor entries after assistant/tool entries advance the active leaf.
+- Restore user-only permissions on existing debug and config files, not only newly created files.
 
 - **Removed `setWorkingVisible` suppression** — `setWorkingVisible(false)` was hiding the entire working row, making the widget invisible. The widget spinner now coexists with Pi's native loader.
 - **Placeholder survival** — `agent_start` and `turn_start` no longer clear the heading when no state exists, preserving the `before_agent_start` placeholder during the async summarize gap.

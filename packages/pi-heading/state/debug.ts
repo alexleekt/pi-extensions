@@ -2,17 +2,11 @@
 // Copyright (c) 2026 Alex Lee
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { readConfig, writeConfig } from "../util/config.js";
 
-const DEBUG_DIR = path.join(
-    os.homedir(),
-    ".pi",
-    "agent",
-    "extensions",
-    "pi-heading",
-);
+const DEBUG_DIR = path.join(getAgentDir(), "extensions", "pi-heading");
 export const DEBUG_LOG = path.join(DEBUG_DIR, "debug.log");
 
 export interface StreamDebug {
@@ -74,13 +68,7 @@ interface DebugConfig {
     debug?: boolean;
 }
 
-const DEFAULT_CONFIG_DIR = path.join(
-    os.homedir(),
-    ".pi",
-    "agent",
-    "extensions",
-    "pi-heading",
-);
+const DEFAULT_CONFIG_DIR = path.join(getAgentDir(), "extensions", "pi-heading");
 
 export function getDebugMode(dir?: string): boolean {
     const cfg = readConfig<DebugConfig>(dir ?? DEFAULT_CONFIG_DIR, {});
@@ -136,6 +124,7 @@ export function logDebug(entry: DebugEntry): void {
             encoding: "utf8",
             mode: 0o600,
         });
+        fs.chmodSync(_debugLogPath, 0o600);
     } catch {
         // silent fail — debug logging must never break the extension
     }

@@ -10,11 +10,11 @@ import { summarizeAchievement } from "../llm/summarize.js";
 import { logDebug } from "../state/debug.js";
 import {
     exposeHeading,
-    getState,
+    getBranchState,
     persistState,
     setState,
 } from "../state/store.js";
-import { clearHeading, setHeadingMessage } from "../ui/indicator.js";
+import { setHeadingMessage } from "../ui/indicator.js";
 import {
     extractAgentText,
     makeDebugEntryAchievement,
@@ -30,15 +30,14 @@ export function handleTurnStart(
 ): void {
     if (!ctx.hasUI) return;
 
-    const sessionId = ctx.sessionManager.getSessionId();
-    const state = sessionId ? getState(sessionId) : undefined;
+    const state = getBranchState(ctx);
     // If a placeholder from the current turn is active, don't overwrite it
     // with stale state from a previous turn.
     if (sharedState.currentPlaceholder) {
         setHeadingMessage(ctx, sharedState.currentPlaceholder, "working");
     } else if (state?.goal) {
         setHeadingMessage(ctx, state.goal, "working");
-        // De-duplicate event bus emissions — only emit if state changed
+        // De-duplicate event bus emissions — only emit if state changed.
         const last = sharedState.lastExposed;
         if (
             !last ||
@@ -57,7 +56,7 @@ export function handleTurnStart(
         }
     }
 
-    // Staleness warning: log once when heading hasn't changed for many turns
+    // Staleness warning: log once when heading hasn't changed for many turns.
     if (sharedState.stalenessTracker.isStale(5) && !sharedState.staleLogged) {
         sharedState.staleLogged = true;
         logDebug(
@@ -69,7 +68,6 @@ export function handleTurnStart(
             ),
         );
     }
-    // Reset stale flag when heading is no longer stale
     if (!sharedState.stalenessTracker.isStale(5)) {
         sharedState.staleLogged = false;
     }
@@ -84,13 +82,10 @@ export function handleTurnEnd(
     if (!ctx.hasUI) return;
 
     const sessionId = ctx.sessionManager.getSessionId();
-    const existing = sessionId ? getState(sessionId) : undefined;
-
-    const hasToolResults = event.toolResults && event.toolResults.length > 0;
-
+    const existing = getBranchState(ctx);
+    const hasToolResults = (event.toolResults?.length ?? 0) > 0;
     const assistantText = extractAgentText(event.message);
 
-    // Track staleness at the end of every turn
     sharedState.stalenessTracker.onTurnEnd(existing?.goal);
 
     if (hasToolResults) {
@@ -111,7 +106,7 @@ export function handleTurnEnd(
 
     const myGeneration = sharedState.turnGeneration;
 
-    // Fire-and-forget: do not block the next turn
+    // Fire-and-forget: achievement generation must not delay agent settlement.
     void (async () => {
         try {
             const achResult = await summarizeAchievement(
@@ -132,12 +127,11 @@ export function handleTurnEnd(
                 return;
             }
 
-            if (myGeneration !== sharedState.turnGeneration) return; // stale turn
+            if (myGeneration !== sharedState.turnGeneration) return;
 
-            // Re-read fresh state in case the before_agent_start summarization
-            // already updated the goal for the next turn while we were async.
-            const fresh = sessionId ? getState(sessionId) : undefined;
-
+            // Re-read branch state in case goal summarization completed while
+            // achievement generation was in flight.
+            const fresh = getBranchState(ctx);
             const state = {
                 topic: fresh?.topic ?? existing?.topic ?? "",
                 goal: fresh?.goal ?? existing?.goal ?? "",
@@ -146,7 +140,6 @@ export function handleTurnEnd(
 
             if (sessionId) {
                 setState(sessionId, state);
-                // Persist if anything changed vs the fresh (or captured) state
                 const prior = fresh ?? existing;
                 if (
                     prior?.topic !== state.topic ||
@@ -156,17 +149,8 @@ export function handleTurnEnd(
                     persistState(pi, state);
                 }
             }
-            setHeadingMessage(ctx, state.goal, "goal");
+            setHeadingMessage(ctx, achievement, "achievement");
             exposeHeading(pi, state, "achievement");
-            pi.sendMessage(
-                {
-                    customType: "heading-achievement",
-                    content: achievement,
-                    display: true,
-                    details: { goal: state.goal },
-                },
-                { triggerTurn: false },
-            );
             logDebug(
                 makeDebugEntryAchievement(
                     assistantText,
@@ -176,18 +160,22 @@ export function handleTurnEnd(
                 ),
             );
         } catch (err) {
-            if (myGeneration !== sharedState.turnGeneration) return; // stale turn
-            // Achievement summarization failure is non-fatal — keep showing the goal
-            const msg = (err as Error).message ?? String(err);
+            if (myGeneration !== sharedState.turnGeneration) return;
+            if (
+                ctx.signal?.aborted ||
+                (err as { name?: string }).name === "AbortError"
+            )
+                return;
+            const message = (err as Error).message ?? String(err);
             ctx.ui.notify(
-                `[pi-heading] Achievement summarize failed: ${msg}`,
+                `[pi-heading] Achievement summarize failed: ${message}`,
                 "error",
             );
             logDebug(
                 makeDebugEntryError(
                     assistantText.slice(0, 200),
                     existing,
-                    msg,
+                    message,
                     ctx.model?.id,
                 ),
             );

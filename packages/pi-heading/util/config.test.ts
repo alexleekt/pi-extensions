@@ -68,6 +68,13 @@ describe("config", () => {
         expect(result).toEqual({ debug: false });
     });
 
+    test("writeConfig restores user-only permissions on existing files", () => {
+        const configPath = path.join(tmpDir, "config.json");
+        fs.writeFileSync(configPath, "{}", { mode: 0o644 });
+        writeConfig(tmpDir, "debug", true);
+        expect(fs.statSync(configPath).mode & 0o777).toBe(0o600);
+    });
+
     test("readConfig handles malformed JSON gracefully", () => {
         fs.writeFileSync(
             path.join(tmpDir, "config.json"),

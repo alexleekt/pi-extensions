@@ -1,60 +1,49 @@
 # ROADMAP — @alexleekt/pi-heading
 
+## Completed foundations
+
+- [x] One-line rendering through Pi's native `setWorkingMessage()` surface
+- [x] Native Pi indicator only; no extension-owned animation timer
+- [x] Goal and achievement summarization without blocking the agent loop
+- [x] Finalization through `agent_settled`, after retries and queued follow-ups
+- [x] Intermediate-turn detection through `TurnEndEvent.toolResults`
+- [x] Abort-aware summary calls through `ctx.signal`
+- [x] Branch replay on session start and `/tree` navigation
+- [x] Event-bus exposure for passive extension composition
+- [x] Packed-install import smoke coverage
+
 ## Short-term
 
-### Phase indicators (✓ done)
-- [x] `▸` static prefix for goal
-- [x] `⠋` Braille spinner during agent execution (`agent_start` / `turn_start` → `turn_end`)
-- [x] `✓` completion prefix for achievement
-- [x] Plain-text animation via `setInterval` + `setWidget()` — no pi-tui components
-- [x] Turn-generation guard prevents stale async renders from overwriting active turns
-- [ ] ~~Suppress Pi's default `setWorkingVisible()` loader while widget spinner is active~~
-  - *Removed 2026-05-29:* `setWorkingVisible(false)` hides the entire working row, making the widget invisible. The widget now coexists with Pi's native loader.
-- [ ] ~~Restore Pi's loader at `agent_end` (not `turn_end`, to avoid recreating it between tool-call turns)~~
-  - *Removed 2026-05-29:* Same reason as above.
-- [x] Restart spinner at `turn_start` between tool-call turns (same agent run)
-
-### Achievement alignment (✓ done)
-- [x] Achievement prompt now receives `{goal}` placeholder for context
-- [x] LLM is instructed to echo the goal's terminology in the achievement summary
-- [x] Prevents generic disconnected summaries when tool calls are involved
-
 ### Model validation on startup
-- [ ] Check if the configured heading model (override or session model) has a valid API key on `session_start`
-- [ ] If not, show a one-time warning via `ctx.ui.notify()` suggesting `/heading-model` to pick a working model
-- [ ] Cache the validation result for the session to avoid repeated checks
 
-### Model validation on startup
-- [ ] Check if the configured heading model (override or session model) has a valid API key on `session_start`
-- [ ] If not, show a one-time warning via `ctx.ui.notify()` suggesting `/heading-model` to pick a working model
-- [ ] Cache the validation result for the session to avoid repeated checks
+- [ ] Check whether the configured heading model has usable authentication on `session_start`
+- [ ] Show one warning with a `/heading-model` recovery path
+- [ ] Cache validation for the active session
 
 ### Cheaper model selector
-- [ ] `/heading-model` should filter to fast/cheap models by default (flash/mini/haiku/turbo)
-- [ ] Show estimated cost per 1K tokens alongside each model option
-- [ ] Remember the last working cheap model per-provider and suggest it
+
+- [ ] Offer an optional fast/cheap filter in `/heading-model`
+- [ ] Keep the full model list available
+- [ ] Remember the last working override
 
 ## Medium-term
 
-### Prompt improvement loop
-- [ ] `/heading-prompt` command to show current topic and goal prompts side-by-side
-- [ ] Allow user to edit prompts inline via `ctx.ui.editor()`
-- [ ] A/B preview: show what the *current* prompt would produce vs. a *draft* prompt on the last message
-- [ ] Prompt lint: warn if user prompt is missing `{message}` placeholder or has contradictory instructions
+### Prompt editing
 
-### Topic evolution tracking
-- [ ] Store topic history per branch (not just latest)
-- [ ] Show drift indicator when topic changes significantly between turns
-- [ ] Optional: graph of topic transitions over the conversation
+- [ ] Add a command to inspect current prompt overrides
+- [ ] Support editing through `ctx.ui.editor()`
+- [ ] Validate required placeholders before saving
+- [ ] Preview output against the last message without mutating the active prompt
 
-## Long-term
+### Topic history
 
-### Semantic topic clustering
-- [ ] Embed topics (lightweight local model) to group related sessions
-- [ ] Suggest "similar past sessions" when starting a new branch
-- [ ] Cross-session goal search: "find all sessions where I worked on Docker"
+- [ ] Preserve topic transitions as optional metadata
+- [ ] Expose drift diagnostics without adding another UI row
+- [ ] Keep the default event channel latest-state only
 
-### Multi-line widget mode (opt-in)
-- [ ] A `pi-heading-experimental` variant that renders 2-3 lines with soft borders using full-width background color (no corner chars)
-- [ ] This avoids the ghosting issue by eliminating border fragments while allowing more density
-- [ ] Only enable if terminal reports support for `CSI 2026` synchronized output
+## Explicitly deferred
+
+- **Automatic session naming:** `pi.setSessionName()` is useful, but silently overriding `/name` would blur responsibility between heading state and user-owned session metadata.
+- **Custom working indicators:** `setWorkingIndicator()` would duplicate Pi's native loader and violate the working-message-only contract.
+- **Project trust hooks:** pi-heading reads user-level configuration, not project-local executable resources, so `project_trust` is not applicable.
+- **Multi-line or bordered UI:** intentionally outside this package's one-line, no-ghosting scope.

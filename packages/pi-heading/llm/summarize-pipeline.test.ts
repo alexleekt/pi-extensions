@@ -44,7 +44,7 @@ const mockCompleteSimple = mock(() =>
 );
 
 beforeAll(() => {
-    mock.module("@earendil-works/pi-ai", () => ({
+    mock.module("@earendil-works/pi-ai/compat", () => ({
         completeSimple: (...args: unknown[]) => mockCompleteSimple(...args),
     }));
 });

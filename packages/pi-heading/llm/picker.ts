@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
-import * as os from "node:os";
 import * as path from "node:path";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { readConfig, writeConfig } from "../util/config.js";
 
 export interface ModelContext {
@@ -13,13 +13,7 @@ interface Config {
     modelOverride?: string;
 }
 
-const DEFAULT_CONFIG_DIR = path.join(
-    os.homedir(),
-    ".pi",
-    "agent",
-    "extensions",
-    "pi-heading",
-);
+const DEFAULT_CONFIG_DIR = path.join(getAgentDir(), "extensions", "pi-heading");
 
 export function getModelOverride(dir?: string): string | undefined {
     const cfg = readConfig<Config>(dir ?? DEFAULT_CONFIG_DIR, {});

@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
+import { StringEnum } from "@earendil-works/pi-ai";
 import type {
     AgentToolResult,
     ExtensionAPI,
     ExtensionContext,
     Theme,
 } from "@earendil-works/pi-coding-agent";
-import { StringEnum } from "@earendil-works/pi-ai";
 import { Text } from "@earendil-works/pi-tui";
-import { Type } from "typebox";
-import { getState } from "../state/store.js";
+import { Object as TypeObject } from "typebox";
+import { getBranchState } from "../state/store.js";
 import { getHeadingSkillDocument } from "./skill-loader.js";
 
 const HEADING_PROMPT_GATE =
@@ -36,7 +36,7 @@ export function registerHeadingTool(pi: ExtensionAPI): void {
             "Get the current session heading or heading documentation. " +
             "Use this when you need to check the session goal or understand heading conventions.",
         promptGuidelines: [HEADING_PROMPT_GATE, ...HEADING_PROMPT_GUIDELINES],
-        parameters: Type.Object({
+        parameters: TypeObject({
             action: StringEnum(["get", "skill"], {
                 description: "The heading action to perform",
             }),
@@ -53,7 +53,7 @@ export function registerHeadingTool(pi: ExtensionAPI): void {
         },
         renderResult: (result) => {
             const text = Array.isArray(result.content)
-                ? result.content.find((c) => c?.type === "text")?.text ?? ""
+                ? (result.content.find((c) => c?.type === "text")?.text ?? "")
                 : "";
             return new Text(text, 0, 0);
         },
@@ -83,8 +83,7 @@ async function headingToolExecute(
         };
     }
 
-    const sessionId = ctx.sessionManager.getSessionId();
-    const state = sessionId ? getState(sessionId) : undefined;
+    const state = getBranchState(ctx);
 
     if (!state) {
         return {

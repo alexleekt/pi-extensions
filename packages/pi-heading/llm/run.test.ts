@@ -37,14 +37,17 @@ const mockCompleteSimple = mock((..._args: unknown[]) => {
 });
 
 beforeAll(() => {
-    mock.module("@earendil-works/pi-ai", () => ({
+    mock.module("@earendil-works/pi-ai/compat", () => ({
         completeSimple: (...args: unknown[]) => mockCompleteSimple(...args),
     }));
     setModelOverride(undefined);
 });
 
+const requestSignal = new AbortController().signal;
+
 function ctxFor(api: string) {
     return {
+        signal: requestSignal,
         model: { id: "test-model" },
         modelRegistry: {
             getAvailable: () => [{ id: "test-model", api }],
@@ -75,6 +78,7 @@ describe("runPrompt provider-specific request params", () => {
     test("openai-completions: sends response_format and temperature", async () => {
         await runPrompt(ctxFor("openai-completions"), "goal", "do the thing");
         const opts = lastOptions ?? {};
+        expect(opts.signal).toBe(requestSignal);
         expect(opts.temperature).toBe(0);
         const payload = payloadFor(opts);
         expect(payload.response_format).toEqual({ type: "json_object" });

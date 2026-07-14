@@ -7,25 +7,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { getHeadingSkillDocument } from "./skill-loader.js";
 
-const FALLBACK_SKILL = `# Session Heading
-
-The session heading tracks the current goal and is visible in the UI.
-
-## Actions
-- get: Retrieve the current heading (topic, goal, achievement).
-- skill: Return this documentation.
-
-## Rules
-- The heading is a present-continuous status indicator (e.g., "Fixing the JWT bug").
-- When the user shifts topic, the heading should be updated.
-- Always check the heading before planning multi-step actions.
-`;
-
 describe("skill-loader", () => {
     let tmpDir: string;
-    const originalDirname =
-        (import.meta as any).dirname ??
-        path.dirname(new URL(import.meta.url).pathname);
 
     beforeEach(() => {
         tmpDir = path.join(

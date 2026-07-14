@@ -4,8 +4,10 @@
 import { describe, expect, test } from "bun:test";
 import {
     clearExposure,
+    clearState,
     deleteState,
     exposeHeading,
+    getBranchState,
     getState,
     persistState,
     replayBranch,
@@ -116,6 +118,42 @@ describe("replayBranch", () => {
         ]);
         const state = replayBranch(ctx);
         expect(state).toEqual({ topic: "Latest", goal: "Latest goal" });
+    });
+});
+
+describe("getBranchState", () => {
+    test("finds transient state on an ancestor after the leaf advances", () => {
+        clearState();
+        setState("user-1", { topic: "Docker", goal: "Fix compose" });
+        const ctx = {
+            sessionManager: {
+                getLeafId: () => "assistant-1",
+                getBranch: () => [
+                    { id: "user-1", type: "message" },
+                    { id: "assistant-1", type: "message" },
+                ],
+            },
+        };
+        expect(getBranchState(ctx as any)?.goal).toBe("Fix compose");
+    });
+
+    test("finds the latest persisted heading after the leaf advances", () => {
+        clearState();
+        const ctx = {
+            sessionManager: {
+                getLeafId: () => "assistant-1",
+                getBranch: () => [
+                    {
+                        id: "heading-1",
+                        type: "custom",
+                        customType: "heading",
+                        data: { topic: "Tests", goal: "Fix replay" },
+                    },
+                    { id: "assistant-1", type: "message" },
+                ],
+            },
+        };
+        expect(getBranchState(ctx as any)?.goal).toBe("Fix replay");
     });
 });
 

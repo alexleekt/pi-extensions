@@ -1,7 +1,11 @@
 # ADR 0002: Widget Phase Indicators — Animated Working State
 
 ## Status
-Accepted
+Superseded by [ADR 0004](0004-native-working-message-lifecycle.md)
+
+## Supersession note
+
+Pi now owns the working indicator while pi-heading supplies text through `setWorkingMessage()`. Decorative phase prefixes, extension-owned spinner timers, and transcript achievement cards were removed to keep a single native UI surface. This ADR remains as historical context.
 
 ## Context
 Users report that the static one-line widget feels "dead" — there's no visual feedback that the agent is actively working on the displayed goal. The widget shows the same static text throughout the entire turn, making it hard to tell at a glance whether the agent is still generating a response or has finished.

@@ -2,8 +2,8 @@
 // Copyright (c) 2026 Alex Lee
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
 export interface PromptFile {
     maxWords: number;
@@ -14,9 +14,7 @@ export interface PromptFile {
 }
 
 const PROMPT_DIR = path.join(
-    os.homedir(),
-    ".pi",
-    "agent",
+    getAgentDir(),
     "extensions",
     "pi-heading",
     "prompts",

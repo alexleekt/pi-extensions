@@ -16,14 +16,18 @@ The session heading tracks the current goal and is visible in the UI.
 - skill: Return this documentation.
 
 ## Rules
-- The heading is a present-continuous status indicator (e.g., "Fixing the JWT bug").
-- When the user shifts topic, the heading should be updated.
+- The heading is a concise statement of the current goal.
+- When the user shifts topic, update the heading.
 - Always check the heading before planning multi-step actions.
 `;
 
 export function getHeadingSkillDocument(baseDir?: string): string {
     try {
-        const skillPath = path.join(baseDir ?? path.join(__dirname, ".."), "prompts", "skill.md");
+        const skillPath = path.join(
+            baseDir ?? path.join(__dirname, ".."),
+            "prompts",
+            "skill.md",
+        );
         return fs.readFileSync(skillPath, "utf8");
     } catch {
         return FALLBACK_SKILL;

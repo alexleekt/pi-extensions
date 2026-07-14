@@ -15,8 +15,7 @@ export function setHeadingMessage(
         return;
     }
 
-    const prefix = mode === "working" ? "" : "▸ ";
-    ctx.ui.setWorkingMessage(prefix + trimmed);
+    ctx.ui.setWorkingMessage(trimmed);
 }
 
 export function clearHeading(ctx: ExtensionContext): void {

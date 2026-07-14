@@ -2,60 +2,57 @@
 parent: ../../AGENT.md
 ---
 
-# AGENT.md — @alexleekt/pi-heading
+# Agent Guidelines — @alexleekt/pi-heading
 
-> Behavioral rules for AI agents working on this codebase.
+## Monorepo context
 
-## Monorepo Context
+Follow [`../../AGENT.md`](../../AGENT.md) for repository-wide workflow, formatting, and release rules.
 
-This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](../../AGENT.md) for monorepo-wide conventions.
+## Invariants
 
-## Invariants (Never Break These)
+1. **Use one native UI row.** Render goal and achievement text only through `ctx.ui.setWorkingMessage()`. Do not add a separate widget, custom achievement message, border, or multi-line panel.
+2. **Let Pi own animation.** Do not add spinner timers or custom working-indicator frames.
+3. **Never block the agent.** Topic, goal, and achievement summarization must remain fire-and-forget. Pass Pi's active `AbortSignal` to nested model calls.
+4. **Finalize on `agent_settled`.** `agent_end` is a low-level boundary and may be followed by retry, compaction retry, or queued follow-up work.
+5. **Preserve branch semantics.** State resolution must work after the leaf advances and after `session_tree` navigation. Persist through `pi.appendEntry("heading", state)`.
+6. **Keep the display passive.** No keyboard focus, hotkeys, or input interception for the heading row.
+7. **Keep prompt parsing defensive.** Support empty frontmatter, missing trailing newlines, `{message}`, `{goal}`, and `{max_words}` substitution.
+8. **Resolve Pi paths through its API.** Use `getAgentDir()` instead of hardcoding `~/.pi/agent`.
+9. **Keep sensitive diagnostics private.** Debug/config files must use user-only permissions. Debug logging remains opt-in and must never break the extension.
 
-1. **One line only** — `renderWidget()` must produce exactly one string. No borders, no background functions, no multi-line arrays.
-2. **Never block the agent** — `before_agent_start` handler must fire summarize work as `void (async () => { ... })()` (fire-and-forget). Awaiting `summarize()` would stall the agent for 1-3 seconds.
-3. **Passive widget** — No keyboard focus, no hotkeys, no `handleInput`. The widget is read-only.
-4. **Prompt file frontmatter** — `readPromptFile()` parses YAML frontmatter for `max_words`. The regex must handle empty frontmatter (`---\n---\n`) and missing trailing newlines.
-5. **Symlink-safe paths** — `import.meta.dirname` resolves to the symlink target (`~/.pi/agent/extensions/pi-heading/`), so `prompts/` is a sibling, NOT `../prompts`.
-6. **Placeholder substitution** — `runPrompt()` replaces `{goal}` and `{max_words}` in both instructions and template before sending to the LLM.
-7. **Model calling** — We call `@earendil-works/pi-ai` directly (not through Pi's agent loop). See `llm/summarize.ts` for the pattern.
+## Package rules
 
-## Critical Rules
+- Use `.js` extensions on relative TypeScript imports for NodeNext resolution.
+- Pi loads source TypeScript directly; keep `tsconfig.json` typecheck-only.
+- Declare Pi-provided packages in `peerDependencies`.
+- Keep all transitive runtime imports in the npm `files` allowlist.
+- Run `npm run pack-smoke` after changing package structure or dependencies.
 
-### Prompt evaluation tools
-When modifying prompts, run the evaluation suite before shipping:
+## Validation
+
+Run the complete gate before shipping:
+
+```bash
+npm run typecheck
+npm test
+npm run pack-smoke
+```
+
+When prompt files change, also run:
 
 ```bash
 bun tools/prompt-eval.ts topic
 bun tools/prompt-eval.ts goal
 ```
 
-The optimizer mutates prompt files in-place — **back up before running**.
+The prompt optimizer mutates files in place; back up prompts before using it.
 
-### Suite factory pattern
-When adding new evaluation suites, the factory must accept raw prompt text: `suiteFactory(testCasesFile?)` returns `(promptText: string) => EvalSuite`. This lets `optimizeSuite` inject revised prompts without filesystem I/O.
+After changing this `AGENT.md`, run:
 
-### Test scripts
-Test scripts (`scripts/validate.ts`, `scripts/smoke-test.ts`, etc.) must use the **same escaping** as production code. If you add a new escape in `tool/ask-user.ts`, add it to all test scripts too.
+```bash
+agnix validate .
+```
 
-## Extension-Specific Rules
+## Deferred work
 
-- **Indentation:** 2 spaces (TypeScript)
-- **Imports:** Use `.js` extensions on relative imports (NodeNext module resolution)
-- **Console output:** Use `[pi-heading]` prefix for all `console.error`/`console.warn`
-- **Peer deps:** `@earendil-works/pi-coding-agent` only. `pi-tui` is intentionally NOT used.
-- **`noEmit` tsconfig** — Pi loads `.ts` files directly. Do NOT add `outDir` or `declaration` settings.
-
-## Decision Making
-
-| Scenario | Action |
-|----------|--------|
-| Modifying prompt files | Run `bun tools/prompt-eval.ts` first |
-| Changing widget rendering | Proceed, but keep it one line only |
-| Adding new prompt placeholders | Proceed, update `runPrompt()` substitution |
-| Bug fixes with clear solution | Proceed |
-
-## Deferred Work (Do Not Touch Without Discussion)
-
-- Model validation on startup (ROADMAP item)
-- Cheap-model filter for `/heading-model`
+Discuss before implementing roadmap items that change product ownership or UX, especially automatic session naming, startup model validation, model-list filtering, or multi-line rendering.

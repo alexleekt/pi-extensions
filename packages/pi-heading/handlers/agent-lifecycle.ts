@@ -12,7 +12,7 @@ import { stableTopic } from "../state/guard.js";
 import {
     clearExposure,
     exposeHeading,
-    getState,
+    getBranchState,
     persistState,
     setState,
 } from "../state/store.js";
@@ -20,7 +20,7 @@ import { clearHeading, setHeadingMessage } from "../ui/indicator.js";
 import { makeDebugEntry, makeDebugEntryError } from "./debug.js";
 import type { SharedState } from "./session-lifecycle.js";
 
-export function handleAgentEnd(
+export function handleAgentSettled(
     _event: unknown,
     ctx: ExtensionContext,
     pi: ExtensionAPI,
@@ -28,24 +28,14 @@ export function handleAgentEnd(
 ): void {
     if (!ctx.hasUI) return;
     sharedState.agentStartedForCurrentTurn = false;
-    sharedState.agentEndGeneration++;
+    sharedState.agentSettledGeneration++;
     sharedState.currentPlaceholder = undefined;
-    const sessionId = ctx.sessionManager.getSessionId();
-    const state = sessionId ? getState(sessionId) : undefined;
+
+    const state = getBranchState(ctx);
     if (state?.goal) {
-        setHeadingMessage(ctx, state.goal, "goal");
-        exposeHeading(pi, state, state.achievement ? "achievement" : "goal");
-        if (state.achievement) {
-            pi.sendMessage(
-                {
-                    customType: "heading-achievement",
-                    content: state.achievement,
-                    display: true,
-                    details: { goal: state.goal },
-                },
-                { triggerTurn: false },
-            );
-        }
+        const mode = state.achievement ? "achievement" : "goal";
+        setHeadingMessage(ctx, state.achievement ?? state.goal, mode);
+        exposeHeading(pi, state, mode);
     } else {
         clearHeading(ctx);
         clearExposure(pi);
@@ -61,8 +51,7 @@ export function handleAgentStart(
     if (!ctx.hasUI) return;
     sharedState.agentStartedForCurrentTurn = true;
 
-    const sessionId = ctx.sessionManager.getSessionId();
-    const state = sessionId ? getState(sessionId) : undefined;
+    const state = getBranchState(ctx);
     // If a placeholder from the current turn is active, don't overwrite it
     // with stale state from a previous turn.
     if (sharedState.currentPlaceholder) {
@@ -78,18 +67,18 @@ export function handleBeforeAgentStart(
     ctx: ExtensionContext,
     pi: ExtensionAPI,
     sharedState: SharedState,
-): BeforeAgentStartEventResult | void {
+): BeforeAgentStartEventResult | undefined {
     const prompt = event.prompt?.trim();
     if (!prompt || !ctx.hasUI) return;
 
     const myGeneration = ++sharedState.turnGeneration;
-    const myAgentEndGeneration = sharedState.agentEndGeneration;
+    const myAgentSettledGeneration = sharedState.agentSettledGeneration;
     sharedState.agentStartedForCurrentTurn = false;
 
     const sessionId = ctx.sessionManager.getSessionId();
 
     // Inject current goal into system prompt so the LLM sees it as context.
-    const existing = sessionId ? getState(sessionId) : undefined;
+    const existing = getBranchState(ctx);
     const systemPrompt = existing?.goal
         ? `${event.systemPrompt}\n\n## Session Focus\nCurrent goal: ${existing.goal}. Stay focused on this goal. If the user shifts topic, acknowledge the shift and update the heading.`
         : undefined;
@@ -100,41 +89,35 @@ export function handleBeforeAgentStart(
     sharedState.currentPlaceholder = placeholder;
     setHeadingMessage(ctx, placeholder, "working");
 
-    // Store placeholder as temporary state so the heading tool can see it
-    // while the async summarize is still in progress.
-    if (sessionId) {
-        setState(sessionId, {
-            topic: existing?.topic ?? "General",
-            goal: placeholder,
-            achievement: existing?.achievement,
-        });
-    }
+    // Keep the prompt-derived placeholder in memory only. Persisting raw prompt
+    // text would expose it through branch history and the heading tool.
 
-    // Fire-and-forget: do not await summarize — we must not block the agent
+    // Fire-and-forget: do not await summarize — we must not block the agent.
     void (async () => {
         try {
             const result = await summarize(ctx, prompt);
-            if (myGeneration !== sharedState.turnGeneration) return; // stale turn
-            // If agent_end already fired for this turn, don't clobber the final display.
-            if (myAgentEndGeneration !== sharedState.agentEndGeneration) return;
+            if (myGeneration !== sharedState.turnGeneration) return;
+            // A settled run may have already restored the final display.
+            if (myAgentSettledGeneration !== sharedState.agentSettledGeneration)
+                return;
 
-            const existing = sessionId ? getState(sessionId) : undefined;
+            const current = getBranchState(ctx);
 
             if (!result.goal.trim()) {
-                // LLM returned an empty goal — promote the placeholder to the
-                // actual goal so the heading is never blank.
-                const fallbackGoal = placeholder;
                 const state = {
-                    topic: existing?.topic ?? "General",
-                    goal: fallbackGoal,
-                    achievement: existing?.achievement,
+                    topic: current?.topic ?? existing?.topic ?? "General",
+                    goal:
+                        current?.goal ??
+                        existing?.goal ??
+                        "Continue current task",
+                    achievement: undefined,
                 };
                 if (sessionId) {
                     setState(sessionId, state);
                     if (
-                        existing?.topic !== state.topic ||
-                        existing?.goal !== state.goal ||
-                        existing?.achievement !== state.achievement
+                        current?.topic !== state.topic ||
+                        current?.goal !== state.goal ||
+                        current?.achievement !== state.achievement
                     ) {
                         persistState(pi, state);
                     }
@@ -143,27 +126,27 @@ export function handleBeforeAgentStart(
                 const mode = sharedState.agentStartedForCurrentTurn
                     ? "working"
                     : "goal";
-                setHeadingMessage(ctx, fallbackGoal, mode);
+                setHeadingMessage(ctx, state.goal, mode);
                 exposeHeading(pi, state, mode);
                 logDebug(
-                    makeDebugEntry(prompt, result, existing, ctx.model?.id),
+                    makeDebugEntry(prompt, result, current, ctx.model?.id),
                 );
                 return;
             }
 
-            const stable = stableTopic(existing?.topic, result.topic);
+            const stable = stableTopic(current?.topic, result.topic);
             const state = {
                 topic: stable,
                 goal: result.goal,
-                achievement: existing?.achievement,
+                achievement: undefined,
             };
 
             if (sessionId) {
                 setState(sessionId, state);
                 if (
-                    existing?.topic !== state.topic ||
-                    existing?.goal !== state.goal ||
-                    existing?.achievement !== state.achievement
+                    current?.topic !== state.topic ||
+                    current?.goal !== state.goal ||
+                    current?.achievement !== state.achievement
                 ) {
                     persistState(pi, state);
                 }
@@ -176,15 +159,27 @@ export function handleBeforeAgentStart(
             setHeadingMessage(ctx, result.goal, mode);
             exposeHeading(pi, state, mode);
             logDebug(
-                makeDebugEntry(prompt, result, existing, ctx.model?.id, stable),
+                makeDebugEntry(prompt, result, current, ctx.model?.id, stable),
             );
         } catch (err) {
-            if (myGeneration !== sharedState.turnGeneration) return; // stale turn
-            if (myAgentEndGeneration !== sharedState.agentEndGeneration) return;
-            const msg = (err as Error).message ?? String(err);
-            ctx.ui.notify(`[pi-heading] Summarize failed: ${msg}`, "error");
-            const existing = sessionId ? getState(sessionId) : undefined;
-            logDebug(makeDebugEntryError(prompt, existing, msg, ctx.model?.id));
+            if (myGeneration !== sharedState.turnGeneration) return;
+            if (myAgentSettledGeneration !== sharedState.agentSettledGeneration)
+                return;
+            if (
+                ctx.signal?.aborted ||
+                (err as { name?: string }).name === "AbortError"
+            )
+                return;
+            const message = (err as Error).message ?? String(err);
+            ctx.ui.notify(`[pi-heading] Summarize failed: ${message}`, "error");
+            logDebug(
+                makeDebugEntryError(
+                    prompt,
+                    getBranchState(ctx),
+                    message,
+                    ctx.model?.id,
+                ),
+            );
         }
     })();
 

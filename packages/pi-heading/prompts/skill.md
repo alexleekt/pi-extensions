@@ -16,8 +16,8 @@ The session heading tracks the current goal. It is visible in the UI and injecte
 
 ## Rules
 
-- The heading is a present-continuous status indicator (e.g., "Fixing the JWT bug").
-- When the user shifts topic, the heading should be updated.
+- The heading is a concise statement of the current goal.
+- When the user shifts topic, update the heading.
 - Always check the heading before planning multi-step actions.
 - If the heading is stale (unchanged for many turns while the topic drifts), update it.
-- NEVER ignore the heading when the user is continuing work on a stated goal.
+- Keep the current heading in view when the user continues work on a stated goal.

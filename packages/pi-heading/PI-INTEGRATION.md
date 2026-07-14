@@ -1,92 +1,82 @@
 # Integrating with pi-heading
 
-pi-heading broadcasts its current heading state on the shared Pi `EventBus` so other extensions can react to what the user is working on — without coupling to herdr, tmux, or any specific multiplexer.
+pi-heading broadcasts current state on Pi's shared event bus so other extensions can react without importing pi-heading or coupling it to a terminal multiplexer.
 
-## What you get
-
-Subscribe to the `heading:state` channel on `pi.events`:
+## Subscribe
 
 ```typescript
 pi.events.on("heading:state", (payload) => {
-  const { topic, goal, achievement, mode } = payload;
-  // do something useful
+    const { topic, goal, achievement, mode } = payload as {
+        topic: string;
+        goal: string;
+        achievement?: string;
+        mode: "goal" | "working" | "achievement" | "idle";
+    };
 });
 ```
 
-### Payload shape
+## Payload
 
-```typescript
-interface HeadingExposure {
-  topic: string;        // 2-4 word label, stable across turns (e.g. "docker")
-  goal: string;         // one-sentence description of current intent
-  achievement?: string; // what the agent accomplished last turn (undefined if none yet)
-  mode: "goal" | "working" | "achievement" | "idle";
-}
-```
+| Field | Meaning |
+|-------|---------|
+| `topic` | Stable 2–4 word task label |
+| `goal` | Current intent |
+| `achievement` | Latest completed result, when available |
+| `mode` | Current lifecycle state |
 
 ### Mode semantics
 
-| Mode | When it fires | What it means |
-|------|--------------|---------------|
-| `goal` | After the user sends a message and the goal is summarized | The agent is about to start working on this goal |
-| `working` | When the agent loop starts, and at the start of each tool-call turn | The agent is actively executing |
-| `achievement` | After a turn completes and the achievement is summarized | The agent finished that turn; check `achievement` for what got done |
-| `idle` | When the overall agent run ends | The agent is idle, waiting for the next user message |
+| Mode | Emitted when |
+|------|--------------|
+| `goal` | A goal is ready or a settled run has no achievement |
+| `working` | The agent starts or begins another tool-call turn |
+| `achievement` | Final-turn achievement summarization completes, or a saved achievement is replayed |
+| `idle` | No branch state exists or the session shuts down |
 
-A `clearExposure()` (empty topic/goal, mode `idle`) will fire on `session_shutdown` so consumers can clean up any transient UI they built.
+`agent_settled` does not emit `idle`; it preserves the final goal or achievement. This matters because `agent_end` can be followed by retries, compaction retries, or queued follow-ups.
 
-## When events fire
+## Event flow
 
+```text
+session_start / session_tree → replay selected branch
+before_agent_start           → goal or working
+agent_start / turn_start      → working
+turn_end with tool results    → unchanged; no achievement call
+turn_end without tool results → achievement when summary completes
+agent_settled                 → preserve final goal or achievement
+session_shutdown              → idle
+/heading                      → goal
 ```
-session_start  → exposeHeading(replayedState,  "achievement" | "goal")
-before_agent_start → exposeHeading(newState,   "goal" | "working")
-agent_start    → exposeHeading(currentState,    "working")
-turn_start     → exposeHeading(currentState,    "working")
-turn_end       → exposeHeading(stateWithAch,    "achievement")
-agent_end      → clearExposure()
-session_shutdown → clearExposure()
-/heading cmd   → exposeHeading(manualState,     "goal")
-```
 
-## Minimal consumer example
+Duplicate payloads are suppressed.
+
+## Consumer example
 
 ```typescript
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 export default function (pi: ExtensionAPI) {
-  pi.events.on("heading:state", (payload) => {
-    const { topic, goal, mode } = payload as {
-      topic: string;
-      goal: string;
-      achievement?: string;
-      mode: string;
-    };
+    pi.events.on("heading:state", (raw) => {
+        const state = raw as {
+            topic: string;
+            goal: string;
+            achievement?: string;
+            mode: string;
+        };
 
-    if (!topic && !goal) {
-      // clearExposure — session ended or no state
-      pi.ui.setStatus("my-ext", undefined);
-      return;
-    }
+        if (state.mode === "idle") {
+            return;
+        }
 
-    const prefix =
-      mode === "working" ? "⚡" :
-      mode === "achievement" ? "✓" :
-      "▸";
-
-    pi.ui.setStatus("my-ext", `${prefix} ${topic}: ${goal}`);
-  });
+        // Feed a pane-title bridge, dashboard, or status integration.
+        console.log(`${state.topic}: ${state.achievement ?? state.goal}`);
+    });
 }
 ```
 
-## Use-case ideas
+## Design contract
 
-- **Pane title sync** — map `topic` to `ctx.ui.setTitle()` or your multiplexer equivalent
-- **Status bar** — show `topic` + truncated `goal` in a custom footer
-- **Dashboard feed** — collect `heading:state` events across panes and render a project-overview sidebar
-- **Build trigger** — when `mode === "achievement"` and `topic === "deploy"`, kick a CI job
-
-## Design philosophy
-
-- **Pi-heading will not know you exist.** It will just broadcast. No callbacks, no registries, no coupling.
-- **Best effort.** The event bus is in-process; if your extension loads after pi-heading, you'll still receive all future events.
-- **Not a log.** Only the *latest* state will be emitted. If you need history, track it yourself in your extension.
+- Events are best-effort and in-process.
+- The channel represents latest state, not an event history.
+- Consumers own their rendering and persistence.
+- pi-heading never calls consumer-specific APIs.

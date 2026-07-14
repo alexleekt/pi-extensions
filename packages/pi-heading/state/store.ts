@@ -9,7 +9,7 @@ import type { HeadingExposure, State, WidgetMode } from "../types.js";
 
 const STATE_KEY = "heading";
 
-/** In-memory store keyed by stable session ID. */
+/** In-memory state keyed by stable session ID. */
 const memory = new Map<string, State>();
 
 export function getState(sessionId: string): State | undefined {
@@ -25,9 +25,55 @@ export function deleteState(sessionId: string): void {
     memory.delete(sessionId);
 }
 
-/** Clear all in-memory state (useful for testing). */
+/** Clear all in-memory state (used on session and tree boundaries). */
 export function clearState(): void {
     memory.clear();
+}
+
+function stateFromEntry(entry: unknown): State | undefined {
+    if (!entry || typeof entry !== "object") return;
+    const record = entry as Record<string, unknown>;
+    if (record.type !== "custom" || record.customType !== STATE_KEY) return;
+
+    const payload = (record.data ?? record.detail) as
+        | Record<string, unknown>
+        | undefined;
+    if (
+        !payload ||
+        typeof payload.topic !== "string" ||
+        typeof payload.goal !== "string"
+    )
+        return;
+
+    return {
+        topic: payload.topic,
+        goal: payload.goal,
+        achievement:
+            typeof payload.achievement === "string"
+                ? payload.achievement
+                : undefined,
+    };
+}
+
+/** Resolve the newest transient or persisted heading on the active branch. */
+export function getBranchState(ctx: ExtensionContext): State | undefined {
+    const sessionId = ctx.sessionManager.getSessionId();
+    if (sessionId) {
+        const sessionState = memory.get(sessionId);
+        if (sessionState) return sessionState;
+    }
+
+    const branch = ctx.sessionManager.getBranch();
+    for (let i = branch.length - 1; i >= 0; i--) {
+        const entry = branch[i];
+        if (!entry) continue;
+
+        const transient = memory.get(entry.id);
+        if (transient) return transient;
+
+        const persisted = stateFromEntry(entry);
+        if (persisted) return persisted;
+    }
 }
 
 let lastEmitted: HeadingExposure | undefined;
@@ -68,44 +114,22 @@ export function clearExposure(pi: ExtensionAPI): void {
     lastEmitted = undefined;
 }
 
-/** Replay previous recap entries for the current branch. */
+/** Replay the latest persisted heading entry for the current branch. */
 export function replayBranch(ctx: ExtensionContext): State | undefined {
     const branch = ctx.sessionManager.getBranch();
-    if (!branch?.length) return;
-
     const sessionId = ctx.sessionManager.getSessionId();
     if (!sessionId) return;
 
     for (let i = branch.length - 1; i >= 0; i--) {
-        const entry = branch[i];
-        if (entry?.type === "custom" && entry?.customType === STATE_KEY) {
-            const payload =
-                typeof entry === "object" && entry !== null
-                    ? ((entry as unknown as Record<string, unknown>).data ??
-                      (entry as unknown as Record<string, unknown>).detail)
-                    : undefined;
-            const p = payload as Record<string, unknown> | undefined;
-            if (
-                p &&
-                typeof p.topic === "string" &&
-                typeof p.goal === "string"
-            ) {
-                const state: State = {
-                    topic: p.topic,
-                    goal: p.goal,
-                    achievement:
-                        typeof p.achievement === "string"
-                            ? p.achievement
-                            : undefined,
-                };
-                memory.set(sessionId, state);
-                return state;
-            }
+        const state = stateFromEntry(branch[i]);
+        if (state) {
+            memory.set(sessionId, state);
+            return state;
         }
     }
 }
 
-/** Persist a new recap entry to the branch. */
+/** Persist a new heading entry to the branch. */
 export function persistState(pi: ExtensionAPI, state: State): void {
     pi.appendEntry(STATE_KEY, state);
 }

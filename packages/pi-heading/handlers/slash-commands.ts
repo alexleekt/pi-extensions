@@ -16,7 +16,7 @@ import {
 } from "../state/debug.js";
 import {
     exposeHeading,
-    getState,
+    getBranchState,
     persistState,
     setState,
 } from "../state/store.js";
@@ -33,11 +33,11 @@ export async function handleHeading(
 
     const goal = input.trim();
     const sessionId = ctx.sessionManager.getSessionId();
-    const existing = sessionId ? getState(sessionId) : undefined;
+    const existing = getBranchState(ctx);
     const state = {
         topic: existing?.topic ?? "manual",
         goal,
-        achievement: existing?.achievement,
+        achievement: undefined,
     };
 
     if (sessionId) {

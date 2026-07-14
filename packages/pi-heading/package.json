@@ -7,7 +7,8 @@
     "scripts": {
         "typecheck": "tsc --noEmit",
         "check": "tsc --noEmit && bun test",
-        "test": "bun test"
+        "test": "bun test",
+        "pack-smoke": "node tools/pack-smoke.mjs"
     },
     "pi": {
         "extensions": [
@@ -15,20 +16,25 @@
         ]
     },
     "dependencies": {
-        "@alexleekt/pi-shared": "^0.1.0",
-        "typebox": "^0.0.1"
+        "@alexleekt/pi-shared": "^0.1.0"
     },
     "peerDependencies": {
-        "@earendil-works/pi-coding-agent": "*"
+        "@earendil-works/pi-ai": ">=0.80.0",
+        "@earendil-works/pi-coding-agent": ">=0.80.4",
+        "@earendil-works/pi-tui": "*",
+        "typebox": ">=1.1.0"
     },
     "files": [
         "index.ts",
-        "config.json",
+        "types.ts",
+        "handlers",
         "state",
         "ui",
+        "util",
         "llm",
         "prompts",
         "tools",
+        "!**/*.test.ts",
         "README.md",
         "CHANGELOG.md",
         "LICENSE"

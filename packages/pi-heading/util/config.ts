@@ -27,11 +27,12 @@ export function writeConfig<T extends object>(
     const cfg = readConfig<T>(dir, {} as T);
     (cfg as Record<string, unknown>)[key] = value;
     try {
-        fs.writeFileSync(
-            path.join(dir, "config.json"),
-            JSON.stringify(cfg, null, 2),
-            "utf8",
-        );
+        const configPath = path.join(dir, "config.json");
+        fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), {
+            encoding: "utf8",
+            mode: 0o600,
+        });
+        fs.chmodSync(configPath, 0o600);
     } catch {
         // ignore
     }

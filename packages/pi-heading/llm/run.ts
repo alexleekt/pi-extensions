@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Alex Lee
 
 import type { Api, Model } from "@earendil-works/pi-ai";
-import { completeSimple } from "@earendil-works/pi-ai";
+import { completeSimple } from "@earendil-works/pi-ai/compat";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { StreamDebug } from "../state/debug.js";
 import {
@@ -113,6 +113,7 @@ export async function runPrompt(
         {
             apiKey: auth.apiKey,
             headers: auth.headers || {},
+            signal: ctx.signal,
             maxTokens: maxTokensForSummary(promptFile.maxWords),
             ...(supportsTemperature(model) ? { temperature: 0 } : {}),
             ...thinkingOffOpts(model),

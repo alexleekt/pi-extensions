@@ -95,6 +95,13 @@ describe("debug", () => {
         expect(entries[0].input).toBe("test input");
     });
 
+    test("logDebug restores user-only permissions on existing files", () => {
+        fs.writeFileSync(tmpLog, "", { mode: 0o644 });
+        setDebugEnabled(true);
+        logDebug(makeEntry("sensitive input"));
+        expect(fs.statSync(tmpLog).mode & 0o777).toBe(0o600);
+    });
+
     test("readDebugLog returns last N entries (most recent first)", () => {
         setDebugEnabled(true);
         for (let i = 0; i < 5; i++) {

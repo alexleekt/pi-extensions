@@ -71,3 +71,7 @@ jobs:
             - name: Dry run publish
               working-directory: packages/${{ matrix.package }}
               run: npm publish --dry-run
+
+            - name: Packed import smoke
+              working-directory: packages/${{ matrix.package }}
+              run: npm run pack-smoke --if-present

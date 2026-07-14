@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { TurnEndEvent } from "@earendil-works/pi-coding-agent";
 import type { SummarizeResult } from "../llm/summarize.js";
 import { extractTextFromMessage } from "../llm/summarize.js";
 import type { DebugEntry, StreamDebug } from "../state/debug.js";
@@ -21,7 +21,9 @@ export function baseDebugEntry(
 }
 
 /** Extract text content from an agent message (assistant or tool result). */
-export function extractAgentText(msg: AgentMessage): string {
+export function extractAgentText(
+    msg: TurnEndEvent["message"] | undefined,
+): string {
     return extractTextFromMessage(msg as unknown as AssistantMessage);
 }
 
