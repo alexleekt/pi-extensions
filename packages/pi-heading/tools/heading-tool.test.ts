@@ -49,7 +49,7 @@ describe("heading tool", () => {
         expect(tool.promptGuidelines.length).toBeGreaterThan(0);
     });
 
-    test("execute 'get' returns heading when state exists", async () => {
+    test("execute 'get' returns only the goal", async () => {
         setState("leaf-with-state", {
             topic: "Docker",
             goal: "Fix compose",
@@ -65,10 +65,7 @@ describe("heading tool", () => {
             undefined,
             makeMockCtx("leaf-with-state"),
         );
-        const text = result.content[0].text;
-        expect(text).toContain("Topic: Docker");
-        expect(text).toContain("Goal: Fix compose");
-        expect(text).toContain("Achievement: Fixed it");
+        expect(result.content[0].text).toBe("Fix compose");
     });
 
     test("execute 'get' returns no-heading message when state is missing", async () => {

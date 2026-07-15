@@ -98,13 +98,8 @@ async function headingToolExecute(
         };
     }
 
-    const lines = [`Topic: ${state.topic}`, `Goal: ${state.goal}`];
-    if (state.achievement) {
-        lines.push(`Achievement: ${state.achievement}`);
-    }
-
     return {
-        content: [{ type: "text", text: lines.join("\n") }],
+        content: [{ type: "text", text: state.goal }],
         details: {},
     };
 }

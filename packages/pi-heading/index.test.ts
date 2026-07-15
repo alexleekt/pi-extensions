@@ -477,7 +477,7 @@ describe("headingExtension", () => {
             undefined,
             ctx,
         );
-        expect(result.content[0].text).toContain("Goal: help with docker");
+        expect(result.content[0].text).toBe("help with docker");
     });
 
     test("before_agent_start does nothing for empty prompt", () => {
