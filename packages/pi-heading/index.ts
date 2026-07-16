@@ -39,7 +39,7 @@ export default function (pi: ExtensionAPI) {
     };
 
     // ── Agent-callable tool ──────────────────────────────────────────
-    registerHeadingTool(pi);
+    registerHeadingTool(pi, sharedState);
 
     // ── Event handlers ─────────────────────────────────────────────
     pi.on("session_start", (_event, ctx) =>

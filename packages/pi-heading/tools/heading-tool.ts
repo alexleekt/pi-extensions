@@ -25,7 +25,10 @@ const HEADING_PROMPT_GUIDELINES = [
 
 type HeadingAction = "get" | "skill";
 
-export function registerHeadingTool(pi: ExtensionAPI): void {
+export function registerHeadingTool(
+    pi: ExtensionAPI,
+    sharedState?: { currentPlaceholder?: string },
+): void {
     pi.registerTool({
         name: "heading",
         label: "Heading",
@@ -42,7 +45,11 @@ export function registerHeadingTool(pi: ExtensionAPI): void {
             }),
         }),
         execute: async (_toolCallId, params, _signal, _onUpdate, ctx) =>
-            headingToolExecute(params as { action: HeadingAction }, ctx),
+            headingToolExecute(
+                params as { action: HeadingAction },
+                ctx,
+                sharedState?.currentPlaceholder,
+            ),
         renderCall: (args: { action: string }, theme: Theme) => {
             return new Text(
                 theme.fg("toolTitle", theme.bold("heading ")) +
@@ -63,6 +70,7 @@ export function registerHeadingTool(pi: ExtensionAPI): void {
 async function headingToolExecute(
     params: { action: HeadingAction },
     ctx: ExtensionContext,
+    currentPlaceholder?: string,
 ): Promise<AgentToolResult<unknown>> {
     if (params.action === "skill") {
         return {
@@ -83,9 +91,9 @@ async function headingToolExecute(
         };
     }
 
-    const state = getBranchState(ctx);
+    const goal = getBranchState(ctx)?.goal ?? currentPlaceholder;
 
-    if (!state) {
+    if (!goal) {
         return {
             content: [
                 {
@@ -98,7 +106,7 @@ async function headingToolExecute(
     }
 
     return {
-        content: [{ type: "text", text: state.goal }],
+        content: [{ type: "text", text: goal }],
         details: {},
     };
 }

@@ -82,6 +82,7 @@ describe("getBranchState", () => {
         setState("user-1", { topic: "Docker", goal: "Fix compose" });
         const ctx = {
             sessionManager: {
+                getSessionId: () => "session-1",
                 getLeafId: () => "assistant-1",
                 getBranch: () => [
                     { id: "user-1", type: "message" },
@@ -96,6 +97,7 @@ describe("getBranchState", () => {
         clearState();
         const ctx = {
             sessionManager: {
+                getSessionId: () => "session-1",
                 getLeafId: () => "assistant-1",
                 getBranch: () => [
                     {
