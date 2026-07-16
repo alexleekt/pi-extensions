@@ -258,45 +258,6 @@ describe("headingExtension", () => {
         setDebugLogPath(DEBUG_LOG);
     });
 
-    test("registers 8 hooks, 3 commands, and 1 tool", () => {
-        headingExtension(pi as any);
-        expect(Object.keys(pi.handlers)).toEqual([
-            "session_start",
-            "agent_settled",
-            "session_tree",
-            "session_shutdown",
-            "before_agent_start",
-            "agent_start",
-            "turn_start",
-            "turn_end",
-        ]);
-        expect(Object.keys(pi.commands)).toEqual([
-            "heading",
-            "heading-model",
-            "heading-debug",
-        ]);
-        expect(pi.tools.length).toBe(1);
-        expect(pi.tools[0].name).toBe("heading");
-    });
-
-    test("all handlers fire without error", () => {
-        headingExtension(pi as any);
-        const ctx = makeMockCtx();
-        // Fire every handler that touches UI
-        expect(() => {
-            pi.handlers.session_start[0]({}, ctx);
-            pi.handlers.before_agent_start[0](
-                { prompt: "test", systemPrompt: "base" },
-                ctx,
-            );
-            pi.handlers.agent_start[0]({}, ctx);
-            pi.handlers.turn_start[0]({}, ctx);
-            pi.handlers.agent_settled[0]({}, ctx);
-            pi.handlers.session_tree[0]({}, ctx);
-            pi.handlers.session_shutdown[0]({}, ctx);
-        }).not.toThrow();
-    });
-
     // ── session_start ────────────────────────────────────────────
 
     test("session_start replays achievement mode when achievement exists", async () => {

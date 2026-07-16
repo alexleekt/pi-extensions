@@ -20,11 +20,6 @@ export function setState(sessionId: string, state: State): void {
     memory.set(sessionId, state);
 }
 
-/** Delete a single session's in-memory state. */
-export function deleteState(sessionId: string): void {
-    memory.delete(sessionId);
-}
-
 /** Clear all in-memory state (used on session and tree boundaries). */
 export function clearState(): void {
     memory.clear();
@@ -112,21 +107,6 @@ export function clearExposure(pi: ExtensionAPI): void {
         mode: "idle",
     } satisfies HeadingExposure);
     lastEmitted = undefined;
-}
-
-/** Replay the latest persisted heading entry for the current branch. */
-export function replayBranch(ctx: ExtensionContext): State | undefined {
-    const branch = ctx.sessionManager.getBranch();
-    const sessionId = ctx.sessionManager.getSessionId();
-    if (!sessionId) return;
-
-    for (let i = branch.length - 1; i >= 0; i--) {
-        const state = stateFromEntry(branch[i]);
-        if (state) {
-            memory.set(sessionId, state);
-            return state;
-        }
-    }
 }
 
 /** Persist a new heading entry to the branch. */

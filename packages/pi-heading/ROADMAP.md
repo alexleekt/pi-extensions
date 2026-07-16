@@ -1,17 +1,5 @@
 # ROADMAP — @alexleekt/pi-heading
 
-## Completed foundations
-
-- [x] One-line rendering through Pi's native `setWorkingMessage()` surface
-- [x] Native Pi indicator only; no extension-owned animation timer
-- [x] Goal and achievement summarization without blocking the agent loop
-- [x] Finalization through `agent_settled`, after retries and queued follow-ups
-- [x] Intermediate-turn detection through `TurnEndEvent.toolResults`
-- [x] Abort-aware summary calls through `ctx.signal`
-- [x] Branch replay on session start and `/tree` navigation
-- [x] Event-bus exposure for passive extension composition
-- [x] Packed-install import smoke coverage
-
 ## Short-term
 
 ### Model validation on startup

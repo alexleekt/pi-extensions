@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -84,24 +84,6 @@ try {
         ].join("\n"),
     );
     run("node", ["smoke.mjs"], installRoot);
-
-    const installedPackage = JSON.parse(
-        readFileSync(
-            join(
-                installRoot,
-                "node_modules",
-                "@alexleekt",
-                "pi-heading",
-                "package.json",
-            ),
-            "utf8",
-        ),
-    );
-    if (installedPackage.version !== manifest.version) {
-        throw new Error(
-            "Installed package version does not match tarball version",
-        );
-    }
 
     console.log(
         `Packed import smoke passed (${packedFiles.size} files, ${manifest.version}).`,

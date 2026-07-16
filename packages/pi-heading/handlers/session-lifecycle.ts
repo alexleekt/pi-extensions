@@ -9,7 +9,7 @@ import {
     clearExposure,
     clearState,
     exposeHeading,
-    replayBranch,
+    getBranchState,
 } from "../state/store.js";
 import type { HeadingStalenessTracker } from "../state/tracker.js";
 import { clearHeading, setHeadingMessage } from "../ui/indicator.js";
@@ -47,7 +47,7 @@ function restoreBranch(
     resetRuntimeState(sharedState);
     clearState();
 
-    const replayed = replayBranch(ctx);
+    const replayed = getBranchState(ctx);
     if (replayed?.goal) {
         const mode = replayed.achievement ? "achievement" : "goal";
         setHeadingMessage(ctx, replayed.achievement ?? replayed.goal, mode);
@@ -68,15 +68,7 @@ export function handleSessionStart(
     restoreBranch(ctx, pi, sharedState);
 }
 
-export function handleSessionTree(
-    _event: unknown,
-    ctx: ExtensionContext,
-    pi: ExtensionAPI,
-    sharedState: SharedState,
-): void {
-    if (!ctx.hasUI) return;
-    restoreBranch(ctx, pi, sharedState);
-}
+export const handleSessionTree = handleSessionStart;
 
 export function handleSessionShutdown(
     _event: unknown,
