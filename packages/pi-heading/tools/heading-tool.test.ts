@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { Text } from "@earendil-works/pi-tui";
 import { clearState, setState } from "../state/store.js";
 import { registerHeadingTool } from "./heading-tool.js";
-
-mock.module("./skill-loader.js", () => ({
-    getHeadingSkillDocument: () => "# Session Heading\n\nSkill doc from file.",
-}));
 
 function makeMockCtx(leafId: string | undefined) {
     return {
