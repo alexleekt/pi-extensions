@@ -326,6 +326,33 @@ async function discoverModelSpecs(
     return { ...MODERN_FALLBACK, source: "modern-fallback" };
 }
 
+function buildProviderModels(
+    name: string,
+    specs: Awaited<ReturnType<typeof discoverModelSpecs>>,
+) {
+    const shared = {
+        reasoning: specs.reasoning,
+        input: specs.input,
+        cost: specs.cost,
+        contextWindow: specs.contextWindow,
+        maxTokens: specs.maxTokens,
+    };
+    const upstreamTag = specs.targetModel ? ` — ${specs.targetModel}` : "";
+
+    return [
+        {
+            id: "singularity",
+            name: `Singularity (${name})${upstreamTag}`,
+            ...shared,
+        },
+        {
+            id: "photon-sphere",
+            name: `Photon Sphere (${name})`,
+            ...shared,
+        },
+    ];
+}
+
 // ---------------------------------------------------------------------------
 // Health check
 // ---------------------------------------------------------------------------
@@ -388,24 +415,13 @@ export default async function (pi: ExtensionAPI) {
         const baseUrl = instance.url.replace(/\/$/, "");
         const specs = await discoverModelSpecs(baseUrl, instance);
         const providerName = `event-horizon/${name}`;
-        const upstreamTag = specs.targetModel ? ` — ${specs.targetModel}` : "";
 
         pi.registerProvider(providerName, {
             name: `Event Horizon (${name})`,
             baseUrl,
             apiKey: "dummy",  // proxy handles auth internally; not used
             api: instance.api ?? DEFAULT_INSTANCE.api,
-            models: [
-                {
-                    id: "singularity",
-                    name: `Singularity (${name})${upstreamTag}`,
-                    reasoning: specs.reasoning,
-                    input: specs.input,
-                    cost: specs.cost,
-                    contextWindow: specs.contextWindow,
-                    maxTokens: specs.maxTokens,
-                },
-            ],
+            models: buildProviderModels(name, specs),
         });
 
         if (DEBUG) {
@@ -506,26 +522,13 @@ export default async function (pi: ExtensionAPI) {
                     baseUrl,
                     freshConfig.instances[name],
                 );
-                const upstreamTag = specs.targetModel
-                    ? ` — ${specs.targetModel}`
-                    : "";
                 pi.unregisterProvider(providerName);
                 pi.registerProvider(providerName, {
                     name: `Event Horizon (${name})`,
                     baseUrl,
                     apiKey: "dummy",
                     api,
-                    models: [
-                        {
-                            id: "singularity",
-                            name: `Singularity (${name})${upstreamTag}`,
-                            reasoning: specs.reasoning,
-                            input: specs.input,
-                            cost: specs.cost,
-                            contextWindow: specs.contextWindow,
-                            maxTokens: specs.maxTokens,
-                        },
-                    ],
+                    models: buildProviderModels(name, specs),
                 });
 
                 ctx.ui.notify(
