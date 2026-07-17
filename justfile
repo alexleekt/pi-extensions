@@ -70,6 +70,10 @@ ci-package pkg:
         node -e 'const p = require("./package.json"); process.exit(p.scripts?.[process.argv[1]] ? 0 : 1)' "$1"
     }
 
+    if has_script build; then
+        npm run build
+    fi
+
     if has_script typecheck; then
         npm run typecheck
     elif has_script check; then
