@@ -17,6 +17,7 @@ test("local, GitHub, and Worktrunk CI stay aligned", () => {
     assert.match(workflow, /bun-version: "1\.3\.14"/);
     assert.match(workflow, /just-version: "1\.52\.0"/);
     assert.match(workflow, /run: just ci-shared/);
+    assert.match(workflow, /check:\n\s+needs: shared\n\s+if: \$\{\{ always\(\) \}\}/);
     assert.match(workflow, /run: just ci-package \$\{\{ matrix\.package \}\}/);
     assert.match(worktrunk, /ci = "just ci"/);
 });
