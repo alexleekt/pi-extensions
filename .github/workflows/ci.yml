@@ -34,6 +34,7 @@ jobs:
 
     check:
         needs: shared
+        if: ${{ always() }}
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
