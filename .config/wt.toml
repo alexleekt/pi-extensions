@@ -29,9 +29,10 @@ lint = "just lint"
 [[pre-commit]]
 typecheck = "just typecheck"
 
-# Run tests before merging to ensure no regressions.
+# Reproduce the exact GitHub Actions checks before merging.
 [[pre-merge]]
-test = "cd packages/pi-ask-user-glimpse && npm run test"
+ci = "just ci"
 
+# Browser coverage remains an additional local merge gate.
 [[pre-merge]]
 test-e2e = "cd packages/pi-ask-user-glimpse && npm run test:e2e"

@@ -245,44 +245,44 @@ describe("makeRecentQuestionAutocompleteProvider", () => {
     it("replaces #prefix with selected value in applyCompletion", () => {
         const current = makeCurrent();
         const store = seed(["Which database should we use?"]);
-        const provider = makeRecentQuestionAutocompleteProvider(
-            current,
-            store,
-        );
+        const provider = makeRecentQuestionAutocompleteProvider(current, store);
 
         // Simulate user typing "#Da" and selecting "Which database should we use?"
         // cursorCol is right after "#Da" in "tell me about #Da and more"
         const input = "tell me about #Da and more";
-        const cursorAt = input.indexOf("#Da") + "#Da".length;  // 18
+        const cursorAt = input.indexOf("#Da") + "#Da".length; // 18
         const lines = [input];
         const result = provider.applyCompletion(
             lines,
             0,
             cursorAt,
-            { value: "Which database should we use?", label: "#Which database should we use?" },
+            {
+                value: "Which database should we use?",
+                label: "#Which database should we use?",
+            },
             "#Da",
         );
 
-        const expectedLine = "tell me about Which database should we use? and more";
+        const expectedLine =
+            "tell me about Which database should we use? and more";
         expect(result.lines).toEqual([expectedLine]);
         // Cursor should be right after the inserted value, not at end of line
-        expect(result.cursorCol).toBe(14 + "Which database should we use?".length);
+        expect(result.cursorCol).toBe(
+            14 + "Which database should we use?".length,
+        );
         expect(result.cursorLine).toBe(0);
     });
 
     it("replaces # prefix at start of line", () => {
         const current = makeCurrent();
         const store = seed(["Database"]);
-        const provider = makeRecentQuestionAutocompleteProvider(
-            current,
-            store,
-        );
+        const provider = makeRecentQuestionAutocompleteProvider(current, store);
 
         const lines = ["#Database rest of message"];
         const result = provider.applyCompletion(
             lines,
             0,
-            9,  // cursor at end of "#Database"
+            9, // cursor at end of "#Database"
             { value: "Database", label: "#Database" },
             "#Database",
         );
