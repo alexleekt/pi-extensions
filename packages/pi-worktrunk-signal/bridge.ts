@@ -38,7 +38,10 @@ interface HerdrResponse {
     };
 }
 
-function herdrRequest(method: string, params: Record<string, unknown>): Promise<HerdrResponse | null> {
+function herdrRequest(
+    method: string,
+    params: Record<string, unknown>,
+): Promise<HerdrResponse | null> {
     if (!HERDR_SOCKET_PATH) {
         console.error("HERDR_SOCKET_PATH not set. Run inside herdr.");
         return Promise.resolve(null);
@@ -91,7 +94,11 @@ function getBranchFromCwd(cwd: string): Promise<string | null> {
     });
 }
 
-function setMarker(cwd: string, branch: string, marker: string): Promise<void> {
+function setMarker(
+    _cwd: string,
+    branch: string,
+    marker: string,
+): Promise<void> {
     return new Promise((resolve) => {
         const payload = JSON.stringify({ marker, set_at: Date.now() });
         exec(
@@ -101,7 +108,7 @@ function setMarker(cwd: string, branch: string, marker: string): Promise<void> {
     });
 }
 
-function clearMarker(cwd: string, branch: string): Promise<void> {
+function clearMarker(_cwd: string, branch: string): Promise<void> {
     return new Promise((resolve) => {
         exec(
             `git config --global --unset worktrunk.state.${branch}.marker 2>/dev/null || true`,
@@ -133,7 +140,9 @@ async function pollAndSync(): Promise<void> {
         const last = lastBranchMarkers.get(branch);
         if (last !== marker) {
             await setMarker(cwd, branch, marker);
-            console.log(`[${new Date().toISOString()}] ${branch}: ${status} → ${marker}`);
+            console.log(
+                `[${new Date().toISOString()}] ${branch}: ${status} → ${marker}`,
+            );
         }
         currentMarkers.set(branch, marker);
     }
@@ -145,7 +154,9 @@ async function pollAndSync(): Promise<void> {
             const pane = panes.find((p) => p.cwd);
             if (pane?.cwd) {
                 await clearMarker(pane.cwd, branch);
-                console.log(`[${new Date().toISOString()}] ${branch}: cleared (no active pane)`);
+                console.log(
+                    `[${new Date().toISOString()}] ${branch}: cleared (no active pane)`,
+                );
             }
         }
     }

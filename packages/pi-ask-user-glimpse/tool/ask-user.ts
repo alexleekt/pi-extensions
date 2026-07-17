@@ -196,9 +196,10 @@ function extractSettingsFromResult(
             ? (result.__theme as ThemeName)
             : undefined,
         animationLevel: result.__animationLevel as string | undefined,
-        contentZoom: typeof result.__contentZoom === "number"
-            ? (result.__contentZoom as number)
-            : undefined,
+        contentZoom:
+            typeof result.__contentZoom === "number"
+                ? (result.__contentZoom as number)
+                : undefined,
     };
 }
 
@@ -362,12 +363,18 @@ export async function askUserHandler(
             // Even when cancelled, capture settings metadata via the helper
             // so they persist to the next dialog. Without this, a cancel-and-reopen
             // loop resets zoom/theme/animation to defaults.
-            if (typeof rawResult === "object" && rawResult !== null && onMetadata) {
+            if (
+                typeof rawResult === "object" &&
+                rawResult !== null &&
+                onMetadata
+            ) {
                 const rr = rawResult as Record<string, unknown>;
-                if (rr.__cancelled === true &&
+                if (
+                    rr.__cancelled === true &&
                     (rr.__contentZoom !== undefined ||
-                     rr.__theme !== undefined ||
-                     rr.__animationLevel !== undefined)) {
+                        rr.__theme !== undefined ||
+                        rr.__animationLevel !== undefined)
+                ) {
                     onMetadata(extractSettingsFromResult(rr));
                 }
             }

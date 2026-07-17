@@ -126,13 +126,19 @@ function enrichWithPersistedSettings(
     params: AskUserParams,
     entries: unknown[],
 ): AskUserParams {
-    const { theme, animationLevel, contentZoom } = getPersistedSettings(entries);
+    const { theme, animationLevel, contentZoom } =
+        getPersistedSettings(entries);
     return { ...params, theme, animationLevel, contentZoom };
 }
 
 /** Persist theme/animation/zoom changes back to the session journal. */
 function savePersistedSettings(metadata: AskUserMetadata) {
-    if ((metadata.theme || metadata.animationLevel || metadata.contentZoom !== undefined) && _pi) {
+    if (
+        (metadata.theme ||
+            metadata.animationLevel ||
+            metadata.contentZoom !== undefined) &&
+        _pi
+    ) {
         _pi.appendEntry("ask-user-theme", {
             theme: metadata.theme,
             animationLevel: metadata.animationLevel,

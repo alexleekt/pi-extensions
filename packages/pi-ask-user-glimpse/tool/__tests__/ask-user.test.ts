@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { askUserHandler } from "../ask-user.js";
 
-const mockPrompt = vi.fn();
+const { mockPrompt } = vi.hoisted(() => ({ mockPrompt: vi.fn() }));
 
 vi.mock("glimpseui", () => ({
     prompt: (...args: unknown[]) => mockPrompt(...args),
