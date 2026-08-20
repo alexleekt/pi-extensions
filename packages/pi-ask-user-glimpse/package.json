@@ -41,7 +41,9 @@
         "README.md",
         "CHANGELOG.md",
         "CONTRIBUTING.md",
-        "LICENSE"
+        "LICENSE",
+        "patches/*.patch",
+        "scripts/postinstall-glimpse.mjs"
     ],
     "scripts": {
         "build": "wireit",
@@ -50,6 +52,7 @@
         "typecheck": "tsc --noEmit",
         "check": "npm run typecheck && npm test && npm run build && npm run validate && npm run test:e2e && npm run check:pack",
         "prepack": "npm run build",
+        "postinstall": "node scripts/postinstall-glimpse.mjs",
         "dev:docs": "npx vite --config ./docs/vite.config.ts",
         "build:docs": "wireit",
         "dev:webview": "npx vite --config ./webview/vite.config.ts",
@@ -119,7 +122,8 @@
         "@catppuccin/palette": "^1.8.0",
         "@earendil-works/pi-tui": "^0.80.6",
         "dompurify": "^3.4.7",
-        "glimpseui": "^0.8.1"
+        "glimpseui": "^0.8.1",
+        "patch-package": "^8.0.1"
     },
     "devDependencies": {
         "@playwright/test": "^1.60.0",
