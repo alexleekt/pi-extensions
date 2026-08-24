@@ -31,6 +31,7 @@ import {
     type AskUserMetadata,
     type AskUserParams,
     askUserHandler,
+    closeActiveDialogs,
 } from "./tool/ask-user.js";
 import { makeRecentQuestionAutocompleteProvider } from "./tool/extension-autocomplete.js";
 import {
@@ -702,6 +703,8 @@ export default function (pi: ExtensionAPI) {
         const params = event.input as unknown as AskUserParams;
         recordAskUserCall(params, event.toolCallId);
     });
+
+    pi.on("session_shutdown", closeActiveDialogs);
 
     // ── Session start: clear store, re-seed from journal, register provider ──
     pi.on("session_start", (_event, ctx) => {

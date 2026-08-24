@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { prompt } from "glimpseui";
+import { type GlimpseWindow, type GlimpseWindowOptions, open } from "glimpseui";
 import {
     ALL_THEME_NAMES,
     type AnimationLevel,
@@ -18,7 +18,55 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 import { STOPWORDS } from "../constants/stopwords.js";
 
-const PROMPT_TIMEOUT_MS = 120_000;
+/** Native dialog handles that still need lifecycle cleanup. */
+const activeDialogs = new Set<GlimpseWindow>();
+
+/** Close every dialog owned by this extension. Safe to call repeatedly. */
+export function closeActiveDialogs(): void {
+    for (const dialog of activeDialogs) dialog.close();
+}
+
+/** Wait for a dialog response until the user answers, closes it, or Pi aborts. */
+function openPrompt(
+    html: string,
+    options: GlimpseWindowOptions,
+    signal?: AbortSignal,
+): Promise<unknown | null> {
+    return new Promise((resolve, reject) => {
+        const dialog = open(html, { ...options, autoClose: true });
+        activeDialogs.add(dialog);
+        let settled = false;
+
+        const resolveOnce = (value: unknown | null) => {
+            if (settled) return;
+            settled = true;
+            signal?.removeEventListener("abort", onAbort);
+            resolve(value);
+        };
+        const rejectOnce = (error: Error) => {
+            if (settled) return;
+            settled = true;
+            signal?.removeEventListener("abort", onAbort);
+            reject(error);
+        };
+        const onAbort = () => {
+            dialog.close();
+            resolveOnce(null);
+        };
+
+        dialog.on("message", resolveOnce);
+        dialog.on("closed", () => {
+            activeDialogs.delete(dialog);
+            resolveOnce(null);
+        });
+        dialog.on("error", (error) => {
+            activeDialogs.delete(dialog);
+            rejectOnce(error);
+        });
+        signal?.addEventListener("abort", onAbort, { once: true });
+        if (signal?.aborted) onAbort();
+    });
+}
 
 /** Warn once per process when Glimpse is unavailable. */
 let _warnedGlimpseUnavailable = false;
@@ -309,50 +357,14 @@ export async function askUserHandler(
             ? `Pi · ${sessionName} · ${questionTitle}`
             : `Pi · ${questionTitle}`;
 
-        const windowOptions: Record<string, unknown> = {
+        const windowOptions: GlimpseWindowOptions = {
             width: 1200,
             height: 900,
             title: title.length > 60 ? `${title.slice(0, 57)}…` : title,
+            followCursor: params.followCursor,
         };
 
-        if (params.followCursor) {
-            windowOptions.followCursor = true;
-        }
-
-        let aborted = false;
-        let timeout: ReturnType<typeof setTimeout> | undefined;
-        const onAbort = () => {
-            aborted = true;
-        };
-        signal?.addEventListener("abort", onAbort);
-
-        const promptResult = prompt(html, { ...windowOptions });
-        const timeoutResult = new Promise<never>((_, reject) => {
-            timeout = setTimeout(
-                () => reject(new Error("Prompt timed out")),
-                PROMPT_TIMEOUT_MS,
-            );
-        });
-
-        let rawResult: unknown;
-        try {
-            rawResult = await Promise.race([promptResult, timeoutResult]);
-        } finally {
-            if (timeout) clearTimeout(timeout);
-            signal?.removeEventListener("abort", onAbort);
-        }
-
-        if (aborted) {
-            return {
-                content: [{ type: "text" as const, text: "Cancelled" }],
-                details: {
-                    question: params.question,
-                    options: normalizedOptions,
-                    response: null,
-                    cancelled: true,
-                },
-            };
-        }
+        const rawResult = await openPrompt(html, windowOptions, signal);
 
         if (
             rawResult === null ||
@@ -394,22 +406,9 @@ export async function askUserHandler(
         const errMsg = err instanceof Error ? err.message : String(err);
         const errStack = err instanceof Error ? err.stack : undefined;
 
-        // Timeout = user cancellation, not a tool error
-        if (errMsg === "Prompt timed out") {
-            return {
-                content: [{ type: "text" as const, text: "Cancelled" }],
-                details: {
-                    question: params.question,
-                    options: normalizedOptions,
-                    response: null,
-                    cancelled: true,
-                },
-            };
-        }
-
         // Log the actual error so we can diagnose what really failed
         console.error(
-            `[pi-ask-user-glimpse] prompt() failed: ${errMsg}`,
+            `[pi-ask-user-glimpse] dialog failed: ${errMsg}`,
             errStack || "",
         );
 

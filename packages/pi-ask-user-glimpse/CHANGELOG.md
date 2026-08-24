@@ -23,6 +23,7 @@ All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this f
 - **Gear icon** — SettingsButton replaced with a compact gear icon in the header bar, opening the ThemeSelector palette dropdown.
 
 ### Fixed
+- **Abort-aware dialog lifecycle** — Replaced the 120-second prompt timeout with tracked Glimpse window handles. Dialogs now wait indefinitely for the user, close immediately when Pi aborts the tool call, and close during session shutdown.
 - **Zoom persisted on cancel** — Settings metadata (theme, animation level, zoom) is now extracted from cancelled dialogs too, so zoom/theme choices survive a cancel-and-reopen loop.
 - **Zoom persisted across dialog opens** — Content zoom is read from session journal entries on each dialog open, so it doesn't reset between calls.
 - **Autocomplete completion handling** — `#<header>` autocomplete provider now returns completion items that Pi can resolve.
