@@ -319,7 +319,25 @@ Run `npm run build` to generate `dist/index.html`. The extension cannot work wit
 
 ### WebView does not open
 
-If the glimpseui native host is unavailable, the extension returns an error to the agent, which will ask the question in free-form text instead. This is normal on headless systems or if the native binary is missing. Check `npm run validate` to see if the binary is detected.
+If the Glimpse native host is unavailable, the extension returns an error to the agent, which will ask the question in free-form text instead. On Linux, Glimpse falls back to Chromium when its native host is missing. That fallback requires Chromium, Chrome, Brave, or Edge. It does not use Firefox.
+
+Build the native host in the same dependency tree that Pi loads:
+
+```bash
+# From the directory containing the loaded glimpseui package
+npm run build:linux       # Linux
+npm run build:macos       # macOS
+```
+
+Linux requires Rust plus GTK4, WebKitGTK, and gtk4-layer-shell development packages. If you are unsure which copy Pi loads, run this from the same environment:
+
+```bash
+node -e "import('glimpseui').then(m => console.log(m.getNativeHostInfo()))"
+```
+
+The result should report `platform: 'linux'` or `platform: 'darwin'`, not `linux-chromium`.
+
+On Linux, the package install applies the Niri window patch and rebuilds the native host when npm lifecycle scripts are enabled. Niri is detected through `NIRI_SOCKET`. If your package manager skipped lifecycle scripts, run `npm run postinstall` from the installed package directory. You can force the behavior with `GLIMPSE_LINUX_WINDOW_MODE=normal` or `GLIMPSE_LINUX_WINDOW_MODE=layer-shell`.
 
 ### Dialog shows "Missing or invalid ask_user payload"
 

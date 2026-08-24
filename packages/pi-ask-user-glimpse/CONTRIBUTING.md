@@ -27,6 +27,20 @@ npm run check              # full release gate: typecheck, unit tests, build, va
 
 For manual visual testing, use `/ask-debug` inside a Pi session. It offers five scenarios: `single-select`, `multi-select`, `freeform`, `questionnaire`, and `kitchen-sink` (comprehensive questionnaire with HTML context panel).
 
+The `glimpseui` native host is built by its install script when the required platform toolchain is available. Each worktree or Pi package install has its own copy. On Linux, install Rust plus GTK4, WebKitGTK, and gtk4-layer-shell development packages, then run `npm run build:linux` in the `glimpseui` directory used by Pi. On macOS, run `npm run build:macos` there. If the native host is missing, Linux falls back to Chromium and reports an error when no Chromium-based browser is installed. To check which copy Pi loads, run `node -e "import('glimpseui').then(m => console.log(m.getNativeHostInfo()))"` from the same environment.
+
+### Testing the Niri patch
+
+The patch in `./patches/` adds a regular GTK window mode for Niri. On Linux, the package `postinstall` applies it and rebuilds the Glimpse host automatically when npm lifecycle scripts are enabled. Niri is detected through `NIRI_SOCKET`; other Linux sessions keep Glimpse's existing layer-shell behavior.
+
+To run the same step manually after an install that skipped lifecycle scripts:
+
+```bash
+npm run postinstall
+```
+
+Then start Pi normally. To override the compositor detection, use `GLIMPSE_LINUX_WINDOW_MODE=normal` or `GLIMPSE_LINUX_WINDOW_MODE=layer-shell`.
+
 ## Code Style
 
 - **Indentation:** 2 spaces (TypeScript)

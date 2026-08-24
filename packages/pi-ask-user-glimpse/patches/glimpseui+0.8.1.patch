@@ -1,0 +1,72 @@
+diff --git a/node_modules/glimpseui/src/linux/src/main.rs b/node_modules/glimpseui/src/linux/src/main.rs
+index 6d356b8..aa8af82 100644
+--- a/node_modules/glimpseui/src/linux/src/main.rs
++++ b/node_modules/glimpseui/src/linux/src/main.rs
+@@ -109,24 +109,35 @@ fn main() {
+     app.run_with_args::<String>(&[]);
+ }
+ 
++fn use_layer_shell() -> bool {
++    match std::env::var("GLIMPSE_LINUX_WINDOW_MODE").as_deref() {
++        Ok("normal") => false,
++        Ok("layer-shell") => true,
++        _ => std::env::var_os("NIRI_SOCKET").is_none(),
++    }
++}
++
+ fn activate(app: &gtk4::Application, args: &Rc<Args>) {
+     let display = gdk4::Display::default().unwrap();
++    let use_layer_shell = use_layer_shell();
+ 
+     let window = gtk4::ApplicationWindow::new(app);
+-    window.init_layer_shell();
+-    window.set_layer(Layer::Overlay);
+-    window.set_exclusive_zone(-1);
+-    window.set_title(Some(&args.title));
+-    window.set_default_size(args.width, args.height);
++    if use_layer_shell {
++        window.init_layer_shell();
++        window.set_layer(Layer::Overlay);
++        window.set_exclusive_zone(-1);
+ 
+-    if args.click_through {
+-        window.set_keyboard_mode(KeyboardMode::None);
+-    } else {
+-        window.set_keyboard_mode(KeyboardMode::OnDemand);
+-    }
++        if args.click_through {
++            window.set_keyboard_mode(KeyboardMode::None);
++        } else {
++            window.set_keyboard_mode(KeyboardMode::OnDemand);
++        }
+ 
+-    window.set_anchor(Edge::Top, true);
+-    window.set_anchor(Edge::Left, true);
++        window.set_anchor(Edge::Top, true);
++        window.set_anchor(Edge::Left, true);
++    }
++    window.set_title(Some(&args.title));
++    window.set_default_size(args.width, args.height);
+ 
+     let offset_x = args.effective_offset_x();
+     let offset_y = args.effective_offset_y();
+@@ -149,7 +160,9 @@ fn activate(app: &gtk4::Application, args: &Rc<Args>) {
+     } else {
+         resolve_initial_position(args, &display)
+     };
+-    place_window_at_global_position(&window, &display, (init_x as f64, init_y as f64));
++    if use_layer_shell {
++        place_window_at_global_position(&window, &display, (init_x as f64, init_y as f64));
++    }
+ 
+     if args.transparent {
+         let provider = gtk4::CssProvider::new();
+@@ -248,7 +261,7 @@ fn activate(app: &gtk4::Application, args: &Rc<Args>) {
+     ))));
+     let spring_animating = Rc::new(RefCell::new(false));
+ 
+-    if linux_follow_cursor_supported() {
++    if use_layer_shell && linux_follow_cursor_supported() {
+         setup_cursor_tracking(
+             &window,
+             &display,

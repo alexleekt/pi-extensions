@@ -1,10 +1,37 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { askUserHandler } from "../ask-user.js";
+import { askUserHandler, closeActiveDialogs } from "../ask-user.js";
 
-const { mockPrompt } = vi.hoisted(() => ({ mockPrompt: vi.fn() }));
+const { mockPrompt, mockWindows } = vi.hoisted(() => ({
+    mockPrompt: vi.fn(),
+    mockWindows: [] as Array<{ close: ReturnType<typeof vi.fn> }>,
+}));
 
 vi.mock("glimpseui", () => ({
-    prompt: (...args: unknown[]) => mockPrompt(...args),
+    open: (...args: unknown[]) => {
+        const handlers = new Map<string, Array<(value?: unknown) => void>>();
+        const emit = (event: string, value?: unknown) => {
+            for (const handler of handlers.get(event) ?? []) handler(value);
+        };
+        const dialog = {
+            on(event: string, handler: (value?: unknown) => void) {
+                const eventHandlers = handlers.get(event) ?? [];
+                eventHandlers.push(handler);
+                handlers.set(event, eventHandlers);
+            },
+            close: vi.fn(() => emit("closed")),
+        };
+        mockWindows.push(dialog);
+
+        const result = mockPrompt(...args);
+        Promise.resolve(result).then(
+            (value) => {
+                emit("message", value);
+                emit("closed");
+            },
+            (error) => emit("error", error),
+        );
+        return dialog;
+    },
 }));
 
 function buildCtx(overrides = {}) {
@@ -27,6 +54,7 @@ function getText(result: {
 describe("askUserHandler", () => {
     beforeEach(() => {
         mockPrompt.mockClear();
+        mockWindows.length = 0;
     });
 
     afterEach(() => {
@@ -60,9 +88,15 @@ describe("askUserHandler", () => {
         expect(result.details.cancelled).toBe(true);
     });
 
-    it("returns cancelled when prompt exceeds the host timeout", async () => {
+    it("keeps waiting beyond the former timeout", async () => {
         vi.useFakeTimers();
-        mockPrompt.mockImplementation(() => new Promise(() => {}));
+        let resolvePrompt!: (value: unknown) => void;
+        mockPrompt.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    resolvePrompt = resolve;
+                }),
+        );
 
         const pending = askUserHandler(
             { question: "Test?" },
@@ -70,10 +104,46 @@ describe("askUserHandler", () => {
             buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
         );
 
-        await vi.advanceTimersByTimeAsync(120_000);
+        await vi.advanceTimersByTimeAsync(120_001);
+        const stillWaiting = await Promise.race([
+            pending.then(() => false),
+            Promise.resolve(true),
+        ]);
+        expect(stillWaiting).toBe(true);
+
+        resolvePrompt({ __cancelled: true });
+        await pending;
+    });
+
+    it("closes the native dialog when Pi aborts mid-flight", async () => {
+        const controller = new AbortController();
+        mockPrompt.mockImplementation(() => new Promise(() => {}));
+
+        const pending = askUserHandler(
+            { question: "Test?" },
+            controller.signal,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        controller.abort();
         const result = await pending;
 
-        expect(getText(result)).toBe("Cancelled");
+        expect(mockWindows[0]?.close).toHaveBeenCalledOnce();
+        expect(result.details.cancelled).toBe(true);
+    });
+
+    it("closes active dialogs during lifecycle cleanup", async () => {
+        mockPrompt.mockImplementation(() => new Promise(() => {}));
+        const pending = askUserHandler(
+            { question: "Test?" },
+            undefined,
+            buildCtx() as unknown as import("@earendil-works/pi-coding-agent").ExtensionContext,
+        );
+
+        closeActiveDialogs();
+        const result = await pending;
+
+        expect(mockWindows[0]?.close).toHaveBeenCalledOnce();
         expect(result.details.cancelled).toBe(true);
     });
 
