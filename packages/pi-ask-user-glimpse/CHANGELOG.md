@@ -2,6 +2,12 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [0.7.1] — 2026-08-24
+
+### Fixed
+- **Abort-aware dialog lifecycle** — Removed the 120-second response timeout. Dialogs now wait indefinitely, close when Pi aborts the tool call, and close during session shutdown.
+- **Movable Niri windows** — Native dialogs can now be repositioned under the Niri compositor.
+
 ## [0.7.0] — 2026-06-14
 
 ### Changed
