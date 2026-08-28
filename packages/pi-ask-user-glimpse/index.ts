@@ -4,6 +4,7 @@
 
 import { StringEnum, Type } from "@earendil-works/pi-ai";
 import type {
+    AgentToolResult,
     ExtensionAPI,
     ExtensionContext,
     ToolCallEvent,
@@ -35,6 +36,11 @@ import {
 } from "./tool/ask-user.js";
 import { makeRecentQuestionAutocompleteProvider } from "./tool/extension-autocomplete.js";
 import {
+    pathForLastAnswer,
+    readLastAnswer,
+    saveLastAnswer,
+} from "./tool/last-answer.js";
+import {
     type AskKind,
     entriesFromAskUserCall,
     type JournalToolCallEntry,
@@ -42,6 +48,7 @@ import {
     type RecentQuestionsStore,
     seedStoreFromJournal,
 } from "./tool/recent-questions.js";
+import type { AskToolDetails } from "./tool/response-formatter.js";
 
 /** Counter for synthetic toolCallIds used when this extension invokes
  *  ask_user directly (via /ask-debug or /ask) — those code paths never
@@ -132,20 +139,64 @@ function enrichWithPersistedSettings(
     return { ...params, theme, animationLevel, contentZoom };
 }
 
-/** Persist theme/animation/zoom changes back to the session journal. */
+/** Persist theme/animation/zoom changes back to the session journal.
+ *  Best-effort: after a session replacement/reload the captured pi API may
+ *  be stale — losing the saved theme is fine, throwing away the user's
+ *  answer is not. */
 function savePersistedSettings(metadata: AskUserMetadata) {
-    if (
-        (metadata.theme ||
-            metadata.animationLevel ||
-            metadata.contentZoom !== undefined) &&
-        _pi
-    ) {
-        _pi.appendEntry("ask-user-theme", {
-            theme: metadata.theme,
-            animationLevel: metadata.animationLevel,
-            contentZoom: metadata.contentZoom,
-        });
+    try {
+        if (
+            (metadata.theme ||
+                metadata.animationLevel ||
+                metadata.contentZoom !== undefined) &&
+            _pi
+        ) {
+            _pi.appendEntry("ask-user-theme", {
+                theme: metadata.theme,
+                animationLevel: metadata.animationLevel,
+                contentZoom: metadata.contentZoom,
+            });
+        }
+    } catch {
+        // Stale/disposed session — skip persistence.
     }
+}
+
+/** Detect a stale ctx (thrown by pi after session replacement or reload). */
+function isCtxStale(ctx: ExtensionContext): boolean {
+    try {
+        void ctx.cwd;
+        return false;
+    } catch {
+        return true;
+    }
+}
+
+/** Graceful result for an ask_user call whose session was replaced/reloaded
+ *  while the dialog was pending — pi invalidates the old runner's ctx, so
+ *  any ctx access throws. Returning a cancelled result instead of throwing
+ *  keeps the stale-ctx error out of the model's tool result. If the user
+ *  answered the dialog just before the replacement, the answer is saved at
+ *  the last-answer path — surfaced here so the model can recover it (verify
+ *  with the user; never inject it into a new question on its own). */
+function staleSessionResult(question: string): AgentToolResult<AskToolDetails> {
+    const saved = readLastAnswer();
+    let text =
+        "Session was replaced or reloaded while the ask_user dialog was pending — no answer captured. Re-ask if still needed.";
+    if (saved) {
+        text +=
+            `\nA recent dialog answer may have been captured just before the replacement — saved at ${pathForLastAnswer()}` +
+            ` (question: "${saved.question.slice(0, 80)}"). Confirm with the user before using it; do not inject it into a different question.`;
+    }
+    return {
+        content: [{ type: "text", text }],
+        details: {
+            question,
+            options: [],
+            response: null,
+            cancelled: true,
+        },
+    };
 }
 
 /** Strip XML-style `<thinking>` blocks and markdown reasoning blocks from text.
@@ -157,6 +208,9 @@ async function runAskUserWithTheme(
     signal: AbortSignal | undefined,
     ctx: ExtensionContext,
 ): Promise<ReturnType<typeof askUserHandler>> {
+    if (isCtxStale(ctx)) {
+        return staleSessionResult(rawParams.question);
+    }
     const entries = ctx.sessionManager.getEntries();
     const params = enrichWithPersistedSettings(rawParams, entries);
     let metadata: AskUserMetadata = {};
@@ -181,6 +235,16 @@ async function runAskUserWithTheme(
     const result = await askUserHandler(cleanedParams, signal, ctx, (m) => {
         metadata = m;
     });
+
+    // Snapshot the answer to tmp before delivering it anywhere. Covers the
+    // race where the user submits just as the session is replaced: pi has
+    // already discarded the old session, so the valid result never lands.
+    if (!result.details.cancelled && result.content[0]?.type === "text") {
+        saveLastAnswer(
+            result.details.question ?? rawParams.question,
+            result.content[0].text,
+        );
+    }
     savePersistedSettings(metadata);
     return result;
 }
@@ -672,7 +736,13 @@ export default function (pi: ExtensionAPI) {
             console.error(
                 `[pi-ask-user-glimpse] sendUserMessage failed: ${msg}`,
             );
-            ctx.ui?.notify(`Failed to send answer: ${msg}`, "error");
+            // ctx may have gone stale (session replaced/reloaded) while the
+            // dialog was open — a notify through a stale ctx throws again.
+            try {
+                ctx.ui?.notify(`Failed to send answer: ${msg}`, "error");
+            } catch {
+                // Stale ctx — nothing left to do.
+            }
         }
     }
 
@@ -768,6 +838,10 @@ export default function (pi: ExtensionAPI) {
                 undefined,
                 ctx,
             );
+
+            // The session may have been replaced/reloaded while the dialog
+            // was open; the old ctx throws on every access after that.
+            if (isCtxStale(ctx)) return;
 
             if (result.details.cancelled) {
                 ctx.ui.notify("Cancelled — no answer sent", "info");

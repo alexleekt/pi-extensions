@@ -71,8 +71,11 @@ The workspace `package-lock.json` resolves `@earendil-works/pi-coding-agent` bec
 ## Before Committing
 
 1. Run `npm run typecheck` in the affected package
-2. Run `just lint` or `npx @biomejs/biome check` for the affected files
-3. Run `npm test` if the package has tests
+2. Run Biome autofixes on the affected files, then run the same check without `--write`:
+   `npx @biomejs/biome check --write <affected files>`
+   `npx @biomejs/biome check <affected files>`
+3. Run the package's CI-equivalent check: `just ci-package <package>`
+4. Run `npm test` if the package has tests
 4. **If you changed webview code** (`webview/src/`), run `npm run build` in the affected package to regenerate `dist/index.html`
 5. **Validate agent configs** — Run `agnix validate .` after modifying any `AGENT.md`, `AGENTS.md`, `claude.md`, or `SKILL.md` file. This validates skills, MCP servers, hooks, memory, and plugins across Claude Code, Cursor, Codex, and Kiro targets.
 6. Review `PUBLISH.md` before any release-related changes

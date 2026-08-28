@@ -38,14 +38,22 @@ package-lock.json         ← single workspace lockfile
 Biome checks **extension code only**. Webviews (React/Vite) have their own build toolchains and are excluded.
 
 ```bash
-# pi-ask-user-glimpse example:
+# Fix formatting first, then verify the same scope used by CI:
+npx @biomejs/biome check --write \
+  packages/pi-ask-user-glimpse/index.ts \
+  packages/pi-ask-user-glimpse/tool \
+  packages/pi-ask-user-glimpse/shared \
+  packages/pi-ask-user-glimpse/constants \
+  packages/pi-ask-user-glimpse/types
 npx @biomejs/biome check \
   packages/pi-ask-user-glimpse/index.ts \
   packages/pi-ask-user-glimpse/tool \
   packages/pi-ask-user-glimpse/shared \
-  packages/pi-ask-user-glimpse/fallback \
-  packages/pi-ask-user-glimpse/types \
-  packages/pi-ask-user-glimpse/scripts
+  packages/pi-ask-user-glimpse/constants \
+  packages/pi-ask-user-glimpse/types
+
+# Or run the complete package CI recipe:
+just ci-package pi-ask-user-glimpse
 ```
 
 ## Pi Extension Development Setup

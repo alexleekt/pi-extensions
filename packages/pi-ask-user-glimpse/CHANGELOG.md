@@ -2,6 +2,17 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [0.8.0] — 2026-08-28
+
+### Added
+
+- Cross-session last-answer journal (`tool/last-answer.ts`): every answered dialog snapshots the full submission (selections, comments, additional comments) to `$TMPDIR/pi-ask-user-glimpse/last-answer.json` before delivery, so an answer submitted as the session is replaced is recoverable. The stale-session tool result surfaces the journal path when a fresh answer exists, with guidance to confirm with the user before using it.
+
+### Fixed
+
+- `ask_user` no longer surfaces pi's "This extension ctx is stale after session replacement or reload" error as the model's tool result. A staleness probe (`isCtxStale`) bails with a graceful cancelled result when a queued call executes after `/new`, `/fork`, `/switch`, or `/reload` invalidates the old runner.
+- Post-dialog continuations are stale-ctx resilient: theme/zoom persistence is best-effort, `deliverAnswer` no longer rethrows through a stale `ctx.ui`, and `/ask` bails silently if the session was replaced while the dialog was open.
+
 ## [0.7.1] — 2026-08-24
 
 ### Fixed
