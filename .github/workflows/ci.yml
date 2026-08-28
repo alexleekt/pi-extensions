@@ -45,6 +45,7 @@ jobs:
                     - pi-ask-user-glimpse
                     - pi-heading
                     - pi-worktrunk-signal
+                    - pi-patch-manager
         steps:
             - name: Checkout
               uses: actions/checkout@v6
