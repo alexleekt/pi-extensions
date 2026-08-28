@@ -338,6 +338,7 @@ export async function gitDryRun(
         "apply",
         "--check",
         ...(reverse ? ["--reverse"] : []),
+        "--unsafe-paths",
         `--directory=${packageRoot}`,
         "--whitespace=error",
         patchPath,
@@ -463,7 +464,12 @@ export default async function patchManager(pi: ExtensionAPI) {
         handler: async (args: string, ctx: ExtensionCommandContext) => {
             const [sub, id] = args.trim().split(/\s+/, 2);
             const agentDir = process.env.PI_AGENT_DIR || getAgentDir();
-            const roots = [agentDir, join(agentDir, "extensions"), ctx.cwd];
+            const roots = [
+                agentDir,
+                join(agentDir, "npm"),
+                join(agentDir, "extensions"),
+                ctx.cwd,
+            ];
             const entries = await registry(agentDir, roots);
             const entry = id
                 ? entries.find((x) => x.manifest.id === id)
@@ -548,7 +554,12 @@ export default async function patchManager(pi: ExtensionAPI) {
             ctx: ExtensionContext,
         ) => {
             const agentDir = process.env.PI_AGENT_DIR || getAgentDir();
-            const roots = [agentDir, join(agentDir, "extensions"), ctx.cwd];
+            const roots = [
+                agentDir,
+                join(agentDir, "npm"),
+                join(agentDir, "extensions"),
+                ctx.cwd,
+            ];
             const entries = await registry(agentDir, roots);
             return {
                 content: [
