@@ -28,10 +28,18 @@ import {
     filterAskDebugScenarios,
 } from "./tool/ask-debug-scenarios.js";
 import { answerPrefix, buildAskLastParams } from "./tool/ask-last.js";
-import { type AskUserMetadata, type AskUserParams, askUserHandler, closeActiveDialogs } from "./tool/ask-user.js";
-import type { AskToolDetails } from "./tool/response-formatter.js";
+import {
+    type AskUserMetadata,
+    type AskUserParams,
+    askUserHandler,
+    closeActiveDialogs,
+} from "./tool/ask-user.js";
 import { makeRecentQuestionAutocompleteProvider } from "./tool/extension-autocomplete.js";
-import { pathForLastAnswer, readLastAnswer, saveLastAnswer } from "./tool/last-answer.js";
+import {
+    pathForLastAnswer,
+    readLastAnswer,
+    saveLastAnswer,
+} from "./tool/last-answer.js";
 import {
     type AskKind,
     entriesFromAskUserCall,
@@ -40,6 +48,7 @@ import {
     type RecentQuestionsStore,
     seedStoreFromJournal,
 } from "./tool/recent-questions.js";
+import type { AskToolDetails } from "./tool/response-formatter.js";
 
 /** Counter for synthetic toolCallIds used when this extension invokes
  *  ask_user directly (via /ask-debug or /ask) — those code paths never
@@ -170,9 +179,7 @@ function isCtxStale(ctx: ExtensionContext): boolean {
  *  answered the dialog just before the replacement, the answer is saved at
  *  the last-answer path — surfaced here so the model can recover it (verify
  *  with the user; never inject it into a new question on its own). */
-function staleSessionResult(
-    question: string,
-): AgentToolResult<AskToolDetails> {
+function staleSessionResult(question: string): AgentToolResult<AskToolDetails> {
     const saved = readLastAnswer();
     let text =
         "Session was replaced or reloaded while the ask_user dialog was pending — no answer captured. Re-ask if still needed.";
