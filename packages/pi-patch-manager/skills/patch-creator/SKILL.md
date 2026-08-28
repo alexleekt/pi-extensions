@@ -45,7 +45,7 @@ Managed patches live one directory per patch under `~/.pi/agent/patches/<id>/`. 
        "target": { "file": "dist/index.ts", "symbol": "OPTIONAL", "change": "What changed there" },
        "validation": "checks.sh",
        "upstream": { "status": "not-submitted", "url": "" },
-       "createdWith": { "provider": "manual", "model": "" }
+       "createdWith": { "provider": "manual", "model": "manual" }
    }
    ```
    Required: the first eight fields. Optional: `target`, `validation`, `upstream`, `createdWith`. `target.file` and `validation` are relative paths — no absolute paths, no `..`.

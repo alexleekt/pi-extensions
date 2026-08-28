@@ -330,13 +330,14 @@ export async function hashPackage(packageRoot: string): Promise<string> {
     return `sha256:${hash.digest("hex")}`;
 }
 
-/** Environment for git subprocesses: cwd outside any repository plus no inherited
- *  GIT_DIR/GIT_WORK_TREE, so path resolution is identical regardless of where pi runs. */
+/** Environment for git subprocesses: cwd at the package root plus no inherited git
+ *  repo/config context, so path resolution never depends on where pi runs. With no
+ *  --unsafe-paths and no --directory, git refuses any patch path escaping the package root. */
 function gitOptions(packageRoot: string): { cwd: string; env: NodeJS.ProcessEnv } {
     const env = { ...process.env };
-    delete env.GIT_DIR;
-    delete env.GIT_WORK_TREE;
-    return { cwd: tmpdir(), env };
+    for (const key of Object.keys(env))
+        if (key.startsWith("GIT_")) delete env[key];
+    return { cwd: packageRoot, env };
 }
 
 export async function gitDryRun(
@@ -346,10 +347,9 @@ export async function gitDryRun(
 ): Promise<void> {
     const args = [
         "apply",
+        "--no-index",
         "--check",
         ...(reverse ? ["--reverse"] : []),
-        "--unsafe-paths",
-        `--directory=${packageRoot}`,
         "--whitespace=error",
         patchPath,
     ];
@@ -385,7 +385,10 @@ function subprocessError(error: unknown): string {
     return (e.stderr || e.stdout || e.message || "unknown error").trim();
 }
 
-/** Run a patch's validation script (bash, argv-only, inside the package root). */
+/** Run a patch's validation script (bash, argv-only, inside the package root).
+ *  Validation scripts are user-authored, run with full user privileges, and their
+ *  output is only ever displayed to the user — never fed back to an agent. ponytail
+ *  ceiling: SIGKILL after the timeout may orphan the script's own children. */
 async function runValidation(
     patchDir: string,
     validation: string,
@@ -396,16 +399,34 @@ async function runValidation(
         const { stdout, stderr } = await execFileAsync("bash", [scriptPath], {
             cwd: pkgRoot,
             timeout: 60_000,
+            killSignal: "SIGKILL",
         });
-        return { ok: true, output: `${stdout}${stderr}`.trim() };
+        return { ok: true, output: `${stdout}${stderr}`.trim().slice(0, 2000) };
     } catch (error) {
-        const e = error as { stderr?: string; stdout?: string; message?: string };
-        return { ok: false, output: (e.stderr || e.stdout || e.message || "").trim() };
+        const e = error as {
+            stdout?: string;
+            stderr?: string;
+            killed?: boolean;
+            signal?: string;
+            message?: string;
+        };
+        const parts = [
+            e.stderr,
+            e.stdout,
+            e.killed ? `terminated (${e.signal ?? "SIGKILL"})` : e.message,
+        ].filter(Boolean);
+        return { ok: false, output: parts.join("\n").trim().slice(0, 2000) };
     }
 }
 
 export interface ApplyResult {
-    outcome: "applied" | "already-applied" | "skipped" | "rejected" | "failed";
+    outcome:
+        | "applied"
+        | "already-applied"
+        | "skipped"
+        | "rejected"
+        | "validation-failed"
+        | "failed";
     message: string;
     validation?: { ok: boolean; output: string };
 }
@@ -440,38 +461,49 @@ export async function applyPatch(
     }
 
     // status === "clean": package is pristine at the base version — safe to apply.
+    // Snapshot the patch bytes once so dry-run, apply, and verification all inspect
+    // the same bytes even if the patch file changes in between. ponytail ceiling:
+    // there is still no cross-process lock; concurrent applies of the same patch
+    // are not serialized (single-user CLI; documented in README).
     const patchPath = await resolvePatchPath(patchDir, manifest.patch);
+    const tempDir = await mkdtemp(join(tmpdir(), "pi-patch-"));
     try {
-        await gitDryRun(patchPath, pkg.root, false);
-    } catch (error) {
-        return {
-            outcome: "rejected",
-            message: `Patch does not apply cleanly; package untouched. ${subprocessError(error)}`,
-        };
+        const tempPatch = join(tempDir, "apply.patch");
+        await writeFile(tempPatch, await readFile(patchPath), { mode: 0o600 });
+        try {
+            await gitDryRun(tempPatch, pkg.root, false);
+        } catch (error) {
+            return {
+                outcome: "rejected",
+                message: `Patch does not apply cleanly; package untouched. ${subprocessError(error)}`,
+            };
+        }
+        await execFileAsync(
+            "git",
+            ["apply", "--no-index", "--whitespace=error", tempPatch],
+            gitOptions(pkg.root),
+        );
+        try {
+            await gitDryRun(tempPatch, pkg.root, true);
+        } catch {
+            return {
+                outcome: "failed",
+                message: "Patch applied but reverse verification failed; inspect the package manually.",
+            };
+        }
+        const validation = manifest.validation
+            ? await runValidation(patchDir, manifest.validation, pkg.root)
+            : undefined;
+        if (validation && !validation.ok)
+            return {
+                outcome: "validation-failed",
+                message: `Applied to ${pkg.name}@${pkg.version}, but validation FAILED — the patch is present but unhealthy.`,
+                validation,
+            };
+        return { outcome: "applied", message: `Applied to ${pkg.name}@${pkg.version}.`, validation };
+    } finally {
+        await rm(tempDir, { recursive: true, force: true });
     }
-    await execFileAsync(
-        "git",
-        [
-            "apply",
-            "--unsafe-paths",
-            `--directory=${pkg.root}`,
-            "--whitespace=error",
-            patchPath,
-        ],
-        gitOptions(pkg.root),
-    );
-    try {
-        await gitDryRun(patchPath, pkg.root, true);
-    } catch {
-        return {
-            outcome: "failed",
-            message: "Patch applied but reverse verification failed; inspect the package manually.",
-        };
-    }
-    const validation = manifest.validation
-        ? await runValidation(patchDir, manifest.validation, pkg.root)
-        : undefined;
-    return { outcome: "applied", message: `Applied to ${pkg.name}@${pkg.version}.`, validation };
 }
 
 interface Entry {

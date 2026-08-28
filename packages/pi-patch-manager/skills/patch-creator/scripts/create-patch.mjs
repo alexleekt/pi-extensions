@@ -9,7 +9,7 @@
 //   node create-patch.mjs create <patchId> <pristineDir> <editedDir> [patchesRoot]
 
 import { execFile } from "node:child_process";
-import { mkdir, realpath, writeFile } from "node:fs/promises";
+import { mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -109,6 +109,34 @@ if (mode === "hash") {
         mode: 0o700,
     });
     await writeFile(patchFile, relativeDiff, { mode: 0o600 });
+    // Self-verify before declaring success: the patch must forward-apply to the
+    // pristine tree and reverse-apply to the edited tree, from the trees themselves
+    // (repository-neutral cwd, same as the extension's engine). Catches degenerate
+    // or quoted-path headers that would silently no-op under git apply.
+    const verify = (dir, extra) =>
+        execFileAsync(
+            "git",
+            ["apply", "--no-index", "--check", ...(extra ?? []), patchFile],
+            {
+                cwd: dir,
+                env: Object.fromEntries(
+                    Object.entries(process.env).filter(
+                        ([k]) => !k.startsWith("GIT_"),
+                    ),
+                ),
+            },
+        );
+    try {
+        await verify(pristine);
+        await verify(edited, ["--reverse"]);
+    } catch (error) {
+        console.error(
+            "Patch does not verify against the snapshot trees; aborting.\n" +
+                (error.stderr || error.message || ""),
+        );
+        await rm(join(patchesRoot, id), { recursive: true, force: true });
+        process.exit(1);
+    }
     console.log(
         JSON.stringify({
             id,

@@ -52,17 +52,19 @@ The shipped manifest schema is specified in `README.md` and enforced by `index.t
 /patch disable <id>         Disable a patch without deleting it
 ```
 
-The read-only `patch_status` agent tool exists today. When apply/rebase land, the tool gains rebase-request capability, and applying an LLM-generated replacement must require explicit user approval.
+The read-only `patch_status` agent tool exists today. `/patch apply` landed in Phase 2 (user-invoked only). When rebase lands, the tool gains rebase-request capability, and applying an LLM-generated replacement must require explicit user approval.
 
 ## Drift detection (implemented)
 
 1. Discover managed patch directories.
 2. Resolve each target package and record its installed version/hash.
 3. Classify via reverse `git apply --check`:
-   - package hash matches and patch is present → `clean`;
-   - patch present and package version unchanged → `applied`;
+   - package hash matches the recorded pristine base → `clean`;
+   - same version, patch present (reverse-applies) → `applied`;
    - version mismatch is always `drifted`, even if the old patch still reverse-applies;
    - unresolvable errors → `failed`.
+
+Note: `applied` proves the patch itself is present, not that the whole tree is identical to the recorded post-patch state — unrelated files may have drifted independently.
 
 ## Drift rebase workflow (deferred, Phases 2–3)
 
@@ -146,4 +148,4 @@ If Pi later exposes a stable package-update lifecycle event, use it to trigger t
 - Package drift is detected before a stale patch is trusted. ✔
 - A patch reapply is automatic only when it applies cleanly. ✔ (in v0.2 terms: `apply` refuses to mutate unless the dry-run passes; there is still no automatic re-apply on update)
 - Drift produces a reviewable candidate patch, not a silent mutation. — pending Phase 3
-- A failed patch leaves the installed package untouched and gives an actionable report. ✔ (vacuously in v0.1: nothing writes)
+- A failed patch leaves the installed package untouched and gives an actionable report. ✔ (apply is guarded by a dry-run and refuses escape paths; batch apply-all continues after individual failures and is atomic per patch, not across the batch)

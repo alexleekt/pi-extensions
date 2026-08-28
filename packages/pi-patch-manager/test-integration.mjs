@@ -384,8 +384,30 @@ try {
     // Validation failure is reported even though the patch applied.
     await writeFile(join(applyPatchDir, "checks.sh"), "exit 1\n");
     const r4 = await applyPatch(applyManifest, applyPkg);
-    assert.equal(r4.outcome, "applied");
+    assert.equal(r4.outcome, "validation-failed");
+    assert.match(r4.message, /validation FAILED/);
     assert.equal(r4.validation?.ok, false);
+
+    // Patch paths that escape the package root are refused by git itself
+    // (no --unsafe-paths anywhere); a sibling file must stay untouched.
+    await makeApplyPackage();
+    const victimPath = join(root, "victim.txt");
+    await writeFile(victimPath, "harmless\n");
+    await writeFile(
+        join(applyPatchDir, "patch", "escape.patch"),
+        "diff --git a/../victim.txt b/../victim.txt\n--- a/../victim.txt\n+++ b/../victim.txt\n@@ -1 +1 @@\n-harmless\n+patched\n",
+    );
+    const r6 = await applyPatch(
+        { ...applyManifest, patch: "patch/escape.patch" },
+        applyPkg,
+    );
+    assert.equal(r6.outcome, "rejected", `expected rejected, got ${r6.outcome}: ${r6.message}`);
+    assert.equal(
+        await readFile(victimPath, "utf8"),
+        "harmless\n",
+        "file beside the package must be untouched",
+    );
+    await rm(victimPath);
 
     console.log("All integration assertions passed.");
 } finally {
