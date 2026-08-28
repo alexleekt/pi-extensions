@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [0.2.0] - 2026-08-28
+
+- Implemented `/patch apply [id]` (Phase 2): applies one or all enabled patches through a dry-run guard (`git apply --check`), an all-or-nothing apply (never `--reject`/`--3way`), and reverse verification.
+- Drifted packages are refused with a rebase hint; already-applied and disabled patches are reported, not re-applied.
+- `manifest.validation` scripts now execute after application (bash, argv-only, 60s timeout) and their pass/fail output is reported.
+- Git subprocesses run from a repository-neutral cwd with inherited `GIT_DIR`/`GIT_WORK_TREE` stripped — fixes path resolution silently differing when pi runs inside a git repo.
+- Rebase remains an explicit stub.
+
 ## [0.1.0] - 2026-08-28
 
 - Scaffold read-only patch registry inspection and safe disable support.

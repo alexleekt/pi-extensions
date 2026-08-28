@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import {
+    applyPatch,
     discoverPatchDirs,
     getPatchStatus,
     hashPackage,
@@ -22,6 +23,33 @@ import {
 
 const execFileAsync = promisify(execFile);
 const root = await mkdtemp(join(tmpdir(), "pi-patch-manager-"));
+
+/** Generate a unified diff with proper a/ b/ prefixes (git apply's default -p1 strip),
+ *  matching the create-patch.mjs header-rewrite logic. */
+const craftDiff = async (pristine, edited) => {
+    const diff = await execFileAsync(
+        "git",
+        ["diff", "--no-index", "--binary", "--no-prefix", pristine, edited],
+        { cwd: "/" },
+    ).then((r) => r.stdout, (e) => e.stdout ?? "");
+    // cwd "/" makes git print paths relative to / without the leading slash.
+    const pb = pristine.replace(/^\/+/, "");
+    const eb = edited.replace(/^\/+/, "");
+    return diff
+        .split("\n")
+        .map((line) => {
+            if (line.startsWith(`diff --git ${pb}/`))
+                return line
+                    .replace(`diff --git ${pb}/`, "diff --git a/")
+                    .replace(` ${eb}/`, " b/");
+            if (line.startsWith(`--- ${pb}/`))
+                return `--- a/${line.slice(4 + pb.length + 1)}`;
+            if (line.startsWith(`+++ ${eb}/`))
+                return `+++ b/${line.slice(4 + eb.length + 1)}`;
+            return line;
+        })
+        .join("\n");
+};
 
 const manifest = {
     id: "demo",
@@ -198,19 +226,7 @@ try {
     );
     await writeFile(join(pristineRoot, "lib", "a.js"), "export const a = 1;\n");
     const patchFile = join(patchDir, "patch", "applied.patch");
-    const diff = await execFileAsync("git", [
-        "diff",
-        "--no-index",
-        "--binary",
-        pristineRoot,
-        appliedRoot,
-    ]).catch((e) => e.stdout);
-    await writeFile(
-        patchFile,
-        diff
-            .replaceAll(`${pristineRoot}/`, "")
-            .replaceAll(`${appliedRoot}/`, ""),
-    );
+    await writeFile(patchFile, await craftDiff(pristineRoot, appliedRoot));
     const appliedManifest = {
         ...manifest,
         id: "applied",
@@ -288,6 +304,88 @@ try {
         pristineRoot,
     ]);
     assert.equal(JSON.parse(hashJson).baseHash, crafted.baseHash);
+
+    // ── apply flow ──
+    const applyRoot = join(root, "apply-pkg");
+    const makeApplyPackage = async () => {
+        await rm(applyRoot, { recursive: true, force: true });
+        await mkdir(join(applyRoot, "lib"), { recursive: true });
+        await writeFile(
+            join(applyRoot, "package.json"),
+            JSON.stringify({ name: "apply", version: "1.0.0" }),
+        );
+        await writeFile(join(applyRoot, "lib", "a.js"), "export const a = 1;\n");
+    };
+    await makeApplyPackage();
+    const applyBaseHash = await hashPackage(applyRoot);
+    const applyModified = join(root, "apply-modified");
+    await mkdir(join(applyModified, "lib"), { recursive: true });
+    await writeFile(
+        join(applyModified, "package.json"),
+        JSON.stringify({ name: "apply", version: "1.0.0" }),
+    );
+    await writeFile(join(applyModified, "lib", "a.js"), "export const a = 2;\n");
+    const applyPatchDir = join(patches, "apply-good");
+    await mkdir(join(applyPatchDir, "patch"), { recursive: true });
+    await writeFile(
+        join(applyPatchDir, "patch", "apply.patch"),
+        await craftDiff(applyRoot, applyModified),
+    );
+    await writeFile(
+        join(applyPatchDir, "checks.sh"),
+        '#!/bin/sh\ntest "$(cat lib/a.js)" = "export const a = 2;" && echo CHECK_OK\n',
+    );
+    const applyManifest = {
+        ...manifest,
+        id: "apply-good",
+        package: "apply",
+        baseVersion: "1.0.0",
+        baseHash: applyBaseHash,
+        patch: "patch/apply.patch",
+        validation: "checks.sh",
+    };
+    await writeFile(
+        join(applyPatchDir, "manifest.json"),
+        JSON.stringify(applyManifest),
+    );
+    const applyPkg = {
+        name: "apply",
+        version: "1.0.0",
+        root: applyRoot,
+        patchDir: applyPatchDir,
+    };
+
+    // Fresh apply: dry-run guard, real apply, reverse verify, validation run.
+    const r1 = await applyPatch(applyManifest, applyPkg);
+    assert.equal(r1.outcome, "applied", `expected applied, got ${r1.outcome}: ${r1.message}`);
+    assert.equal(
+        await readFile(join(applyRoot, "lib", "a.js"), "utf8"),
+        "export const a = 2;\n",
+    );
+    assert.ok(r1.validation?.ok, "validation must pass");
+    assert.match(r1.validation?.output ?? "", /CHECK_OK/);
+    // Second apply is a no-op.
+    assert.equal((await applyPatch(applyManifest, applyPkg)).outcome, "already-applied");
+    // Version drift is refused.
+    const r3 = await applyPatch({ ...applyManifest, baseVersion: "0.9.0" }, applyPkg);
+    assert.equal(r3.outcome, "rejected");
+    assert.match(r3.message, /rebase required/);
+    // A patch file that exists but does not apply cleanly leaves the package untouched.
+    await makeApplyPackage();
+    await writeFile(join(applyPatchDir, "patch", "bad.patch"), "not a real patch");
+    const r5 = await applyPatch({ ...applyManifest, patch: "patch/bad.patch" }, applyPkg);
+    assert.equal(r5.outcome, "rejected", `expected rejected, got ${r5.outcome}: ${r5.message}`);
+    assert.match(r5.message, /does not apply cleanly/);
+    assert.equal(
+        await readFile(join(applyRoot, "lib", "a.js"), "utf8"),
+        "export const a = 1;\n",
+        "package must be untouched when the forward check fails",
+    );
+    // Validation failure is reported even though the patch applied.
+    await writeFile(join(applyPatchDir, "checks.sh"), "exit 1\n");
+    const r4 = await applyPatch(applyManifest, applyPkg);
+    assert.equal(r4.outcome, "applied");
+    assert.equal(r4.validation?.ok, false);
 
     console.log("All integration assertions passed.");
 } finally {

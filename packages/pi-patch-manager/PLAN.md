@@ -1,6 +1,6 @@
 # pi-patch-manager plan
 
-Status as of v0.1.0: Phase 1 is implemented and tested. `/patch apply` and `/patch rebase` are explicit stubs; the deferred phases below are the remaining roadmap. See `README.md` for the shipped feature set, `AGENT.md` for invariants, and `docs/session/2026-08-27-design-synthesis.md` for the v0.1 scope decisions recorded during design.
+Status as of v0.2.0: Phases 1 and 2 are implemented and tested. `/patch rebase` is an explicit stub; the deferred phases below are the remaining roadmap. See `README.md` for the shipped feature set, `AGENT.md` for invariants, and `docs/session/2026-08-27-design-synthesis.md` for the v0.1 scope decisions recorded during design.
 
 ## Goal
 
@@ -79,7 +79,7 @@ The read-only `patch_status` agent tool exists today. When apply/rebase land, th
 - Never overwrite a package when patch application fails.
 - Verify package name, version, and installed path before editing.
 - Store hashes so a same-version package replacement is detected.
-- Run the patch's validation command before marking it healthy. (Not yet wired: `checks.sh` is validated as a path but never executed in v0.1.)
+- Run the patch's validation command before marking it healthy. (Implemented for apply in v0.2: `checks.sh` runs after application and its result is reported.)
 - Treat patch files and package source as code, not trusted instructions.
 - Disable a patch when its intent no longer matches the new package behavior.
 - Report when a patched extension is already loaded and requires `/reload` or a Pi restart. (Deferred to Phase 4.)
@@ -106,10 +106,12 @@ If Pi later exposes a stable package-update lifecycle event, use it to trigger t
 - `/patch list`, `/patch status`, `/patch explain`, `/patch disable`; `apply`/`rebase` as explicit stubs.
 - `test-integration.mjs` covers malformed manifests, missing packages, version drift, hash drift, symlink escapes.
 
-### Phase 2: apply flow — deferred
+### Phase 2: apply flow — DONE (v0.2)
 
-- `/patch apply` with dry-run behavior and safe failure reporting, built on `git apply`.
-- Executing the patch's validation command (`checks.sh`) as part of the health decision.
+- `/patch apply [id]` with dry-run guard (`git apply --check`), all-or-nothing apply, and safe failure reporting.
+- Git subprocesses run from a repository-neutral cwd with `GIT_DIR`/`GIT_WORK_TREE` stripped.
+- The patch's validation command (`checks.sh`) executes after application (bash, argv-only, 60s timeout); pass/fail is reported.
+- Reverse verification after apply; `already-applied` and drift cases refuse to mutate.
 
 ### Phase 3: guided rebases — deferred
 
@@ -142,6 +144,6 @@ If Pi later exposes a stable package-update lifecycle event, use it to trigger t
 - Multiple independent patches coexist without sharing state. ✔
 - Each patch explains its intent, rationale, target, validation, upstream status, and model provenance. ✔ (schema; upstream tracking workflow still open)
 - Package drift is detected before a stale patch is trusted. ✔
-- A patch reapply is automatic only when it applies cleanly. — pending Phase 2
+- A patch reapply is automatic only when it applies cleanly. ✔ (in v0.2 terms: `apply` refuses to mutate unless the dry-run passes; there is still no automatic re-apply on update)
 - Drift produces a reviewable candidate patch, not a silent mutation. — pending Phase 3
 - A failed patch leaves the installed package untouched and gives an actionable report. ✔ (vacuously in v0.1: nothing writes)

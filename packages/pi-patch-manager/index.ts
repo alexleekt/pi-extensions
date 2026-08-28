@@ -13,6 +13,7 @@ import {
     stat,
     writeFile,
 } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import type {
@@ -329,6 +330,15 @@ export async function hashPackage(packageRoot: string): Promise<string> {
     return `sha256:${hash.digest("hex")}`;
 }
 
+/** Environment for git subprocesses: cwd outside any repository plus no inherited
+ *  GIT_DIR/GIT_WORK_TREE, so path resolution is identical regardless of where pi runs. */
+function gitOptions(packageRoot: string): { cwd: string; env: NodeJS.ProcessEnv } {
+    const env = { ...process.env };
+    delete env.GIT_DIR;
+    delete env.GIT_WORK_TREE;
+    return { cwd: tmpdir(), env };
+}
+
 export async function gitDryRun(
     patchPath: string,
     packageRoot: string,
@@ -343,7 +353,7 @@ export async function gitDryRun(
         "--whitespace=error",
         patchPath,
     ];
-    await execFileAsync("git", args);
+    await execFileAsync("git", args, gitOptions(packageRoot));
 }
 
 export async function getPatchStatus(
@@ -368,6 +378,100 @@ export async function getPatchStatus(
     } catch {
         return "failed";
     }
+}
+
+function subprocessError(error: unknown): string {
+    const e = error as { stderr?: string; stdout?: string; message?: string };
+    return (e.stderr || e.stdout || e.message || "unknown error").trim();
+}
+
+/** Run a patch's validation script (bash, argv-only, inside the package root). */
+async function runValidation(
+    patchDir: string,
+    validation: string,
+    pkgRoot: string,
+): Promise<{ ok: boolean; output: string }> {
+    try {
+        const scriptPath = await resolvePatchPath(patchDir, validation);
+        const { stdout, stderr } = await execFileAsync("bash", [scriptPath], {
+            cwd: pkgRoot,
+            timeout: 60_000,
+        });
+        return { ok: true, output: `${stdout}${stderr}`.trim() };
+    } catch (error) {
+        const e = error as { stderr?: string; stdout?: string; message?: string };
+        return { ok: false, output: (e.stderr || e.stdout || e.message || "").trim() };
+    }
+}
+
+export interface ApplyResult {
+    outcome: "applied" | "already-applied" | "skipped" | "rejected" | "failed";
+    message: string;
+    validation?: { ok: boolean; output: string };
+}
+
+/** Apply a manifest's patch to its resolved package. Dry-run guarded, never partial:
+ *  the package is only mutated after a forward `git apply --check` passes, and git apply
+ *  itself is all-or-nothing (we never pass --reject or --3way). */
+export async function applyPatch(
+    manifest: Manifest,
+    pkg: PackageInfo,
+): Promise<ApplyResult> {
+    const patchDir = pkg.patchDir;
+    if (!patchDir)
+        return { outcome: "failed", message: "Patch directory not resolved; nothing applied." };
+
+    const status = await getPatchStatus(manifest, pkg);
+    switch (status) {
+        case "missing":
+            return { outcome: "skipped", message: `Package '${manifest.package}' not found; nothing applied.` };
+        case "applied":
+            return { outcome: "already-applied", message: `Patch already applied to ${pkg.name}@${pkg.version}.` };
+        case "drifted":
+            return {
+                outcome: "rejected",
+                message:
+                    pkg.version !== manifest.baseVersion
+                        ? `${pkg.name} is ${pkg.version} but the patch targets ${manifest.baseVersion}; rebase required. Package untouched.`
+                        : `Package content drifted from the recorded base hash; rebase required. Package untouched.`,
+            };
+        case "failed":
+            return { outcome: "failed", message: "Could not read patch or package files; nothing applied." };
+    }
+
+    // status === "clean": package is pristine at the base version — safe to apply.
+    const patchPath = await resolvePatchPath(patchDir, manifest.patch);
+    try {
+        await gitDryRun(patchPath, pkg.root, false);
+    } catch (error) {
+        return {
+            outcome: "rejected",
+            message: `Patch does not apply cleanly; package untouched. ${subprocessError(error)}`,
+        };
+    }
+    await execFileAsync(
+        "git",
+        [
+            "apply",
+            "--unsafe-paths",
+            `--directory=${pkg.root}`,
+            "--whitespace=error",
+            patchPath,
+        ],
+        gitOptions(pkg.root),
+    );
+    try {
+        await gitDryRun(patchPath, pkg.root, true);
+    } catch {
+        return {
+            outcome: "failed",
+            message: "Patch applied but reverse verification failed; inspect the package manually.",
+        };
+    }
+    const validation = manifest.validation
+        ? await runValidation(patchDir, manifest.validation, pkg.root)
+        : undefined;
+    return { outcome: "applied", message: `Applied to ${pkg.name}@${pkg.version}.`, validation };
 }
 
 interface Entry {
@@ -456,7 +560,7 @@ function describe(entry: Entry): string {
 }
 
 const HELP =
-    "Patch manager commands:\n  /patch list              List registered patches\n  /patch status            Show patch status\n  /patch explain <id>      Explain a patch\n  /patch disable <id>      Disable a patch\n  /patch help              Show this help\n\nTo create a managed patch, use /skill:patch-creator.\nApply and rebase are unavailable in v0.1.";
+    "Patch manager commands:\n  /patch list              List registered patches\n  /patch status            Show patch status\n  /patch explain <id>      Explain a patch\n  /patch apply [id]        Apply one or all enabled patches\n  /patch disable <id>      Disable a patch\n  /patch help              Show this help\n\nTo create a managed patch, use /skill:patch-creator.\nRebase is not yet implemented; drift requires a manual rebase via /skill:patch-creator.";
 
 export default async function patchManager(pi: ExtensionAPI) {
     pi.registerCommand("patch", {
@@ -527,15 +631,41 @@ export default async function patchManager(pi: ExtensionAPI) {
                 return output(ctx, `Disabled patch ${id}.`);
             }
 
-            if (sub === "apply")
-                return output(
-                    ctx,
-                    "Patch application is not available in v0.1. No files were changed.",
-                );
+            if (sub === "apply") {
+                const targets = id ? (entry ? [entry] : null) : entries;
+                if (!targets)
+                    return output(ctx, `Patch '${id || ""}' was not found.`);
+                const lines: string[] = [];
+                for (const t of targets) {
+                    const mid = t.manifest.id || t.dir;
+                    if (!t.manifest.enabled) {
+                        lines.push(`${mid}: disabled; not applied.`);
+                        continue;
+                    }
+                    if (!t.package) {
+                        lines.push(
+                            `${mid}: package '${t.manifest.package}' not found; nothing applied.`,
+                        );
+                        continue;
+                    }
+                    try {
+                        const r = await applyPatch(t.manifest, t.package);
+                        let line = `${mid}: ${r.message}`;
+                        if (r.validation)
+                            line += `\n  validation ${r.validation.ok ? "passed" : "FAILED"}: ${r.validation.output || "(no output)"}`;
+                        lines.push(line);
+                    } catch (error) {
+                        lines.push(
+                            `${mid}: apply error — ${error instanceof Error ? error.message : String(error)}`,
+                        );
+                    }
+                }
+                return output(ctx, lines.join("\n") || "No patches found.");
+            }
             if (sub === "rebase")
                 return output(
                     ctx,
-                    "Patch rebasing is not available in v0.1. No files were changed.",
+                    "Patch rebasing is not available yet. To rebase manually, use /skill:patch-creator. No files were changed.",
                 );
             output(ctx, HELP);
         },
