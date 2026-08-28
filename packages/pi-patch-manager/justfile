@@ -1,0 +1,20 @@
+# @alexleekt/pi-patch-manager task runner
+
+default:
+    @just --list
+
+check:
+    npm run check
+
+test:
+    npm test
+
+dry-run:
+    npm publish --dry-run
+
+publish:
+    npm publish
+
+release version:
+    git tag -a "@alexleekt/pi-patch-manager@{{version}}" -m "Release @alexleekt/pi-patch-manager@{{version}}"
+    git push origin "@alexleekt/pi-patch-manager@{{version}}"

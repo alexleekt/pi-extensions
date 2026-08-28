@@ -1,0 +1,57 @@
+{
+    "name": "@alexleekt/pi-patch-manager",
+    "version": "0.1.0",
+    "description": "Safe inspection and management of Git patches for Pi packages.",
+    "type": "module",
+    "license": "MIT",
+    "author": "Alex Lee <657215+alexleekt@users.noreply.github.com>",
+    "keywords": [
+        "pi-package",
+        "pi-extension",
+        "pi",
+        "patch",
+        "patch-manager"
+    ],
+    "files": [
+        "index.ts",
+        "README.md",
+        "LICENSE",
+        "AGENT.md",
+        "CHANGELOG.md",
+        "skills"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/alexleekt/pi-extensions.git"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "homepage": "https://github.com/alexleekt/pi-extensions/tree/main/packages/pi-patch-manager#readme",
+    "bugs": {
+        "url": "https://github.com/alexleekt/pi-extensions/issues"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "pi": {
+        "extensions": [
+            "./index.ts"
+        ],
+        "skills": [
+            "./skills"
+        ]
+    },
+    "peerDependencies": {
+        "@earendil-works/pi-coding-agent": "*",
+        "typebox": "*"
+    },
+    "devDependencies": {
+        "@earendil-works/pi-coding-agent": "0.80.6",
+        "typescript": "^5.9.3"
+    },
+    "scripts": {
+        "check": "tsc --noEmit",
+        "test": "node test-integration.mjs"
+    }
+}
