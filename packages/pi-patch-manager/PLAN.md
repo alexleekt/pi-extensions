@@ -47,8 +47,8 @@ The shipped manifest schema is specified in `README.md` and enforced by `index.t
 /patch list                 List managed patches and status
 /patch status               Detect package drift and patch failures
 /patch explain <id>         Show intent, rationale, model, and upstream status
-/patch apply [id]           Apply one or all patches          (stub in v0.1)
-/patch rebase <id>          Prepare an updated patch after drift (stub in v0.1)
+/patch apply [id]           Apply one or all patches          (v0.2, user-invoked)
+/patch rebase <id>          Prepare an updated patch after drift (stub)
 /patch disable <id>         Disable a patch without deleting it
 ```
 
@@ -66,7 +66,7 @@ The read-only `patch_status` agent tool exists today. `/patch apply` landed in P
 
 Note: `applied` proves the patch itself is present, not that the whole tree is identical to the recorded post-patch state — unrelated files may have drifted independently.
 
-## Drift rebase workflow (deferred, Phases 2–3)
+## Drift rebase workflow (deferred, Phase 3)
 
 1. On drift, collect old/new package version and hash, the original patch, intent and rationale, target symbols and source anchors, old and new relevant source, and the validation command.
 2. Ask the model for a candidate replacement patch.
@@ -88,7 +88,7 @@ Note: `applied` proves the patch itself is present, not that the whole tree is i
 
 ## Patch engine decision
 
-The plan originally specified `patch-package`. The shipped engine is system `git apply` invoked with argv-based subprocesses (`--check`, `--unsafe-paths`, `--directory`, `--whitespace=error`; never `--reject` or `--3way`). Rationale: patch-package is semi-maintained (last meaningful tag 2023, large dependency tree); git apply is already present, and the diff format is compatible. The extension has zero runtime dependencies, and AGENT.md requires asking before adding any.
+The plan originally specified `patch-package`. The shipped engine is system `git apply` invoked with argv-based subprocesses at the package root (`--no-index`, `--check`, `--whitespace=error`; never `--reject`, `--3way`, or `--unsafe-paths`; all inherited `GIT_*` environment stripped). Rationale: patch-package is semi-maintained (last meaningful tag 2023, large dependency tree); git apply is already present, the diff format is compatible, and running without `--unsafe-paths` makes git itself refuse any patch path that escapes the package root. The extension has zero runtime dependencies, and AGENT.md requires asking before adding any.
 
 ## Integration with Pi package updates (Phase 4, deferred)
 
@@ -111,9 +111,11 @@ If Pi later exposes a stable package-update lifecycle event, use it to trigger t
 ### Phase 2: apply flow — DONE (v0.2)
 
 - `/patch apply [id]` with dry-run guard (`git apply --check`), all-or-nothing apply, and safe failure reporting.
-- Git subprocesses run from a repository-neutral cwd with `GIT_DIR`/`GIT_WORK_TREE` stripped.
-- The patch's validation command (`checks.sh`) executes after application (bash, argv-only, 60s timeout); pass/fail is reported.
+- Patch bytes snapshotted to a private temp file so dry-run, apply, and verification inspect identical bytes.
+- Git subprocesses run at the package root with `--no-index` and inherited `GIT_*` environment stripped; escape paths are refused by git itself.
+- The patch's validation command (`checks.sh`) executes after application (bash, argv-only, 60s SIGKILL timeout); a failed validation yields the distinct `validation-failed` outcome.
 - Reverse verification after apply; `already-applied` and drift cases refuse to mutate.
+- Known ceilings, documented in README: no cross-process lock, apply-all atomic per patch only, `applied` status proves patch presence rather than whole-tree equality.
 
 ### Phase 3: guided rebases — deferred
 
