@@ -1,6 +1,6 @@
 # pi-patch-manager plan
 
-Status as of v0.2.0: Phases 1 and 2 are implemented and tested. `/patch rebase` is an explicit stub; the deferred phases below are the remaining roadmap. See `README.md` for the shipped feature set, `AGENT.md` for invariants, and `docs/session/2026-08-27-design-synthesis.md` for the v0.1 scope decisions recorded during design.
+Status as of v0.3.0: Phases 1–3 are implemented and tested. The deferred phases below (4–5) are the remaining roadmap. See `README.md` for the shipped feature set, `AGENT.md` for invariants, and `docs/session/2026-08-27-design-synthesis.md` for the v0.1 scope decisions recorded during design.
 
 ## Goal
 
@@ -48,11 +48,11 @@ The shipped manifest schema is specified in `README.md` and enforced by `index.t
 /patch status               Detect package drift and patch failures
 /patch explain <id>         Show intent, rationale, model, and upstream status
 /patch apply [id]           Apply one or all patches          (v0.2, user-invoked)
-/patch rebase <id>          Prepare an updated patch after drift (stub)
+/patch rebase <id>          Prepare an updated patch after drift (v0.3, approval-gated)
 /patch disable <id>         Disable a patch without deleting it
 ```
 
-The read-only `patch_status` agent tool exists today. `/patch apply` landed in Phase 2 (user-invoked only). When rebase lands, the tool gains rebase-request capability, and applying an LLM-generated replacement must require explicit user approval.
+The read-only `patch_status` agent tool exists today. `/patch apply` landed in Phase 2 (user-invoked only). Rebase landed in Phase 3: the LLM only ever produces a candidate, and applying it requires explicit user approval in the same invocation.
 
 ## Drift detection (implemented)
 
@@ -66,7 +66,7 @@ The read-only `patch_status` agent tool exists today. `/patch apply` landed in P
 
 Note: `applied` proves the patch itself is present, not that the whole tree is identical to the recorded post-patch state — unrelated files may have drifted independently.
 
-## Drift rebase workflow (deferred, Phase 3)
+## Drift rebase workflow (implemented, Phase 3)
 
 1. On drift, collect old/new package version and hash, the original patch, intent and rationale, target symbols and source anchors, old and new relevant source, and the validation command.
 2. Ask the model for a candidate replacement patch.
@@ -117,11 +117,11 @@ If Pi later exposes a stable package-update lifecycle event, use it to trigger t
 - Reverse verification after apply; `already-applied` and drift cases refuse to mutate.
 - Known ceilings, documented in README: no cross-process lock, apply-all atomic per patch only, `applied` status proves patch presence rather than whole-tree equality.
 
-### Phase 3: guided rebases — deferred
+### Phase 3: guided rebases — DONE (v0.3)
 
-- Capture relevant source around patch targets.
+- Capture relevant source around patch targets (hunk parsing with safe-path checks).
 - Structured rebase prompt from manifest metadata; candidate diff generation without automatic writes.
-- Approval, validation, and manifest update flow; rebase history.
+- Approval, validation, and manifest update flow; rebase history under `history/`.
 
 ### Phase 4: package-update integration — deferred
 
@@ -149,5 +149,5 @@ If Pi later exposes a stable package-update lifecycle event, use it to trigger t
 - Each patch explains its intent, rationale, target, validation, upstream status, and model provenance. ✔ (schema; upstream tracking workflow still open)
 - Package drift is detected before a stale patch is trusted. ✔
 - A patch reapply is automatic only when it applies cleanly. ✔ (in v0.2 terms: `apply` refuses to mutate unless the dry-run passes; there is still no automatic re-apply on update)
-- Drift produces a reviewable candidate patch, not a silent mutation. — pending Phase 3
+- Drift produces a reviewable candidate patch, not a silent mutation. ✔ (Phase 3: candidate is shown with its validation result and applied only after explicit approval; a failed rebase leaves the installed package untouched)
 - A failed patch leaves the installed package untouched and gives an actionable report. ✔ (apply is guarded by a dry-run and refuses escape paths; batch apply-all continues after individual failures and is atomic per patch, not across the batch)

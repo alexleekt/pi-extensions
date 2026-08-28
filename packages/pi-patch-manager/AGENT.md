@@ -29,5 +29,5 @@ This package lives inside the `pi-extensions` monorepo. See [`../../AGENT.md`](.
 | Loosening validation or containment checks | Ask first — these are security controls |
 | Adding read-only inspection commands | Proceed |
 | Implementing `/patch apply` behind dry-run + confirmation | Proceed |
-| Implementing LLM-assisted rebase flow | Ask first — this is a major scope change |
+| Implementing LLM-assisted rebase flow | Requires explicit user approval on every rebase — never automatic |
 | Test additions, bug fixes with clear solutions | Proceed |
