@@ -3,7 +3,7 @@
 _default:
     just --list
 
-ci_packages := "pi-bump pi-pkg-guard pi-ask-user-glimpse pi-heading pi-worktrunk-signal"
+ci_packages := "pi-bump pi-pkg-guard pi-ask-user-glimpse pi-heading pi-worktrunk-signal pi-patch-manager"
 
 # Format all packages
 fmt:
