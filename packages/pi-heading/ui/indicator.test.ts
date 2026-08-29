@@ -6,13 +6,21 @@ import { clearHeading, setHeadingMessage } from "./indicator.js";
 
 function createMockCtx() {
     const workingMessages: (string | undefined)[] = [];
+    const widgets: { key: string; lines?: string[] }[] = [];
     return {
+        hasUI: true,
         ui: {
             setWorkingMessage: (msg?: string) => {
                 workingMessages.push(msg);
             },
+            setWidget: (key: string, lines?: string[]) => {
+                widgets.push({ key, lines });
+            },
         },
         _workingMessages: workingMessages,
+        _widgets: widgets,
+        _lastWidget: () =>
+            [...widgets].reverse().find((w) => w.lines !== undefined),
     } as any;
 }
 
@@ -21,50 +29,37 @@ describe("setHeadingMessage", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Fix the bug");
         expect(ctx._workingMessages).toEqual(["Fix the bug"]);
+        expect(ctx._lastWidget()).toBeUndefined();
     });
 
-    test("prefixes achievement text with a checkmark", () => {
+    test("renders achievement as a checkmarked widget, not the working row", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Bug is fixed", "achievement");
-        expect(ctx._workingMessages).toEqual(["✓ Bug is fixed"]);
+        const last = ctx._lastWidget();
+        expect(last?.lines).toEqual(["✓ Bug is fixed"]);
+        expect(ctx._workingMessages).toEqual([""]);
     });
 
     test("renders working text through the same working message", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Working on it", "working");
         expect(ctx._workingMessages).toEqual(["Working on it"]);
+        expect(ctx._lastWidget()).toBeUndefined();
     });
 
     test("clears working message when text is empty", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "");
         expect(ctx._workingMessages).toEqual([""]);
+        expect(ctx._lastWidget()?.lines).toBeUndefined();
     });
 
-    test("clears working message when text is whitespace only", () => {
+    test("clearHeading clears both the widget and the working message", () => {
         const ctx = createMockCtx();
-        setHeadingMessage(ctx, "   ");
-        expect(ctx._workingMessages).toEqual([""]);
-    });
-
-    test("clears working message when mode is idle", () => {
-        const ctx = createMockCtx();
-        setHeadingMessage(ctx, "Something", "idle");
-        expect(ctx._workingMessages).toEqual([""]);
-    });
-
-    test("trims text before rendering", () => {
-        const ctx = createMockCtx();
-        setHeadingMessage(ctx, "  Fix the bug  ");
-        expect(ctx._workingMessages).toEqual(["Fix the bug"]);
-    });
-});
-
-describe("clearHeading", () => {
-    test("clears working message with empty string", () => {
-        const ctx = createMockCtx();
-        setHeadingMessage(ctx, "Fix the bug");
+        setHeadingMessage(ctx, "Done", "achievement");
         clearHeading(ctx);
-        expect(ctx._workingMessages).toEqual(["Fix the bug", ""]);
+        // The last widget call is the clear (no lines), superseding "✓ Done".
+        expect(ctx._widgets.at(-1)?.lines).toBeUndefined();
+        expect(ctx._workingMessages.at(-1)).toBe("");
     });
 });

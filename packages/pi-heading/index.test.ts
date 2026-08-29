@@ -151,12 +151,14 @@ function makeMockCtx(
 
     const notifyCalls: any[] = [];
     const workingMessageCalls: (string | undefined)[] = [];
+    const widgetCalls: { key: string; lines?: string[] }[] = [];
 
     return {
         hasUI,
         signal,
         notifyCalls,
         workingMessageCalls,
+        widgetCalls,
         sessionManager: {
             getSessionId: () => "leaf-1",
             getLeafId: () => leafId,
@@ -173,6 +175,9 @@ function makeMockCtx(
             },
             setWorkingMessage: (msg?: string) => {
                 workingMessageCalls.push(msg);
+            },
+            setWidget: (key: string, lines?: string[]) => {
+                widgetCalls.push({ key, lines });
             },
             theme: {
                 fg: (_style: string, text: string) => text,
@@ -276,8 +281,8 @@ describe("headingExtension", () => {
             ],
         });
         await pi.handlers.session_start[0]({}, ctx);
-        expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
-        expect(ctx.workingMessageCalls[0]).toContain("Fixed it");
+        const lastWidget = [...ctx.widgetCalls].reverse().find((w) => w.lines);
+        expect(lastWidget?.lines?.join(" ")).toContain("✓ Fixed it");
         // Event bus preserves achievement mode across sessions
         expect(
             pi.eventEmissions.some(
@@ -345,7 +350,7 @@ describe("headingExtension", () => {
         const ctx = makeMockCtx();
         pi.handlers.agent_settled[0]({}, ctx);
         expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Fixed it")),
+            ctx.widgetCalls.some((w) => w.lines?.join(" ").includes("✓ Fixed it")),
         ).toBe(true);
         expect(
             pi.eventEmissions.some(
@@ -781,9 +786,11 @@ describe("headingExtension", () => {
         // Final turn: no tool results
         pi.handlers.turn_end[0]({ message: msg, toolResults: [] }, ctx);
         await new Promise((r) => setTimeout(r, 50));
-        // Achievement replaces the goal in the one-line working message.
+        // Achievement persists as a checkmarked widget above the editor.
         expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
+            ctx.widgetCalls.some((w) =>
+                w.lines?.join(" ").includes("✓ Docker setup"),
+            ),
         ).toBe(true);
     });
 
@@ -897,7 +904,7 @@ describe("headingExtension", () => {
         expect(ctx.notifyCalls).toHaveLength(0);
     });
 
-    test("turn_end keeps achievements in the working message only", async () => {
+    test("turn_end keeps achievements out of the working message", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
@@ -907,7 +914,9 @@ describe("headingExtension", () => {
         );
         await new Promise((r) => setTimeout(r, 50));
         expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
+            ctx.widgetCalls.some((w) =>
+                w.lines?.join(" ").includes("✓ Docker setup"),
+            ),
         ).toBe(true);
         expect(pi.sendMessageCalls).toHaveLength(0);
         expect(pi.messageRenderers.size).toBe(0);
@@ -996,7 +1005,9 @@ describe("headingExtension", () => {
         await new Promise((r) => setTimeout(r, 80));
         // The achievement should use the freshly updated goal
         expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Updated goal")),
+            ctx.widgetCalls.some((w) =>
+                w.lines?.join(" ").includes("✓ Updated goal"),
+            ),
         ).toBe(true);
     });
 
