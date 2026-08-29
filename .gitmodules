@@ -1,0 +1,3 @@
+[submodule ".pi/agents"]
+	path = .pi/agents
+	url = https://github.com/alexleekt/subagents.git

@@ -8,6 +8,77 @@
 - Ask clarifying questions when requirements are unclear
 - Flag security implications immediately
 
+## Agent session workflow
+
+Agentic sessions working in this repo use one shared documentation steward
+(the "doc-steward"):
+
+- At the start of every task, run the steward singleton guard below verbatim
+  via your bash tool. It guarantees exactly one steward: closes accidental
+  duplicates, renames the survivor, and starts or resumes the canonical
+  steward if none exists. If it reports a steward is running, address findings
+  to the project-scoped `doc-steward` through intercom. Do not start steward panes manually.
+- Naming: the herdr pane name alone is not enough for intercom resolution — the
+  steward must also run `/name <project>-doc-steward` so its pi session display name matches.
+- Role: receive verified findings from all sessions through intercom; inspect
+  changes for affected documentation; improve clarity, deduplicate, and keep
+  records consistent; run `agnix validate .`; commit and push documentation
+  only when the repository contribution policy permits it. Scope discovery and
+  edit boundaries are defined in `.pi/agents/doc-steward.md`.
+- Handoff: the main agent does not directly edit, validate, commit, or push
+  documentation while the steward is active. It sends verified findings,
+  changed-file context, and documentation requests to the steward through
+  intercom, and waits for the steward to report the resulting documentation
+  work and validation status.
+- Persistence and recovery: the steward's state lives in its session JSONL in
+  the pi sessions directory. If the pane dies, rerun the singleton guard. To
+  resume its conversation instead of starting fresh, pin `RESUME_GLOB` in the
+  guard to its session JSONL filename; with it empty, the guard always starts
+  fresh.
+- Coordination: sessions send verified findings and documentation requests to
+  the shared steward through intercom. The steward is the sole documentation
+  editor and commit/push owner while active.
+- Teardown: keep the steward running while work is active. On clean project
+  shutdown, tell it to exit through intercom.
+- Subagent naming: spawn or resume subagents with an explicit, meaningful name
+  — never the `Resume` default — so intercom and herdr stay resolvable.
+
+### Doc-steward singleton guard
+
+Requires `HERDR_ENV=1`, `herdr`, and Python 3:
+
+```sh
+# === doc-steward singleton guard (requires HERDR_ENV=1) ===
+# Pin this to the doc-steward's pi session JSONL filename to resume after crashes.
+# Empty means always start fresh.
+RESUME_GLOB=''
+STEWARD_NAME="$(basename "$PWD")-doc-steward"
+DETECT='shared documentation steward'   # must appear in the persona body
+panes=$(herdr agent list | STEWARD_NAME="$STEWARD_NAME" DETECT="$DETECT" python3 -c '
+import json, os, sys
+for a in json.load(sys.stdin)["result"]["agents"]:
+    if a.get("name") == os.environ["STEWARD_NAME"] or os.environ["DETECT"] in (a.get("tokens") or {}).get("task", ""):
+        print(a["pane_id"], a.get("name") or "-")')
+if [ -z "$panes" ]; then
+  persona="$PWD/.pi/agents/doc-steward.md"
+  [ -f "$persona" ] || { echo "missing persona file: $persona (must begin with --- frontmatter)" >&2; exit 1; }
+  p=$(herdr pane split --current --direction right --cwd "$PWD" --no-focus | python3 -c 'import json,sys;print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
+  j=$(find "$HOME/.pi/agent/sessions" -name "${RESUME_GLOB:-NOMATCH}" 2>/dev/null | head -1)
+  if [ -n "$j" ]; then
+    herdr agent start "$STEWARD_NAME" --kind pi --pane "$p" -- --session "$j" >/dev/null
+  else
+    herdr agent start "$STEWARD_NAME" --kind pi --pane "$p" >/dev/null
+    herdr agent prompt "$STEWARD_NAME" "$(sed '1{/^---$/!q};1,/^---$/d' "$persona")" >/dev/null
+  fi
+  exit 0
+fi
+keep=$(grep "$STEWARD_NAME" <<<"$panes" | head -1 | cut -d' ' -f1)
+keep=${keep:-$(head -1 <<<"$panes" | cut -d' ' -f1)}
+while read -r id name; do [ "$id" = "$keep" ] || herdr pane close "$id"; done <<<"$panes"
+herdr agent rename "$keep" "$STEWARD_NAME"
+herdr pane rename "$keep" "$STEWARD_NAME"
+```
+
 ## Working in This Monorepo
 
 - Keep changes scoped to the package you're working on
