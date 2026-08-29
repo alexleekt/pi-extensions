@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Alex Lee
 
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { sanitizeText } from "../llm/parse.js";
 import type { WidgetMode } from "../types.js";
 
 const WIDGET_KEY = "pi-heading";
@@ -11,7 +12,7 @@ export function setHeadingMessage(
     text: string,
     mode: WidgetMode = "goal",
 ): void {
-    const trimmed = text.trim();
+    const trimmed = sanitizeText(text).trim();
     if (!trimmed || mode === "idle") {
         clearHeading(ctx);
         return;

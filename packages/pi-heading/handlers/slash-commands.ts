@@ -7,7 +7,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import {
     AUTO_MODEL_LABEL,
-    resolveModel,
+    resolveModelRanked,
     setModelOverride,
 } from "../llm/picker.js";
 import {
@@ -95,9 +95,9 @@ export async function handleHeadingModel(
         return;
     }
 
-    const current = resolveModel(ctx, candidates, {
+    const current = resolveModelRanked(ctx, candidates, {
         isUsingOAuth: (model) => registry.isUsingOAuth?.(model) ?? false,
-    });
+    })[0];
     const currentKey = current ? `${current.provider}/${current.id}` : undefined;
 
     const choices = [

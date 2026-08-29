@@ -107,21 +107,4 @@ export function resolveModelRanked<T extends AvailableModel>(
     return candidates;
 }
 
-export function resolveModel<T extends AvailableModel>(
-    ctx: ModelContext,
-    available: readonly T[],
-    opts?: ResolveModelOptions<T>,
-): T | undefined {
-    return resolveModelRanked(ctx, available, opts)[0];
-}
-
-export function resolveModelId(ctx: ModelContext): string | undefined {
-    return (
-        getModelOverride() ??
-        (ctx.model?.provider
-            ? `${ctx.model.provider}/${ctx.model.id}`
-            : ctx.model?.id)
-    );
-}
-
 export { AUTO_MODEL_LABEL };

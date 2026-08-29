@@ -81,6 +81,11 @@ describe("runPrompt", () => {
         expect(payloadFor(opts)).toEqual({ existing: true, response_format: { type: "json_object" } });
     });
 
+    test("removes an unused context placeholder", async () => {
+        const result = await runPrompt(ctxFor(models(1)), "goal", "do the thing");
+        expect(result.fullPrompt).not.toContain("{context}");
+    });
+
     test("hard failure falls back and next succeeds", async () => {
         responses = [new Error("overloaded"), message('{"result":"done"}')];
         expect((await runPrompt(ctxFor(models()), "goal", "x")).text).toBe("done");

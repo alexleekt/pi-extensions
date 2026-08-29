@@ -7,8 +7,6 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {
     getModelOverride,
-    type ModelContext,
-    resolveModelId,
     resolveModelRanked,
     setModelOverride,
 } from "./picker.js";
@@ -38,10 +36,12 @@ describe("picker", () => {
         expect(getModelOverride(tmpDir)).toBeUndefined();
     });
 
-    test("resolveModelId uses provider/id identity", () => {
-        const ctx: ModelContext = { model: { provider: "api", id: "shared" } };
-        expect(resolveModelId(ctx)).toBe("api/shared");
-        expect(resolveModelId({})).toBeUndefined();
+    test("resolveModelRanked uses provider/id identity", () => {
+        const ranked = resolveModelRanked(
+            { scopedModels: [{ model: { provider: "other", id: "shared" } }] },
+            models,
+        );
+        expect(ranked).toEqual([models[2]]);
     });
 
     test("scopedModels are authoritative and OAuth wins", () => {

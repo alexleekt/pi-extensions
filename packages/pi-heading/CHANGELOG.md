@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Raised the minimum `@earendil-works/pi-coding-agent` version to 0.81.0 for scoped model selection.
 - `/heading-model` reset option renamed to **Automatic (subscription first)**; selection now prefers Pi's `ctx.scopedModels` over hand-read settings.
 - Model overrides are stored and matched as `provider/id` to disambiguate duplicate ids across providers.
 

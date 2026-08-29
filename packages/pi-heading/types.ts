@@ -14,6 +14,6 @@ export interface State {
     topic: string;
     goal: string;
     achievement?: string;
-    /** Goal-summarize turns since the achievement was recorded; drives context decay. */
-    turnsSinceAchievement?: number;
+    priorOutcome?: string;
+    priorAge?: number;
 }

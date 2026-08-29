@@ -79,6 +79,7 @@ export function handleTurnEnd(
     pi: ExtensionAPI,
     sharedState: SharedState,
 ): void {
+    const myDisplayGeneration = ++sharedState.displayGeneration;
     if (!ctx.hasUI) return;
 
     const sessionId = ctx.sessionManager.getSessionId();
@@ -105,6 +106,8 @@ export function handleTurnEnd(
                 const progress = result.text.trim();
                 if (!progress) return;
                 if (myGeneration !== sharedState.turnGeneration) return;
+                if (myDisplayGeneration !== sharedState.displayGeneration)
+                    return;
                 setHeadingMessage(ctx, progress, "working");
                 logDebug(
                     makeDebugEntryAchievement(
@@ -157,7 +160,8 @@ export function handleTurnEnd(
                 goal: fresh?.goal ?? existing?.goal ?? "",
                 achievement,
                 // Context restarts: the next goal supplements from this achievement.
-                turnsSinceAchievement: 0,
+                priorOutcome: achievement,
+                priorAge: 0,
             };
 
             if (sessionId) {
@@ -166,7 +170,9 @@ export function handleTurnEnd(
                 if (
                     prior?.topic !== state.topic ||
                     prior?.goal !== state.goal ||
-                    prior?.achievement !== state.achievement
+                    prior?.achievement !== state.achievement ||
+                    prior?.priorOutcome !== state.priorOutcome ||
+                    prior?.priorAge !== state.priorAge
                 ) {
                     persistState(pi, state);
                 }

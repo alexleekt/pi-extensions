@@ -73,10 +73,8 @@ export async function runPrompt(
         instructions = instructions.replace(/\{goal\}/g, () => goal);
         userText = userText.replace(/\{goal\}/g, () => goal);
     }
-    if (context !== undefined) {
-        instructions = instructions.replace(/\{context\}/g, () => context);
-        userText = userText.replace(/\{context\}/g, () => context);
-    }
+    instructions = instructions.replace(/\{context\}/g, () => context ?? "");
+    userText = userText.replace(/\{context\}/g, () => context ?? "");
     instructions = instructions.replace(
         /\{max_words\}/g,
         String(promptFile.maxWords),

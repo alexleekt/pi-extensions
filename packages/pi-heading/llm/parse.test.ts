@@ -6,8 +6,16 @@ import {
     cleanLLMOutput,
     extractResultFromJson,
     extractTextFromMessage,
+    sanitizeText,
     tryParseJsonResult,
 } from "./parse.js";
+
+describe("sanitizeText", () => {
+    test("strips controls and terminal escapes and caps length", () => {
+        const text = `\x1b]0;title\x07\x1b[31mred\x1b[0m\n${"x".repeat(250)}`;
+        expect(sanitizeText(text)).toBe(`red${"x".repeat(197)}`);
+    });
+});
 
 describe("tryParseJsonResult", () => {
     test("extracts string result from valid JSON", () => {

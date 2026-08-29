@@ -47,6 +47,14 @@ function stateFromEntry(entry: unknown): State | undefined {
             typeof payload.achievement === "string"
                 ? payload.achievement
                 : undefined,
+        priorOutcome:
+            typeof payload.priorOutcome === "string"
+                ? payload.priorOutcome
+                : undefined,
+        priorAge:
+            typeof payload.priorAge === "number"
+                ? payload.priorAge
+                : undefined,
     };
 }
 

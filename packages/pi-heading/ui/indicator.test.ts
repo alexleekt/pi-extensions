@@ -47,6 +47,12 @@ describe("setHeadingMessage", () => {
         expect(ctx._lastWidget()).toBeUndefined();
     });
 
+    test("sanitizes displayed text", () => {
+        const ctx = createMockCtx();
+        setHeadingMessage(ctx, `\x1b[31munsafe\x1b[0m\n${"x".repeat(250)}`);
+        expect(ctx._workingMessages[0]).toBe(`unsafe${"x".repeat(194)}`);
+    });
+
     test("clears working message when text is empty", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "");

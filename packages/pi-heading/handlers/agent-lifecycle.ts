@@ -6,6 +6,7 @@ import type {
     ExtensionAPI,
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { sanitizeText } from "../llm/parse.js";
 import { summarize } from "../llm/summarize.js";
 import { logDebug } from "../state/debug.js";
 import { stableTopic } from "../state/guard.js";
@@ -27,17 +28,20 @@ import type { State } from "../types.js";
  * turns pass (age 0–1 full, age 2 lighter, ≥3 omitted).
  */
 export function goalContext(state?: State): string | undefined {
-    if (!state?.achievement) return undefined;
-    const age = state.turnsSinceAchievement ?? 99;
-    if (age > 2) return undefined;
-    const label = age <= 1 ? "Previous outcome" : "Older outcome (low weight)";
-    return `Reference ${label.toLowerCase()} (the latest message wins): ${state.achievement}`;
+    if (state?.priorOutcome === undefined) return undefined;
+    if (state.priorAge === 0 || state.priorAge === 1)
+        return `Reference previous outcome (the latest message wins): ${state.priorOutcome}`;
+    if (state.priorAge === 2)
+        return `Reference older outcome (low weight): ${state.priorOutcome}`;
 }
 
-/** Age the context counter; keeps prior values when no achievement exists. */
+/** Carry forward and age the prior outcome when a new goal is persisted. */
 function agedState(state?: State): Partial<State> {
-    if (state?.turnsSinceAchievement === undefined) return {};
-    return { turnsSinceAchievement: state.turnsSinceAchievement + 1 };
+    if (state?.priorOutcome === undefined) return {};
+    return {
+        priorOutcome: state.priorOutcome,
+        priorAge: (state.priorAge ?? 0) + 1,
+    };
 }
 
 export function handleAgentSettled(
@@ -115,10 +119,11 @@ export function handleBeforeAgentStart(
     // Fire-and-forget: do not await summarize — we must not block the agent.
     void (async () => {
         try {
+            const context = goalContext(existing);
             const result = await summarize(
                 ctx,
                 prompt,
-                goalContext(existing),
+                context === undefined ? undefined : sanitizeText(context),
             );
             if (myGeneration !== sharedState.turnGeneration) return;
             // A settled run may have already restored the final display.
@@ -142,7 +147,9 @@ export function handleBeforeAgentStart(
                     if (
                         current?.topic !== state.topic ||
                         current?.goal !== state.goal ||
-                        current?.achievement !== state.achievement
+                        current?.achievement !== state.achievement ||
+                        current?.priorOutcome !== state.priorOutcome ||
+                        current?.priorAge !== state.priorAge
                     ) {
                         persistState(pi, state);
                     }
@@ -172,7 +179,9 @@ export function handleBeforeAgentStart(
                 if (
                     current?.topic !== state.topic ||
                     current?.goal !== state.goal ||
-                    current?.achievement !== state.achievement
+                    current?.achievement !== state.achievement ||
+                    current?.priorOutcome !== state.priorOutcome ||
+                    current?.priorAge !== state.priorAge
                 ) {
                     persistState(pi, state);
                 }
