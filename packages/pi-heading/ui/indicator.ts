@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
-import { Text } from "@earendil-works/pi-tui";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { WidgetMode } from "../types.js";
+import { Text } from "@earendil-works/pi-tui";
 import { sanitizeText } from "../llm/parse.js";
+import type { WidgetMode } from "../types.js";
 
 const WIDGET_KEY = "pi-heading";
 
@@ -24,7 +24,7 @@ export function setHeadingMessage(
         // settle-time achievement would vanish instantly. Achievements persist
         // as a widget above the editor instead; the ✓ lives only in the UI,
         // not in persisted state or heading tool output.
-        ctx.ui.setWidget(WIDGET_KEY, (tui, theme) => {
+        ctx.ui.setWidget(WIDGET_KEY, (_tui, theme) => {
             try {
                 // Green ✓ + muted text (designer spec): the glyph carries
                 // "done" for colorblind users, muted keeps the line secondary

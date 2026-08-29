@@ -69,8 +69,8 @@ export function resolveModelRanked<T extends AvailableModel>(
         scoped.map((model, index) => [modelKey(model), index]),
     );
     const ranked = [...scoped].sort((a, b) => {
-        const authClass = Number(!opts.isUsingOAuth?.(a)) -
-            Number(!opts.isUsingOAuth?.(b));
+        const authClass =
+            Number(!opts.isUsingOAuth?.(a)) - Number(!opts.isUsingOAuth?.(b));
         if (authClass) return authClass;
         if (!opts.isUsingOAuth?.(a)) {
             const cost = modelCost(a) - modelCost(b);
@@ -86,14 +86,18 @@ export function resolveModelRanked<T extends AvailableModel>(
 
     const candidates: T[] = [];
     const add = (model: T | undefined) => {
-        if (model && !candidates.some((item) => modelKey(item) === modelKey(model)))
+        if (
+            model &&
+            !candidates.some((item) => modelKey(item) === modelKey(model))
+        )
             candidates.push(model);
     };
     const override = getModelOverride();
     if (override)
         add(
             available.find(
-                (model) => modelKey(model) === override || model.id === override,
+                (model) =>
+                    modelKey(model) === override || model.id === override,
             ),
         );
     for (const model of ranked) add(model);

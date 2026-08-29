@@ -64,10 +64,7 @@ describe("picker", () => {
     test("scoped order breaks OAuth ties and cost ranks API models", () => {
         const ranked = resolveModelRanked(
             {
-                scopedModels: [
-                    { model: models[0] },
-                    { model: models[3] },
-                ],
+                scopedModels: [{ model: models[0] }, { model: models[3] }],
             },
             models,
         );

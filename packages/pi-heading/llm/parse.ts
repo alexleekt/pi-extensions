@@ -5,11 +5,16 @@ import type { AssistantMessage } from "@earendil-works/pi-ai";
 
 /** Remove terminal control sequences and bound text before displaying or prompting. */
 export function sanitizeText(text: string): string {
-    return text
-        .replace(/\x1B\][\s\S]*?(?:\x07|\x1B\\|$)/g, "")
-        .replace(/\x1B(?:\[[0-?]*[ -/]*[@-~]|[ -/]*[@-~])/g, "")
-        .replace(/[\x00-\x1F\x7F]/g, "")
-        .slice(0, 200);
+    return (
+        text
+            // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally matching OSC terminal escape sequences
+            .replace(/\x1B\][\s\S]*?(?:\x07|\x1B\\|$)/g, "")
+            // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally matching ANSI/CSI escape sequences
+            .replace(/\x1B(?:\[[0-?]*[ -/]*[@-~]|[ -/]*[@-~])/g, "")
+            // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally stripping all remaining C0/C1 control characters
+            .replace(/[\x00-\x1F\x7F]/g, "")
+            .slice(0, 200)
+    );
 }
 
 export function extractTextFromMessage(

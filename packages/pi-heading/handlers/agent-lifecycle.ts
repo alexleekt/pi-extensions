@@ -17,10 +17,10 @@ import {
     persistState,
     setState,
 } from "../state/store.js";
+import type { State } from "../types.js";
 import { clearHeading, setHeadingMessage } from "../ui/indicator.js";
 import { makeDebugEntry, makeDebugEntryError } from "./debug.js";
 import type { SharedState } from "./session-lifecycle.js";
-import type { State } from "../types.js";
 
 /**
  * Low-weight context for goal extraction: the previous achievement

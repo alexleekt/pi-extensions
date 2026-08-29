@@ -71,15 +71,18 @@ export async function handleHeadingModel(
     // unscoped sessions offer the full registry. scopedModels exists on pi
     // >=0.81 but not in the 0.80 peer types, so access it defensively.
     const scoped =
-        (ctx as { scopedModels?: readonly { model: { provider: string; id: string } }[] })
-            .scopedModels ?? [];
+        (
+            ctx as {
+                scopedModels?: readonly {
+                    model: { provider: string; id: string };
+                }[];
+            }
+        ).scopedModels ?? [];
     const candidates = scoped.length
         ? scoped
               .flatMap(({ model }) =>
                   available.find(
-                      (m) =>
-                          m.provider === model.provider &&
-                          m.id === model.id,
+                      (m) => m.provider === model.provider && m.id === model.id,
                   ),
               )
               .filter((m): m is (typeof available)[number] => Boolean(m))
@@ -98,7 +101,9 @@ export async function handleHeadingModel(
     const current = resolveModelRanked(ctx, candidates, {
         isUsingOAuth: (model) => registry.isUsingOAuth?.(model) ?? false,
     })[0];
-    const currentKey = current ? `${current.provider}/${current.id}` : undefined;
+    const currentKey = current
+        ? `${current.provider}/${current.id}`
+        : undefined;
 
     const choices = [
         AUTO_MODEL_LABEL,

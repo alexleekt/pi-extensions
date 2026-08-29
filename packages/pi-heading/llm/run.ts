@@ -54,7 +54,10 @@ export function supportsResponseFormat(model: Model<Api>): boolean {
 // other provider we target accepts it. Note: openai-codex-responses is a
 // distinct API string and equally rejects it.
 export function supportsTemperature(model: Model<Api>): boolean {
-    return model.api !== "openai-responses" && model.api !== "openai-codex-responses";
+    return (
+        model.api !== "openai-responses" &&
+        model.api !== "openai-codex-responses"
+    );
 }
 
 class EmptySummaryError extends Error {}
@@ -127,7 +130,8 @@ export async function runPrompt(
                     ...(supportsTemperature(model) ? { temperature: 0 } : {}),
                     ...thinkingOffOpts(model),
                     ...(model.reasoning &&
-                    (model as any).thinkingLevelMap?.off === null
+                    (model as { thinkingLevelMap?: { off?: unknown } })
+                        .thinkingLevelMap?.off === null
                         ? { reasoning: "low" as const }
                         : {}),
                     onPayload: (payload: unknown) => {
@@ -142,9 +146,14 @@ export async function runPrompt(
             );
 
             if (result.stopReason === "error")
-                throw new Error(result.errorMessage || `Model ${model.id} failed`);
+                throw new Error(
+                    result.errorMessage || `Model ${model.id} failed`,
+                );
             if (result.stopReason === "aborted")
-                throw new DOMException("Heading summarization aborted", "AbortError");
+                throw new DOMException(
+                    "Heading summarization aborted",
+                    "AbortError",
+                );
 
             const extracted = extractTextFromMessage(result);
             const cleaned = cleanLLMOutput(extracted);
@@ -156,7 +165,9 @@ export async function runPrompt(
             if (!finalText) {
                 // Empty text (e.g. thinking consumed maxTokens) counts as a
                 // failed candidate so the loop falls through to the next model.
-                throw new EmptySummaryError(`Empty summary from model ${model.id}`);
+                throw new EmptySummaryError(
+                    `Empty summary from model ${model.id}`,
+                );
             }
             return {
                 text: truncateToWords(finalText, promptFile.maxWords),

@@ -12,7 +12,11 @@ function run(command, args, cwd) {
     const result = spawnSync(command, args, {
         cwd,
         encoding: "utf8",
-        env: { ...process.env, npm_config_update_notifier: "false" },
+        env: {
+            ...process.env,
+            npm_config_update_notifier: "false",
+            npm_config_allow_scripts: "",
+        },
     });
     if (result.status !== 0) {
         const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`.trim();

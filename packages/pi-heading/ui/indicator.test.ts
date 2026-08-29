@@ -38,9 +38,12 @@ describe("setHeadingMessage", () => {
         const last = ctx._lastWidget();
         expect(typeof last?.lines).toBe("function");
         // The factory resolves through the theme: success ✓ + muted text.
-        const rendered = last.lines({}, {
-            fg: (color: string, t: string) => `[${color}]${t}`,
-        }).text;
+        const rendered = last.lines(
+            {},
+            {
+                fg: (color: string, t: string) => `[${color}]${t}`,
+            },
+        ).text;
         expect(rendered).toContain("[success]✓ ");
         expect(rendered).toContain("[muted]Bug is fixed");
         expect(ctx._workingMessages).toEqual([""]);

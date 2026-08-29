@@ -176,7 +176,19 @@ function makeMockCtx(
             setWorkingMessage: (msg?: string) => {
                 workingMessageCalls.push(msg);
             },
-            setWidget: (key: string, lines?: string[] | Function) => {
+            setWidget: (
+                key: string,
+                lines?:
+                    | string[]
+                    | ((
+                          tui: object,
+                          theme: {
+                              fg: (style: string, text: string) => string;
+                          },
+                      ) => {
+                          text: string;
+                      }),
+            ) => {
                 widgetCalls.push({
                     key,
                     lines:
@@ -364,7 +376,9 @@ describe("headingExtension", () => {
         const ctx = makeMockCtx();
         pi.handlers.agent_settled[0]({}, ctx);
         expect(
-            ctx.widgetCalls.some((w) => w.lines?.join(" ").includes("✓ Fixed it")),
+            ctx.widgetCalls.some((w) =>
+                w.lines?.join(" ").includes("✓ Fixed it"),
+            ),
         ).toBe(true);
         expect(
             pi.eventEmissions.some(
@@ -893,13 +907,28 @@ describe("headingExtension", () => {
         mockCompleteSimple.mockImplementation(() =>
             Promise.resolve({
                 role: "assistant",
-                content: [{ type: "text", text: '{"result": "Searched the compose file"}' }],
+                content: [
+                    {
+                        type: "text",
+                        text: '{"result": "Searched the compose file"}',
+                    },
+                ],
                 api: "openai-completions",
                 provider: "openai",
                 model: "test-model",
                 usage: {
-                    input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
-                    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                    input: 0,
+                    output: 0,
+                    cacheRead: 0,
+                    cacheWrite: 0,
+                    totalTokens: 0,
+                    cost: {
+                        input: 0,
+                        output: 0,
+                        cacheRead: 0,
+                        cacheWrite: 0,
+                        total: 0,
+                    },
                 },
                 stopReason: "stop",
                 timestamp: Date.now(),
@@ -917,7 +946,9 @@ describe("headingExtension", () => {
         expect(mockCompleteSimple.mock.calls.length).toBe(1);
         // Rendered as working text (no checkmark), achievement widget untouched
         expect(
-            ctx.workingMessageCalls.some((m) => m === "Searched the compose file"),
+            ctx.workingMessageCalls.some(
+                (m) => m === "Searched the compose file",
+            ),
         ).toBe(true);
         expect(ctx.widgetCalls.every((w) => !w.lines)).toBe(true);
     });
@@ -949,9 +980,7 @@ describe("headingExtension", () => {
 
         resolveIntermediate({
             role: "assistant",
-            content: [
-                { type: "text", text: '{"result": "Late progress"}' },
-            ],
+            content: [{ type: "text", text: '{"result": "Late progress"}' }],
             stopReason: "stop",
             timestamp: Date.now(),
         });
@@ -1147,7 +1176,8 @@ describe("headingExtension", () => {
 
     test("goalContext supplements the first follow-ups and decays", () => {
         const state = {
-            topic: "T", goal: "G",
+            topic: "T",
+            goal: "G",
             achievement: "Fixed the bug",
             priorOutcome: "Fixed the bug",
             priorAge: 0,
@@ -1395,6 +1425,8 @@ describe("headingExtension", () => {
         await new Promise((r) => setTimeout(r, 50));
         const entries = readDebugLog(1);
         expect(entries.length).toBe(1);
-        expect(entries[0].achievementResponse ?? entries[0].extractedText).toBeDefined();
+        expect(
+            entries[0].achievementResponse ?? entries[0].extractedText,
+        ).toBeDefined();
     });
 });

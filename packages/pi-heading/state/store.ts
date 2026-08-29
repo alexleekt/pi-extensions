@@ -52,9 +52,7 @@ function stateFromEntry(entry: unknown): State | undefined {
                 ? payload.priorOutcome
                 : undefined,
         priorAge:
-            typeof payload.priorAge === "number"
-                ? payload.priorAge
-                : undefined,
+            typeof payload.priorAge === "number" ? payload.priorAge : undefined,
     };
 }
 
