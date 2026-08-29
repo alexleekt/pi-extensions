@@ -2,22 +2,42 @@
 
 Quick-reference for releasing `@alexleekt/*` packages from this monorepo.
 
-## Release an Existing Package (1 minute)
+## Release an Existing Package
+
+`main` is protected. Do not use the old direct-push flow, and do not push the
+publish tag before the release commit is merged. Use a release branch and PR:
 
 ```bash
-# Option A: Use just (recommended)
-just release <pkg> <version>
-# e.g. just release pi-heading 0.1.2
+# 1. Start from an up-to-date main, in a clean or isolated worktree.
+git switch main
+git pull --ff-only origin main
+git switch -c release/<pkg>-<version>
 
-# Option B: Manual steps
+# 2. Bump the package and lockfile, then update its changelog.
 (cd packages/<pkg> && npm version --no-git-tag-version <version>)
-git add packages/<pkg>/package.json package-lock.json
+git add packages/<pkg>/package.json package-lock.json packages/<pkg>/CHANGELOG.md
 git commit -m "chore(<pkg>): release v<version>"
+
+# 3. Push the branch and open a PR. Do not push the tag yet.
+git push -u origin release/<pkg>-<version>
+gh pr create --base main --head release/<pkg>-<version>
+
+# 4. Wait for every required check, then merge the PR.
+gh pr checks <number> --watch
+gh pr merge <number> --merge --delete-branch
+
+# 5. Tag the merged commit and push only the tag.
+git fetch origin main --tags
+git switch main
+git merge --ff-only origin/main
 git tag "@alexleekt/<pkg>@<version>"
-git push origin main "@alexleekt/<pkg>@<version>"
+git push origin "@alexleekt/<pkg>@<version>"
 ```
 
-CI handles the rest. The `publish.yml` workflow triggers on the tag push and publishes to npm.
+The scoped tag triggers `.github/workflows/publish.yml`. The tag must point to
+the merged release commit so the published source and `main` stay aligned.
+The `just release` recipe still reflects the legacy direct-push flow; use the
+branch/PR procedure above until that recipe is made protection-aware.
 
 ## Bootstrap a NEW Package (First-Time Publish)
 
