@@ -97,7 +97,7 @@ ci-package pkg:
         npm run validate
     fi
 
-    npm publish --dry-run
+    npm pack --dry-run
     npm run pack-smoke --if-present
 
 ci: ci-shared
