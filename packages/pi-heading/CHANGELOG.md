@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Pack-smoke temporary installs now ignore inherited npm `allow-scripts` configuration, avoiding npm 12's `EALLOWSCRIPTS` rejection.
+- Biome 2.5.11 lint findings are resolved, including typed test callbacks and intentional terminal-control regex suppressions.
+
 ## [0.3.0] - 2026-08-29
 
 ### Added

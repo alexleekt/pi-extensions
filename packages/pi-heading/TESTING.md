@@ -8,7 +8,7 @@ npm test
 npm run pack-smoke
 ```
 
-The packed-import smoke test verifies that the npm artifact contains every transitive runtime module, excludes tests, installs with declared peers, and loads through Pi's jiti TypeScript loader.
+The packed-import smoke test verifies that the npm artifact contains every transitive runtime module, excludes tests, installs with declared peers, and loads through Pi's jiti TypeScript loader. It clears npm's inherited `allow-scripts` configuration for the temporary install because npm 12 otherwise rejects that setting as a project-scoped `--allow-scripts` option.
 
 ## Local extension setup
 
