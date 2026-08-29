@@ -64,6 +64,7 @@ export async function runPrompt(
     fileName: string,
     message: string,
     goal?: string,
+    context?: string,
 ): Promise<RunPromptResult> {
     const promptFile = readPromptFile(fileName);
     let instructions = promptFile.instructions;
@@ -71,6 +72,10 @@ export async function runPrompt(
     if (goal !== undefined) {
         instructions = instructions.replace(/\{goal\}/g, () => goal);
         userText = userText.replace(/\{goal\}/g, () => goal);
+    }
+    if (context !== undefined) {
+        instructions = instructions.replace(/\{context\}/g, () => context);
+        userText = userText.replace(/\{context\}/g, () => context);
     }
     instructions = instructions.replace(
         /\{max_words\}/g,

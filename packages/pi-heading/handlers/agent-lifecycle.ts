@@ -19,6 +19,26 @@ import {
 import { clearHeading, setHeadingMessage } from "../ui/indicator.js";
 import { makeDebugEntry, makeDebugEntryError } from "./debug.js";
 import type { SharedState } from "./session-lifecycle.js";
+import type { State } from "../types.js";
+
+/**
+ * Low-weight context for goal extraction: the previous achievement
+ * supplements the first follow-up goals and decays to nothing as more
+ * turns pass (age 0–1 full, age 2 lighter, ≥3 omitted).
+ */
+export function goalContext(state?: State): string | undefined {
+    if (!state?.achievement) return undefined;
+    const age = state.turnsSinceAchievement ?? 99;
+    if (age > 2) return undefined;
+    const label = age <= 1 ? "Previous outcome" : "Older outcome (low weight)";
+    return `Reference ${label.toLowerCase()} (the latest message wins): ${state.achievement}`;
+}
+
+/** Age the context counter; keeps prior values when no achievement exists. */
+function agedState(state?: State): Partial<State> {
+    if (state?.turnsSinceAchievement === undefined) return {};
+    return { turnsSinceAchievement: state.turnsSinceAchievement + 1 };
+}
 
 export function handleAgentSettled(
     _event: unknown,
@@ -95,7 +115,11 @@ export function handleBeforeAgentStart(
     // Fire-and-forget: do not await summarize — we must not block the agent.
     void (async () => {
         try {
-            const result = await summarize(ctx, prompt);
+            const result = await summarize(
+                ctx,
+                prompt,
+                goalContext(existing),
+            );
             if (myGeneration !== sharedState.turnGeneration) return;
             // A settled run may have already restored the final display.
             if (myAgentSettledGeneration !== sharedState.agentSettledGeneration)
@@ -111,6 +135,7 @@ export function handleBeforeAgentStart(
                         existing?.goal ??
                         "Continue current task",
                     achievement: undefined,
+                    ...agedState(current ?? existing),
                 };
                 if (sessionId) {
                     setState(sessionId, state);
@@ -139,6 +164,7 @@ export function handleBeforeAgentStart(
                 topic: stable,
                 goal: result.goal,
                 achievement: undefined,
+                ...agedState(current ?? existing),
             };
 
             if (sessionId) {

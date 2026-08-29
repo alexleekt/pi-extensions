@@ -191,6 +191,7 @@ function makeMockCtx(
 // ── Import the extension (uses the mocked pi-ai) ────────────────
 
 const { default: headingExtension } = await import("./index.js");
+const { goalContext } = await import("./handlers/agent-lifecycle.js");
 
 // ── Tests ───────────────────────────────────────────────────────
 
@@ -1029,6 +1030,26 @@ describe("headingExtension", () => {
                 w.lines?.join(" ").includes("✓ Updated goal"),
             ),
         ).toBe(true);
+    });
+
+    // ── goal context decay ───────────────────────────────────────
+
+    test("goalContext supplements the first follow-ups and decays", () => {
+        const state = {
+            topic: "T", goal: "G",
+            achievement: "Fixed the bug",
+            turnsSinceAchievement: 0,
+        };
+        expect(goalContext(state)).toContain("previous outcome");
+        expect(goalContext(state)).toContain("Fixed the bug");
+        expect(goalContext({ ...state, turnsSinceAchievement: 2 })).toContain(
+            "older outcome",
+        );
+        expect(
+            goalContext({ ...state, turnsSinceAchievement: 3 }),
+        ).toBeUndefined();
+        expect(goalContext(undefined)).toBeUndefined();
+        expect(goalContext({ topic: "T", goal: "G" })).toBeUndefined();
     });
 
     // ── /heading command ─────────────────────────────────────────

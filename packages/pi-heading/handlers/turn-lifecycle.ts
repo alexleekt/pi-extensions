@@ -156,6 +156,8 @@ export function handleTurnEnd(
                 topic: fresh?.topic ?? existing?.topic ?? "",
                 goal: fresh?.goal ?? existing?.goal ?? "",
                 achievement,
+                // Context restarts: the next goal supplements from this achievement.
+                turnsSinceAchievement: 0,
             };
 
             if (sessionId) {

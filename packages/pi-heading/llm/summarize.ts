@@ -30,10 +30,11 @@ export async function summarizeAchievement(
 export async function summarize(
     ctx: ExtensionContext,
     message: string,
+    context?: string,
 ): Promise<SummarizeResult> {
     const [topicResult, goalResult] = await Promise.all([
         runPrompt(ctx, "topic", message),
-        runPrompt(ctx, "goal", message),
+        runPrompt(ctx, "goal", message, undefined, context),
     ]);
 
     return {

@@ -43,4 +43,7 @@ Examples:
 - "also need to" → also need to
 - "How do I set up ci-cd for this Node.js project with GitHub Actions and also configure AWS deployment?" → Setting up CI-CD (complex messages: distill to core action only, ignore details)
 
+If a previous-outcome reference is provided, treat it as background only — the latest message defines the goal. Refer to it only when the message is vague (e.g. "continue", "also", "that looks good").
+{context}
+
 Message: {message}
