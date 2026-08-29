@@ -15,7 +15,9 @@ export function setHeadingMessage(
         return;
     }
 
-    ctx.ui.setWorkingMessage(trimmed);
+    // Achievement mode marks completion; the checkmark lives only in the
+    // working-message row, not in persisted state or the heading tool output.
+    ctx.ui.setWorkingMessage(mode === "achievement" ? `✓ ${trimmed}` : trimmed);
 }
 
 export function clearHeading(ctx: ExtensionContext): void {

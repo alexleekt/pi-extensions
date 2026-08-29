@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic model selection: rank Pi's scoped models subscription-first (OAuth models before API-key models), tie-broken by scoped-list order, then provider/id; cheapest API models by input + output cost.
 - Bounded fallback loop for summaries: top 3 ranked candidates tried in order on auth, provider, or empty-summary failures; hard errors are surfaced, all-empty results fall back to the existing non-sensitive heading.
 - Reasoning suppression for heading calls: native off where providers support it, `reasoning: "low"` for models that cannot disable thinking (GLM, GPT-5.x Codex), verified to produce zero reasoning tokens.
+- Achievement lines in the working row are prefixed with a checkmark; persisted state and `heading` tool output stay unprefixed.
 - Token-budget floor (512–1024, clamped to the model's `maxTokens`) so thinking models cannot starve the answer.
 - Fallback-loop test coverage: hard-failure, empty-result, all-empty, mixed-failure, auth-failure, and abort paths.
 
