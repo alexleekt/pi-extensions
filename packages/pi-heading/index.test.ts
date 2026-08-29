@@ -151,12 +151,14 @@ function makeMockCtx(
 
     const notifyCalls: any[] = [];
     const workingMessageCalls: (string | undefined)[] = [];
+    const widgetCalls: { key: string; lines?: string[] }[] = [];
 
     return {
         hasUI,
         signal,
         notifyCalls,
         workingMessageCalls,
+        widgetCalls,
         sessionManager: {
             getSessionId: () => "leaf-1",
             getLeafId: () => leafId,
@@ -174,6 +176,22 @@ function makeMockCtx(
             setWorkingMessage: (msg?: string) => {
                 workingMessageCalls.push(msg);
             },
+            setWidget: (key: string, lines?: string[] | Function) => {
+                widgetCalls.push({
+                    key,
+                    lines:
+                        typeof lines === "function"
+                            ? [
+                                  lines(
+                                      {},
+                                      {
+                                          fg: (_c: string, t: string) => t,
+                                      },
+                                  ).text,
+                              ]
+                            : lines,
+                });
+            },
             theme: {
                 fg: (_style: string, text: string) => text,
             },
@@ -186,6 +204,7 @@ function makeMockCtx(
 // ── Import the extension (uses the mocked pi-ai) ────────────────
 
 const { default: headingExtension } = await import("./index.js");
+const { goalContext } = await import("./handlers/agent-lifecycle.js");
 
 // ── Tests ───────────────────────────────────────────────────────
 
@@ -276,8 +295,8 @@ describe("headingExtension", () => {
             ],
         });
         await pi.handlers.session_start[0]({}, ctx);
-        expect(ctx.workingMessageCalls.length).toBeGreaterThan(0);
-        expect(ctx.workingMessageCalls[0]).toContain("Fixed it");
+        const lastWidget = [...ctx.widgetCalls].reverse().find((w) => w.lines);
+        expect(lastWidget?.lines?.join(" ")).toContain("✓ Fixed it");
         // Event bus preserves achievement mode across sessions
         expect(
             pi.eventEmissions.some(
@@ -345,7 +364,7 @@ describe("headingExtension", () => {
         const ctx = makeMockCtx();
         pi.handlers.agent_settled[0]({}, ctx);
         expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Fixed it")),
+            ctx.widgetCalls.some((w) => w.lines?.join(" ").includes("✓ Fixed it")),
         ).toBe(true);
         expect(
             pi.eventEmissions.some(
@@ -561,6 +580,35 @@ describe("headingExtension", () => {
         ).toBe(false);
     });
 
+    test("empty-goal fallback carries and ages prior outcomes", async () => {
+        mockCompleteSimple.mockImplementation(() =>
+            Promise.resolve({
+                role: "assistant",
+                content: [{ type: "text", text: '{"result": "   "}' }],
+                stopReason: "stop",
+                timestamp: Date.now(),
+            } as any),
+        );
+        setState("leaf-1", {
+            topic: "Docker",
+            goal: "Fix compose",
+            priorOutcome: "Fixed token refresh",
+            priorAge: 1,
+        });
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        pi.handlers.before_agent_start[0](
+            { prompt: "continue", systemPrompt: "base" },
+            ctx,
+        );
+        await new Promise((r) => setTimeout(r, 50));
+
+        expect(getState("leaf-1")).toMatchObject({
+            priorOutcome: "Fixed token refresh",
+            priorAge: 2,
+        });
+    });
+
     test("before_agent_start returns systemPrompt when existing goal exists", () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
@@ -625,6 +673,31 @@ describe("headingExtension", () => {
         );
         await new Promise((r) => setTimeout(r, 50));
         expect(pi.entries.length).toBeGreaterThan(0);
+    });
+
+    test("before_agent_start carries and ages sanitized prior outcomes", async () => {
+        setState("leaf-1", {
+            topic: "Docker",
+            goal: "Fix compose",
+            achievement: "Fixed it",
+            priorOutcome: "\x1b]0;title\x07Fixed it",
+            priorAge: 0,
+        });
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        pi.handlers.before_agent_start[0](
+            { prompt: "continue", systemPrompt: "base" },
+            ctx,
+        );
+        await new Promise((r) => setTimeout(r, 50));
+
+        expect(getState("leaf-1")).toMatchObject({
+            priorOutcome: "\x1b]0;title\x07Fixed it",
+            priorAge: 1,
+        });
+        expect(JSON.stringify(mockCompleteSimple.mock.calls)).not.toContain(
+            "\\u001b",
+        );
     });
 
     test("before_agent_start uses working mode when agent already started", async () => {
@@ -781,10 +854,17 @@ describe("headingExtension", () => {
         // Final turn: no tool results
         pi.handlers.turn_end[0]({ message: msg, toolResults: [] }, ctx);
         await new Promise((r) => setTimeout(r, 50));
-        // Achievement replaces the goal in the one-line working message.
+        // Achievement persists as a checkmarked widget above the editor.
         expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
+            ctx.widgetCalls.some((w) =>
+                w.lines?.join(" ").includes("✓ Docker setup"),
+            ),
         ).toBe(true);
+        expect(getState("leaf-1")).toMatchObject({
+            achievement: "Docker setup",
+            priorOutcome: "Docker setup",
+            priorAge: 0,
+        });
     });
 
     test("turn_end keeps working message for intermediate tool-call turns", () => {
@@ -805,11 +885,26 @@ describe("headingExtension", () => {
         expect(ctx.workingMessageCalls[0]).toBe("Fix compose");
     });
 
-    test("turn_end skips async summarize for intermediate tool-call turns", async () => {
+    test("turn_end distills intermediate tool turns into the working row", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         mockCompleteSimple.mockClear();
+        mockCompleteSimple.mockImplementation(() =>
+            Promise.resolve({
+                role: "assistant",
+                content: [{ type: "text", text: '{"result": "Searched the compose file"}' }],
+                api: "openai-completions",
+                provider: "openai",
+                model: "test-model",
+                usage: {
+                    input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+                    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                },
+                stopReason: "stop",
+                timestamp: Date.now(),
+            } as any),
+        );
         pi.handlers.turn_end[0](
             {
                 message: { content: "Let me search" },
@@ -818,8 +913,52 @@ describe("headingExtension", () => {
             ctx,
         );
         await new Promise((r) => setTimeout(r, 50));
-        // No API call should have been made for achievement summarize
-        expect(mockCompleteSimple.mock.calls.length).toBe(0);
+        // One summarize call for the in-progress line
+        expect(mockCompleteSimple.mock.calls.length).toBe(1);
+        // Rendered as working text (no checkmark), achievement widget untouched
+        expect(
+            ctx.workingMessageCalls.some((m) => m === "Searched the compose file"),
+        ).toBe(true);
+        expect(ctx.widgetCalls.every((w) => !w.lines)).toBe(true);
+    });
+
+    test("late intermediate result cannot replace the final achievement", async () => {
+        setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
+        headingExtension(pi as any);
+        const ctx = makeMockCtx();
+        let resolveIntermediate!: (value: any) => void;
+        mockCompleteSimple.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    resolveIntermediate = resolve;
+                }),
+        );
+
+        pi.handlers.turn_end[0](
+            {
+                message: { content: "Let me search" },
+                toolResults: [{ role: "tool", content: "result" }],
+            },
+            ctx,
+        );
+        pi.handlers.turn_end[0](
+            { message: { content: "Finished" }, toolResults: [] },
+            ctx,
+        );
+        await new Promise((r) => setTimeout(r, 20));
+
+        resolveIntermediate({
+            role: "assistant",
+            content: [
+                { type: "text", text: '{"result": "Late progress"}' },
+            ],
+            stopReason: "stop",
+            timestamp: Date.now(),
+        });
+        await new Promise((r) => setTimeout(r, 20));
+
+        expect(ctx.workingMessageCalls).not.toContain("Late progress");
+        expect(ctx.widgetCalls.at(-1)?.lines).toEqual(["✓ Docker setup"]);
     });
 
     test("turn_end does nothing when hasUI is false", () => {
@@ -897,7 +1036,7 @@ describe("headingExtension", () => {
         expect(ctx.notifyCalls).toHaveLength(0);
     });
 
-    test("turn_end keeps achievements in the working message only", async () => {
+    test("turn_end keeps achievements out of the working message", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
@@ -907,7 +1046,9 @@ describe("headingExtension", () => {
         );
         await new Promise((r) => setTimeout(r, 50));
         expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Docker setup")),
+            ctx.widgetCalls.some((w) =>
+                w.lines?.join(" ").includes("✓ Docker setup"),
+            ),
         ).toBe(true);
         expect(pi.sendMessageCalls).toHaveLength(0);
         expect(pi.messageRenderers.size).toBe(0);
@@ -996,8 +1137,33 @@ describe("headingExtension", () => {
         await new Promise((r) => setTimeout(r, 80));
         // The achievement should use the freshly updated goal
         expect(
-            ctx.workingMessageCalls.some((m) => m?.includes("Updated goal")),
+            ctx.widgetCalls.some((w) =>
+                w.lines?.join(" ").includes("✓ Updated goal"),
+            ),
         ).toBe(true);
+    });
+
+    // ── goal context decay ───────────────────────────────────────
+
+    test("goalContext supplements the first follow-ups and decays", () => {
+        const state = {
+            topic: "T", goal: "G",
+            achievement: "Fixed the bug",
+            priorOutcome: "Fixed the bug",
+            priorAge: 0,
+        };
+        expect(goalContext(state)).toBe(
+            "Reference previous outcome (the latest message wins): Fixed the bug",
+        );
+        expect(goalContext({ ...state, priorAge: 1 })).toContain(
+            "previous outcome",
+        );
+        expect(goalContext({ ...state, priorAge: 2 })).toBe(
+            "Reference older outcome (low weight): Fixed the bug",
+        );
+        expect(goalContext({ ...state, priorAge: 3 })).toBeUndefined();
+        expect(goalContext(undefined)).toBeUndefined();
+        expect(goalContext({ topic: "T", goal: "G" })).toBeUndefined();
     });
 
     // ── /heading command ─────────────────────────────────────────
@@ -1038,7 +1204,7 @@ describe("headingExtension", () => {
         ];
         const ctx = makeMockCtx({ models, selectResult: "  model-b (p2)" });
         await pi.commands["heading-model"].handler("", ctx);
-        // Verify by checking that a subsequent resolveModelId uses the override
+        // The selected provider/id is persisted as the model override.
         expect(ctx.notifyCalls.some((n) => n.msg.includes("model-b"))).toBe(
             true,
         );
@@ -1229,6 +1395,6 @@ describe("headingExtension", () => {
         await new Promise((r) => setTimeout(r, 50));
         const entries = readDebugLog(1);
         expect(entries.length).toBe(1);
-        expect(entries[0].error).toContain("skipped-achievement");
+        expect(entries[0].achievementResponse ?? entries[0].extractedText).toBeDefined();
     });
 });

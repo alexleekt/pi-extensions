@@ -79,6 +79,7 @@ export function handleTurnEnd(
     pi: ExtensionAPI,
     sharedState: SharedState,
 ): void {
+    const myDisplayGeneration = ++sharedState.displayGeneration;
     if (!ctx.hasUI) return;
 
     const sessionId = ctx.sessionManager.getSessionId();
@@ -89,16 +90,38 @@ export function handleTurnEnd(
     sharedState.stalenessTracker.onTurnEnd(existing?.goal);
 
     if (hasToolResults) {
-        if (assistantText.trim()) {
-            logDebug(
-                makeDebugEntryError(
-                    assistantText.slice(0, 200),
-                    existing,
-                    "skipped-achievement: intermediate tool turn",
-                    ctx.model?.id,
-                ),
-            );
-        }
+        if (!assistantText.trim()) return;
+
+        // Intermediate tool turn: distill the agent's latest activity into an
+        // in-progress line for the streaming row. Not persisted; the final
+        // turn still produces the checkmarked achievement.
+        const myGeneration = sharedState.turnGeneration;
+        void (async () => {
+            try {
+                const result = await summarizeAchievement(
+                    ctx,
+                    assistantText,
+                    existing?.goal,
+                );
+                const progress = result.text.trim();
+                if (!progress) return;
+                if (myGeneration !== sharedState.turnGeneration) return;
+                if (myDisplayGeneration !== sharedState.displayGeneration)
+                    return;
+                setHeadingMessage(ctx, progress, "working");
+                logDebug(
+                    makeDebugEntryAchievement(
+                        assistantText,
+                        result,
+                        existing,
+                        ctx.model?.id,
+                    ),
+                );
+            } catch {
+                // In-progress updates are cosmetic; the final achievement path
+                // reports failures. Never notify from an intermediate turn.
+            }
+        })();
         return;
     }
 
@@ -136,6 +159,9 @@ export function handleTurnEnd(
                 topic: fresh?.topic ?? existing?.topic ?? "",
                 goal: fresh?.goal ?? existing?.goal ?? "",
                 achievement,
+                // Context restarts: the next goal supplements from this achievement.
+                priorOutcome: achievement,
+                priorAge: 0,
             };
 
             if (sessionId) {
@@ -144,7 +170,9 @@ export function handleTurnEnd(
                 if (
                     prior?.topic !== state.topic ||
                     prior?.goal !== state.goal ||
-                    prior?.achievement !== state.achievement
+                    prior?.achievement !== state.achievement ||
+                    prior?.priorOutcome !== state.priorOutcome ||
+                    prior?.priorAge !== state.priorAge
                 ) {
                     persistState(pi, state);
                 }

@@ -5,7 +5,11 @@ import type {
     ExtensionAPI,
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { resolveModelId, setModelOverride } from "../llm/picker.js";
+import {
+    AUTO_MODEL_LABEL,
+    resolveModelRanked,
+    setModelOverride,
+} from "../llm/picker.js";
 import {
     clearDebugLog,
     DEBUG_LOG,
@@ -63,31 +67,72 @@ export async function handleHeadingModel(
         return;
     }
 
-    const current = resolveModelId(ctx);
+    // Source candidates from Pi's scoped models (--models + enabledModels);
+    // unscoped sessions offer the full registry. scopedModels exists on pi
+    // >=0.81 but not in the 0.80 peer types, so access it defensively.
+    const scoped =
+        (ctx as { scopedModels?: readonly { model: { provider: string; id: string } }[] })
+            .scopedModels ?? [];
+    const candidates = scoped.length
+        ? scoped
+              .flatMap(({ model }) =>
+                  available.find(
+                      (m) =>
+                          m.provider === model.provider &&
+                          m.id === model.id,
+                  ),
+              )
+              .filter((m): m is (typeof available)[number] => Boolean(m))
+        : available;
+    const dialogTitle = scoped.length
+        ? "Select heading model (from scoped models)"
+        : "Select heading model (full catalog — no scoped models configured)";
+    if (!candidates.length) {
+        ctx.ui.notify(
+            "[pi-heading] No scoped models available — add models to enabledModels or --models",
+            "error",
+        );
+        return;
+    }
+
+    const current = resolveModelRanked(ctx, candidates, {
+        isUsingOAuth: (model) => registry.isUsingOAuth?.(model) ?? false,
+    })[0];
+    const currentKey = current ? `${current.provider}/${current.id}` : undefined;
 
     const choices = [
-        "↺ Reset to session model",
-        ...available.map((m) => {
-            const marker = m.id === current ? "● " : "  ";
+        AUTO_MODEL_LABEL,
+        ...candidates.map((m) => {
+            const marker = `${m.provider}/${m.id}` === currentKey ? "● " : "  ";
             const provider = m.provider ? ` (${m.provider})` : "";
             return `${marker}${m.id}${provider}`;
         }),
     ];
 
-    const selectedLine = await ctx.ui.select("Select heading model", choices);
+    const selectedLine = await ctx.ui.select(dialogTitle, choices);
     if (!selectedLine) return;
 
-    if (selectedLine === "↺ Reset to session model") {
+    if (
+        selectedLine === AUTO_MODEL_LABEL ||
+        selectedLine === "↺ Reset to session model"
+    ) {
         setModelOverride(undefined);
         ctx.ui.notify(
-            `[pi-heading] Heading model reset — using session model (${ctx.model?.id ?? "none"})`,
+            "[pi-heading] Heading model reset; automatic model selection enabled",
             "info",
         );
         return;
     }
 
-    const selected = selectedLine.replace(/^\s*[●]?\s*/, "").split(" (")[0];
-    const model = available.find((m) => m.id === selected);
+    const selected = selectedLine.replace(/^\s*[●]?\s*/, "");
+    const [selectedId, selectedProvider] = selected
+        .split(" (")
+        .map((s) => s.replace(/\)$/, ""));
+    const model = candidates.find(
+        (m) =>
+            m.id === selectedId &&
+            (selectedProvider === undefined || m.provider === selectedProvider),
+    );
     if (!model) {
         ctx.ui.notify(`[pi-heading] Model ${selected} not found`, "error");
         return;
@@ -101,7 +146,7 @@ export async function handleHeadingModel(
         );
     }
 
-    setModelOverride(selected);
+    setModelOverride(`${model.provider}/${model.id}`);
     ctx.ui.notify(`[pi-heading] Heading model set to ${selected}`, "info");
 }
 

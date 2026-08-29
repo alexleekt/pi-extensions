@@ -57,6 +57,29 @@ describe("getBranchState", () => {
         ).toEqual({ topic: "New", goal: "New goal" });
     });
 
+    test("replays prior outcome context", () => {
+        clearState();
+        expect(
+            getBranchState(
+                makeCtx([
+                    {
+                        type: "custom",
+                        customType: "heading",
+                        data: {
+                            topic: "Auth",
+                            goal: "Refactor login",
+                            priorOutcome: "Fixed token refresh",
+                            priorAge: 2,
+                        },
+                    },
+                ]) as any,
+            ),
+        ).toMatchObject({
+            priorOutcome: "Fixed token refresh",
+            priorAge: 2,
+        });
+    });
+
     test("ignores invalid persisted entries", () => {
         clearState();
         expect(
@@ -120,6 +143,8 @@ describe("getState / setState", () => {
             topic: "Docker",
             goal: "Fix compose",
             achievement: "Done",
+            priorOutcome: "Done",
+            priorAge: 0,
         };
         setState("leaf-2", state);
         expect(getState("leaf-2")).toEqual(state);
