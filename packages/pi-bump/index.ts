@@ -15,37 +15,9 @@ const THRESHOLD_MS = 300;
  *  Invisible to the user, but gives the LLM a clear semantic nudge to keep going. */
 const CONTINUE_SIGNAL = "Continue";
 
-/** Randomized prompts to break loops with fresh phrasing.
- *  All signals are pure continuation — no expansion, no new direction.
- *
- *  Curation rules:
- *    - Must mean "keep doing exactly what you were doing"
- *    - Must NOT imply: expand scope, go deeper, add more, change direction,
- *      plan next steps, or execute/show results
- *    - Single-word, terse, and conversational variants included for freshness
- */
-export const NUDGE_MESSAGES = [
-    // Core — direct, unambiguous, one word
-    "Continue",
-    "Resume",
-    "Proceed",
-    "Next",
-    // Minimal — two words, tight
-    "Go on",
-    "Carry on",
-    "Onward",
-    "Press on",
-    // Conversational / encouraging
-    "Keep going",
-    "Keep the momentum",
-    "Push through",
-    // Energetic / rhythmic
-    "Don't stop",
-];
-
-function pickNudge(): string {
-    return NUDGE_MESSAGES[Math.floor(Math.random() * NUDGE_MESSAGES.length)];
-}
+/** Visible escalation message when loop detection fires.
+ *  Exported as an array for backwards compatibility. */
+export const NUDGE_MESSAGES = ["Keep going."];
 
 /** Recursively sort object keys for stable serialization. */
 function sortKeys(obj: unknown): unknown {
@@ -191,7 +163,7 @@ function sendContinue(
         trySend(
             pi,
             ctx,
-            () => pi.sendUserMessage(pickNudge()),
+            () => pi.sendUserMessage(NUDGE_MESSAGES[0]),
             "send visible continue",
         );
         return;
@@ -289,7 +261,7 @@ async function runContinueCommand(
  *   - context event replaces the invisible message with a minimal user signal ("Continue")
  *   - LLM sees the minimal signal and continues meaningfully instead of repeating
  *   - Loop detection (same tool calls or exact text duplicate) escalates the *next*
- *     continue to a visible randomized user message (e.g. "What's next?")
+ *     continue to a visible user message ("Keep going.")
  *   - Real user input resets escalation and fingerprint state
  */
 export default function bumpExtension(pi: ExtensionAPI) {

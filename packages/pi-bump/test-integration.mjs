@@ -117,7 +117,7 @@ function assertNudge(name, check) {
     check(
         name,
         sentUserMessages.length === 1 &&
-            NUDGE_MESSAGES.includes(sentUserMessages[0].content),
+            sentUserMessages[0].content === NUDGE_MESSAGES[0],
     );
 }
 
