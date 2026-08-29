@@ -67,21 +67,49 @@ export async function handleHeadingModel(
         return;
     }
 
-    const current = resolveModel(ctx, available, {
+    // Source candidates from Pi's scoped models (--models + enabledModels);
+    // unscoped sessions offer the full registry. scopedModels exists on pi
+    // >=0.81 but not in the 0.80 peer types, so access it defensively.
+    const scoped =
+        (ctx as { scopedModels?: readonly { model: { provider: string; id: string } }[] })
+            .scopedModels ?? [];
+    const candidates = scoped.length
+        ? scoped
+              .flatMap(({ model }) =>
+                  available.find(
+                      (m) =>
+                          m.provider === model.provider &&
+                          m.id === model.id,
+                  ),
+              )
+              .filter((m): m is (typeof available)[number] => Boolean(m))
+        : available;
+    const dialogTitle = scoped.length
+        ? "Select heading model (from scoped models)"
+        : "Select heading model (full catalog — no scoped models configured)";
+    if (!candidates.length) {
+        ctx.ui.notify(
+            "[pi-heading] No scoped models available — add models to enabledModels or --models",
+            "error",
+        );
+        return;
+    }
+
+    const current = resolveModel(ctx, candidates, {
         isUsingOAuth: (model) => registry.isUsingOAuth?.(model) ?? false,
     });
     const currentKey = current ? `${current.provider}/${current.id}` : undefined;
 
     const choices = [
         AUTO_MODEL_LABEL,
-        ...available.map((m) => {
+        ...candidates.map((m) => {
             const marker = `${m.provider}/${m.id}` === currentKey ? "● " : "  ";
             const provider = m.provider ? ` (${m.provider})` : "";
             return `${marker}${m.id}${provider}`;
         }),
     ];
 
-    const selectedLine = await ctx.ui.select("Select heading model", choices);
+    const selectedLine = await ctx.ui.select(dialogTitle, choices);
     if (!selectedLine) return;
 
     if (
@@ -96,8 +124,15 @@ export async function handleHeadingModel(
         return;
     }
 
-    const selected = selectedLine.replace(/^\s*[●]?\s*/, "").split(" (")[0];
-    const model = available.find((m) => m.id === selected);
+    const selected = selectedLine.replace(/^\s*[●]?\s*/, "");
+    const [selectedId, selectedProvider] = selected
+        .split(" (")
+        .map((s) => s.replace(/\)$/, ""));
+    const model = candidates.find(
+        (m) =>
+            m.id === selectedId &&
+            (selectedProvider === undefined || m.provider === selectedProvider),
+    );
     if (!model) {
         ctx.ui.notify(`[pi-heading] Model ${selected} not found`, "error");
         return;
