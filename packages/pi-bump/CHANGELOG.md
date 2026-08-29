@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-08-28
+
+### Changed
+
+- **Single visible escalation message**: Loop escalation now sends exactly `"Keep going."` instead of a randomized nudge from a 12-message pool (`Continue`, `Resume`, `Onward`, …). The randomness added no value and made behavior hard to reason about and document. `NUDGE_MESSAGES` is now `["Keep going."]` (export kept for backwards compatibility) and `pickNudge()` was removed — escalation sends `NUDGE_MESSAGES[0]` directly. The invisible LLM signal remains `"Continue"`.
+
 ## [0.3.2] - 2026-05-21
 
 ### Fixed
