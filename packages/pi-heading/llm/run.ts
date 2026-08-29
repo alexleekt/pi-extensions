@@ -11,7 +11,7 @@ import {
     extractTextFromMessage,
     tryParseJsonResult,
 } from "./parse.js";
-import { resolveModelId } from "./picker.js";
+import { resolveModelRanked } from "./picker.js";
 import {
     buildSystemPrompt,
     readPromptFile,
@@ -37,9 +37,9 @@ export function thinkingOffOpts(model: Model<Api>): Record<string, unknown> {
     }
 }
 
-function maxTokensForSummary(maxWords: number): number {
-    // Safety margin: allow ~2 tokens per word + 8 overhead for JSON structure
-    return Math.min(128, maxWords * 2 + 8);
+function maxTokensForSummary(maxWords: number, model: Model<Api>): number {
+    const budget = Math.min(1024, Math.max(512, maxWords * 2 + 8));
+    return model.maxTokens ? Math.min(model.maxTokens, budget) : budget;
 }
 
 // `response_format: { type: "json_object" }` is an OpenAI *Chat-Completions*
@@ -51,16 +51,23 @@ export function supportsResponseFormat(model: Model<Api>): boolean {
 }
 
 // The OpenAI Responses API rejects `temperature` outright (HTTP 400). Every
-// other provider we target accepts it.
+// other provider we target accepts it. Note: openai-codex-responses is a
+// distinct API string and equally rejects it.
 export function supportsTemperature(model: Model<Api>): boolean {
-    return model.api !== "openai-responses";
+    return (
+        model.api !== "openai-responses" &&
+        model.api !== "openai-codex-responses"
+    );
 }
+
+class EmptySummaryError extends Error {}
 
 export async function runPrompt(
     ctx: ExtensionContext,
     fileName: string,
     message: string,
     goal?: string,
+    context?: string,
 ): Promise<RunPromptResult> {
     const promptFile = readPromptFile(fileName);
     let instructions = promptFile.instructions;
@@ -69,6 +76,8 @@ export async function runPrompt(
         instructions = instructions.replace(/\{goal\}/g, () => goal);
         userText = userText.replace(/\{goal\}/g, () => goal);
     }
+    instructions = instructions.replace(/\{context\}/g, () => context ?? "");
+    userText = userText.replace(/\{context\}/g, () => context ?? "");
     instructions = instructions.replace(
         /\{max_words\}/g,
         String(promptFile.maxWords),
@@ -86,65 +95,103 @@ export async function runPrompt(
     );
     const fullPrompt = `${systemPrompt}\n\nMessage: ${userText}`;
 
-    const modelId = resolveModelId(ctx);
-    if (!modelId)
+    const registry = ctx.modelRegistry;
+    const models = resolveModelRanked(ctx, registry.getAvailable(), {
+        isUsingOAuth: (model) => registry.isUsingOAuth?.(model) ?? false,
+    });
+    if (!models.length)
         throw new Error("No model available for heading summarization");
 
-    const registry = ctx.modelRegistry;
-    const model = registry.getAvailable().find((m) => m.id === modelId);
-    if (!model) throw new Error(`Model ${modelId} not found in registry`);
+    let lastHardError: unknown;
+    let hadEmptyResponse = false;
+    for (const model of models.slice(0, 3)) {
+        try {
+            const auth = await registry.getApiKeyAndHeaders(model);
+            if (!auth.ok || !auth.apiKey)
+                throw new Error(`No API key available for model ${model.id}`);
 
-    const auth = await registry.getApiKeyAndHeaders(model);
-    if (!auth.ok || !auth.apiKey)
-        throw new Error(`No API key available for model ${modelId}`);
-
-    const result = await completeSimple(
-        model,
-        {
-            systemPrompt,
-            messages: [
+            const result = await completeSimple(
+                model,
                 {
-                    role: "user",
-                    content: [{ type: "text", text: userText }],
-                    timestamp: Date.now(),
+                    systemPrompt,
+                    messages: [
+                        {
+                            role: "user",
+                            content: [{ type: "text", text: userText }],
+                            timestamp: Date.now(),
+                        },
+                    ],
                 },
-            ],
-        },
-        {
-            apiKey: auth.apiKey,
-            headers: auth.headers || {},
-            signal: ctx.signal,
-            maxTokens: maxTokensForSummary(promptFile.maxWords),
-            ...(supportsTemperature(model) ? { temperature: 0 } : {}),
-            ...thinkingOffOpts(model),
-            onPayload: (payload: unknown) => {
-                const p = payload as Record<string, unknown>;
-                // Only OpenAI chat-completions accepts response_format; other
-                // providers 400 on it. Extraction still works everywhere via the
-                // strict-JSON system prompt + the parse.ts fenced/raw fallbacks.
-                if (!supportsResponseFormat(model)) return p;
-                return { ...p, response_format: { type: "json_object" } };
-            },
-        },
-    );
+                {
+                    apiKey: auth.apiKey,
+                    headers: auth.headers || {},
+                    signal: ctx.signal,
+                    maxTokens: maxTokensForSummary(promptFile.maxWords, model),
+                    ...(supportsTemperature(model) ? { temperature: 0 } : {}),
+                    ...thinkingOffOpts(model),
+                    ...(model.reasoning &&
+                    (model as { thinkingLevelMap?: { off?: unknown } })
+                        .thinkingLevelMap?.off === null
+                        ? { reasoning: "low" as const }
+                        : {}),
+                    onPayload: (payload: unknown) => {
+                        const p = payload as Record<string, unknown>;
+                        if (!supportsResponseFormat(model)) return p;
+                        return {
+                            ...p,
+                            response_format: { type: "json_object" },
+                        };
+                    },
+                },
+            );
 
-    const extracted = extractTextFromMessage(result);
-    const cleaned = cleanLLMOutput(extracted);
-    // Some models wrap JSON in markdown fences even with response_format: json_object.
-    // extractTextFromMessage parses JSON on the raw text; if that failed because of
-    // fences, try again after cleanLLMOutput has stripped them.
-    // If still failing, use regex extraction as last resort before falling back to raw text.
-    let finalText =
-        tryParseJsonResult(cleaned) ??
-        extractResultFromJson(cleaned) ??
-        cleaned;
-    // Final safety net: strip any remaining wrapping quotes that survived prefix removal
-    // or regex extraction (e.g. malformed JSON where the captured value still starts with ").
-    finalText = finalText.replace(/^["']+|["']+$/g, "").trim();
-    return {
-        text: truncateToWords(finalText, promptFile.maxWords),
-        fullPrompt,
-        systemPrompt,
-        debug: { extractedText: finalText, finalMessageText: extracted },
-    };
+            if (result.stopReason === "error")
+                throw new Error(
+                    result.errorMessage || `Model ${model.id} failed`,
+                );
+            if (result.stopReason === "aborted")
+                throw new DOMException(
+                    "Heading summarization aborted",
+                    "AbortError",
+                );
+
+            const extracted = extractTextFromMessage(result);
+            const cleaned = cleanLLMOutput(extracted);
+            let finalText =
+                tryParseJsonResult(cleaned) ??
+                extractResultFromJson(cleaned) ??
+                cleaned;
+            finalText = finalText.replace(/^["']+|["']+$/g, "").trim();
+            if (!finalText) {
+                // Empty text (e.g. thinking consumed maxTokens) counts as a
+                // failed candidate so the loop falls through to the next model.
+                throw new EmptySummaryError(
+                    `Empty summary from model ${model.id}`,
+                );
+            }
+            return {
+                text: truncateToWords(finalText, promptFile.maxWords),
+                fullPrompt,
+                systemPrompt,
+                debug: {
+                    extractedText: finalText,
+                    finalMessageText: extracted,
+                },
+            };
+        } catch (error) {
+            if (ctx.signal?.aborted || (error as Error)?.name === "AbortError")
+                throw error;
+            if (error instanceof EmptySummaryError) hadEmptyResponse = true;
+            else lastHardError = error;
+        }
+    }
+    if (lastHardError) throw lastHardError;
+    if (hadEmptyResponse)
+        return {
+            text: "",
+            fullPrompt,
+            systemPrompt,
+            debug: { extractedText: "", finalMessageText: "" },
+        };
+    throw new Error("No model available for heading summarization");
 }

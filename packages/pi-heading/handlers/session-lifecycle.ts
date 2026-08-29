@@ -16,6 +16,7 @@ import { clearHeading, setHeadingMessage } from "../ui/indicator.js";
 
 export interface SharedState {
     turnGeneration: number;
+    displayGeneration: number;
     agentStartedForCurrentTurn: boolean;
     agentSettledGeneration: number;
     currentPlaceholder: string | undefined;
@@ -31,6 +32,7 @@ export interface SharedState {
 
 function resetRuntimeState(sharedState: SharedState): void {
     sharedState.turnGeneration++;
+    sharedState.displayGeneration++;
     sharedState.agentStartedForCurrentTurn = false;
     sharedState.agentSettledGeneration++;
     sharedState.currentPlaceholder = undefined;

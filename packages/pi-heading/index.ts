@@ -31,6 +31,7 @@ export default function (pi: ExtensionAPI) {
     // ── Shared mutable state ─────────────────────────────────────────
     const sharedState: SharedState = {
         turnGeneration: 0,
+        displayGeneration: 0,
         agentStartedForCurrentTurn: false,
         agentSettledGeneration: 0,
         currentPlaceholder: undefined,

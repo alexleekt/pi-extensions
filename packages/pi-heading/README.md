@@ -31,7 +31,7 @@ The extension uses Pi's native working-message row. There are no borders, custom
 | **Branch-aware state** | Restores the correct heading after session resume and `/tree` navigation |
 | **Native lifecycle integration** | Finalizes on Pi's `agent_settled` event, after retries, compaction, and queued follow-ups |
 | **Cancellation-aware calls** | Passes Pi's active `AbortSignal` to heading model requests |
-| **Custom prompts and model** | Supports editable prompts and a separate low-cost summarization model |
+| **Custom prompts and model** | Supports editable prompts and automatic subscription-first model selection with manual override |
 | **Extension API** | Exposes current state through the `heading` tool and `heading:state` event |
 
 ## Requirements
@@ -67,7 +67,32 @@ Session heading: Migrating from Docker to Kubernetes
 
 ### `/heading-model`
 
-Choose a model for topic, goal, and achievement summaries. Reset the override to use the active session model.
+By default, pi-heading chooses from Pi's scoped models, preferring subscription-authenticated models before the cheapest API-key model. Use `/heading-model` to choose a manual override, or select **Automatic (subscription first)** to return to automatic selection.
+
+#### How a model is chosen
+
+Every heading summary runs this deterministic ranking (no caching; re-evaluated per call so auth and scoping changes apply immediately):
+
+1. **Manual override** — a model picked via `/heading-model`, if still available.
+2. **Pi's scoped models** — the resolved `--models` + `enabledModels` list (`ctx.scopedModels`). Models from an enabled provider that are not listed are never used.
+3. Within that list: **subscription-authenticated (OAuth) models first** — marginal cost is already paid — tie-broken by their order in the scoped list, then provider/id.
+4. **API-key models after**, by cheapest input + output price, same tie-breakers.
+5. Fallback to the active session model if nothing matches.
+
+For example, with `enabledModels: ["openrouter/z-ai/glm-5.3-flash", "openai-codex/gpt-5.6-luna"]` and both providers authenticated:
+
+| Rank | Model | Why |
+|------|-------|-----|
+| 1 | `openai-codex/gpt-5.6-luna` | subscription auth (OAuth) — no marginal cost |
+| 2 | `openrouter/z-ai/glm-5.3-flash` | API key — $0.325/M in+out |
+
+#### Bounded fallback
+
+Summaries run on cheap, non-critical calls, so the fallback loop is deliberately simple: the top 3 ranked candidates are tried in order; a candidate that fails auth, returns a provider error, or yields an empty summary is skipped; `AbortSignal` cancellation stops everything immediately. No health tracking or persistent demotion — the ranking is re-evaluated fresh on every call.
+
+#### Reasoning suppression
+
+Heading prompts are 12-word summaries; thinking models waste their token budget reasoning about them. The extension disables thinking natively where providers support it (Anthropic, Google), and pins `reasoning: "low"` for models that cannot disable thinking (e.g. GLM, GPT-5.x Codex) — verified to yield zero reasoning tokens. A 512–1024 token budget floor plus empty-result fallback guards any provider where thinking cannot be suppressed.
 
 ### `/heading-debug`
 

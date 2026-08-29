@@ -2,6 +2,17 @@
 
 All notable changes to `@alexleekt/pi-ask-user-glimpse` are documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- The package now pins `glimpseui` to exactly `0.8.1`, matching the local patch applied during installation.
+- The `@earendil-works/pi-tui` development dependency now follows `^0.84.4`.
+
+### Fixed
+
+- The end-to-end dialog test now waits for mount-time autofocus before focusing the freeform option, preventing a requestAnimationFrame focus race.
+
 ## [0.8.0] — 2026-08-28
 
 ### Added

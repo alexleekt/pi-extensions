@@ -14,4 +14,6 @@ export interface State {
     topic: string;
     goal: string;
     achievement?: string;
+    priorOutcome?: string;
+    priorAge?: number;
 }

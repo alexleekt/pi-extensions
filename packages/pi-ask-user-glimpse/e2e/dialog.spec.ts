@@ -107,8 +107,12 @@ test.describe("single-select dialog", () => {
     });
 
     test("Enter on freeform only selects, does not submit", async ({ page }) => {
+        // Wait for the dialog's mount-time autofocus (rAF) to settle on the
+        // first option, otherwise it steals focus back after we focus freeform.
+        await expect(page.locator("[role='option']").first()).toBeFocused();
         const freeformOption = page.locator("[role='option']").filter({ hasText: "My answer isn't listed above" });
         await freeformOption.focus();
+        await expect(freeformOption).toBeFocused();
         await page.keyboard.press("Enter");
 
         await expect(freeformOption).toHaveAttribute("aria-selected", "true");

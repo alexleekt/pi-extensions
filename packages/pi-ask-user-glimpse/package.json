@@ -120,9 +120,9 @@
     "dependencies": {
         "@alexleekt/pi-shared": "^0.1.0",
         "@catppuccin/palette": "^1.8.0",
-        "@earendil-works/pi-tui": "^0.80.6",
+        "@earendil-works/pi-tui": "^0.84.4",
         "dompurify": "^3.4.7",
-        "glimpseui": "^0.8.1",
+        "glimpseui": "0.8.1",
         "patch-package": "^8.0.1"
     },
     "devDependencies": {
