@@ -14,15 +14,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic model selection: rank Pi's scoped models subscription-first (OAuth models before API-key models), tie-broken by scoped-list order, then provider/id; cheapest API models by input + output cost.
 - Bounded fallback loop for summaries: top 3 ranked candidates tried in order on auth, provider, or empty-summary failures; hard errors are surfaced, all-empty results fall back to the existing non-sensitive heading.
 - Reasoning suppression for heading calls: native off where providers support it, `reasoning: "low"` for models that cannot disable thinking (GLM, GPT-5.x Codex), verified to produce zero reasoning tokens.
-- Achievement lines in the working row are prefixed with a checkmark; persisted state and `heading` tool output stay unprefixed.
+- Intermediate tool turns distill the agent's latest activity into the streaming row, so the header tracks follow-up work instead of freezing on the initial goal.
+- Goal extraction receives the previous achievement as low-weight context with turn-based decay, so vague follow-ups ("continue", "also") anchor to what was just completed; the latest message always wins.
 - Token-budget floor (512–1024, clamped to the model's `maxTokens`) so thinking models cannot starve the answer.
 - Fallback-loop test coverage: hard-failure, empty-result, all-empty, mixed-failure, auth-failure, and abort paths.
+
+### Changed
 
 ### Changed
 
 - Raised the minimum `@earendil-works/pi-coding-agent` version to 0.81.0 for scoped model selection.
 - `/heading-model` reset option renamed to **Automatic (subscription first)**; selection now prefers Pi's `ctx.scopedModels` over hand-read settings.
 - Model overrides are stored and matched as `provider/id` to disambiguate duplicate ids across providers.
+- Achievements persist as a checkmarked widget above the editor; the working-message row only renders while streaming, so settle-time achievements previously vanished. Goal/spinner stay in the row; new work clears the widget.
+- Prior LLM output is sanitized (C0/ANSI/OSC stripped, 200-character cap) before prompt interpolation and UI rendering.
 
 ### Fixed
 
@@ -30,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Provider errors returned as `stopReason: "error"` assistant messages are now treated as hard failures instead of empty summaries, surfacing outages instead of silently dropping headings.
 - `openai-codex-responses` no longer receives `temperature: 0` (HTTP 400) and is grouped with `openai-responses` for temperature support.
 - Empty summaries from thinking models no longer masquerade as successes; they fall through to the next candidate.
+- A slow intermediate-turn summary can no longer overwrite the final achievement widget (per-turn display generation).
+- Goal-context decay state (`priorOutcome`/`priorAge`) round-trips through persisted state and branch replay.
 
 ## [0.2.0] - 2026-07-15
 
