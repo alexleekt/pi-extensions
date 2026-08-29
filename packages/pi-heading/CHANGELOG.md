@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-29
+
+### Added
+
+- Automatic model selection: rank Pi's scoped models subscription-first (OAuth models before API-key models), tie-broken by scoped-list order, then provider/id; cheapest API models by input + output cost.
+- Bounded fallback loop for summaries: top 3 ranked candidates tried in order on auth, provider, or empty-summary failures; hard errors are surfaced, all-empty results fall back to the existing non-sensitive heading.
+- Reasoning suppression for heading calls: native off where providers support it, `reasoning: "low"` for models that cannot disable thinking (GLM, GPT-5.x Codex), verified to produce zero reasoning tokens.
+- Token-budget floor (512–1024, clamped to the model's `maxTokens`) so thinking models cannot starve the answer.
+- Fallback-loop test coverage: hard-failure, empty-result, all-empty, mixed-failure, auth-failure, and abort paths.
+
+### Changed
+
+- `/heading-model` reset option renamed to **Automatic (subscription first)**; selection now prefers Pi's `ctx.scopedModels` over hand-read settings.
+- Model overrides are stored and matched as `provider/id` to disambiguate duplicate ids across providers.
+
+### Fixed
+
+- Provider errors returned as `stopReason: "error"` assistant messages are now treated as hard failures instead of empty summaries, surfacing outages instead of silently dropping headings.
+- `openai-codex-responses` no longer receives `temperature: 0` (HTTP 400) and is grouped with `openai-responses` for temperature support.
+- Empty summaries from thinking models no longer masquerade as successes; they fall through to the next candidate.
+
 ## [0.2.0] - 2026-07-15
 
 ### Added

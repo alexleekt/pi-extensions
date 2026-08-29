@@ -10,8 +10,8 @@
 
 ### Cheaper model selector
 
-- [ ] Offer an optional fast/cheap filter in `/heading-model`
-- [ ] Keep the full model list available
+- [x] Choose the cheapest authenticated model from Pi's enabled model list by default
+- [x] Keep the full model list available for manual overrides
 - [ ] Remember the last working override
 
 ## Medium-term

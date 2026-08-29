@@ -5,7 +5,11 @@ import type {
     ExtensionAPI,
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { resolveModelId, setModelOverride } from "../llm/picker.js";
+import {
+    AUTO_MODEL_LABEL,
+    resolveModel,
+    setModelOverride,
+} from "../llm/picker.js";
 import {
     clearDebugLog,
     DEBUG_LOG,
@@ -63,12 +67,15 @@ export async function handleHeadingModel(
         return;
     }
 
-    const current = resolveModelId(ctx);
+    const current = resolveModel(ctx, available, {
+        isUsingOAuth: (model) => registry.isUsingOAuth?.(model) ?? false,
+    });
+    const currentKey = current ? `${current.provider}/${current.id}` : undefined;
 
     const choices = [
-        "↺ Reset to session model",
+        AUTO_MODEL_LABEL,
         ...available.map((m) => {
-            const marker = m.id === current ? "● " : "  ";
+            const marker = `${m.provider}/${m.id}` === currentKey ? "● " : "  ";
             const provider = m.provider ? ` (${m.provider})` : "";
             return `${marker}${m.id}${provider}`;
         }),
@@ -77,10 +84,13 @@ export async function handleHeadingModel(
     const selectedLine = await ctx.ui.select("Select heading model", choices);
     if (!selectedLine) return;
 
-    if (selectedLine === "↺ Reset to session model") {
+    if (
+        selectedLine === AUTO_MODEL_LABEL ||
+        selectedLine === "↺ Reset to session model"
+    ) {
         setModelOverride(undefined);
         ctx.ui.notify(
-            `[pi-heading] Heading model reset — using session model (${ctx.model?.id ?? "none"})`,
+            "[pi-heading] Heading model reset; automatic model selection enabled",
             "info",
         );
         return;
@@ -101,7 +111,7 @@ export async function handleHeadingModel(
         );
     }
 
-    setModelOverride(selected);
+    setModelOverride(`${model.provider}/${model.id}`);
     ctx.ui.notify(`[pi-heading] Heading model set to ${selected}`, "info");
 }
 
