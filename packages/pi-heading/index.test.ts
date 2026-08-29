@@ -176,8 +176,21 @@ function makeMockCtx(
             setWorkingMessage: (msg?: string) => {
                 workingMessageCalls.push(msg);
             },
-            setWidget: (key: string, lines?: string[]) => {
-                widgetCalls.push({ key, lines });
+            setWidget: (key: string, lines?: string[] | Function) => {
+                widgetCalls.push({
+                    key,
+                    lines:
+                        typeof lines === "function"
+                            ? [
+                                  lines(
+                                      {},
+                                      {
+                                          fg: (_c: string, t: string) => t,
+                                      },
+                                  ).text,
+                              ]
+                            : lines,
+                });
             },
             theme: {
                 fg: (_style: string, text: string) => text,

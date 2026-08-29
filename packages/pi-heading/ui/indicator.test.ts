@@ -36,7 +36,13 @@ describe("setHeadingMessage", () => {
         const ctx = createMockCtx();
         setHeadingMessage(ctx, "Bug is fixed", "achievement");
         const last = ctx._lastWidget();
-        expect(last?.lines).toEqual(["✓ Bug is fixed"]);
+        expect(typeof last?.lines).toBe("function");
+        // The factory resolves through the theme: success ✓ + muted text.
+        const rendered = last.lines({}, {
+            fg: (color: string, t: string) => `[${color}]${t}`,
+        }).text;
+        expect(rendered).toContain("[success]✓ ");
+        expect(rendered).toContain("[muted]Bug is fixed");
         expect(ctx._workingMessages).toEqual([""]);
     });
 

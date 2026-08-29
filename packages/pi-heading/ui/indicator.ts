@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Alex Lee
 
+import { Text } from "@earendil-works/pi-tui";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { sanitizeText } from "../llm/parse.js";
 import type { WidgetMode } from "../types.js";
+import { sanitizeText } from "../llm/parse.js";
 
 const WIDGET_KEY = "pi-heading";
 
@@ -23,7 +24,19 @@ export function setHeadingMessage(
         // settle-time achievement would vanish instantly. Achievements persist
         // as a widget above the editor instead; the ✓ lives only in the UI,
         // not in persisted state or heading tool output.
-        ctx.ui.setWidget(WIDGET_KEY, [`✓ ${trimmed}`]);
+        ctx.ui.setWidget(WIDGET_KEY, (tui, theme) => {
+            try {
+                // Green ✓ + muted text (designer spec): the glyph carries
+                // "done" for colorblind users, muted keeps the line secondary
+                // to the prompt and error output.
+                return new Text(
+                    `${theme.fg("success", "✓ ")}${theme.fg("muted", trimmed)}`,
+                );
+            } catch {
+                // Theme token unavailable: green + faint SGR fallback.
+                return new Text(`\x1b[32m✓\x1b[0m \x1b[2m${trimmed}\x1b[0m`);
+            }
+        });
         ctx.ui.setWorkingMessage("");
         return;
     }
