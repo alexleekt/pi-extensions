@@ -89,16 +89,36 @@ export function handleTurnEnd(
     sharedState.stalenessTracker.onTurnEnd(existing?.goal);
 
     if (hasToolResults) {
-        if (assistantText.trim()) {
-            logDebug(
-                makeDebugEntryError(
-                    assistantText.slice(0, 200),
-                    existing,
-                    "skipped-achievement: intermediate tool turn",
-                    ctx.model?.id,
-                ),
-            );
-        }
+        if (!assistantText.trim()) return;
+
+        // Intermediate tool turn: distill the agent's latest activity into an
+        // in-progress line for the streaming row. Not persisted; the final
+        // turn still produces the checkmarked achievement.
+        const myGeneration = sharedState.turnGeneration;
+        void (async () => {
+            try {
+                const result = await summarizeAchievement(
+                    ctx,
+                    assistantText,
+                    existing?.goal,
+                );
+                const progress = result.text.trim();
+                if (!progress) return;
+                if (myGeneration !== sharedState.turnGeneration) return;
+                setHeadingMessage(ctx, progress, "working");
+                logDebug(
+                    makeDebugEntryAchievement(
+                        assistantText,
+                        result,
+                        existing,
+                        ctx.model?.id,
+                    ),
+                );
+            } catch {
+                // In-progress updates are cosmetic; the final achievement path
+                // reports failures. Never notify from an intermediate turn.
+            }
+        })();
         return;
     }
 

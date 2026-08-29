@@ -812,11 +812,26 @@ describe("headingExtension", () => {
         expect(ctx.workingMessageCalls[0]).toBe("Fix compose");
     });
 
-    test("turn_end skips async summarize for intermediate tool-call turns", async () => {
+    test("turn_end distills intermediate tool turns into the working row", async () => {
         setState("leaf-1", { topic: "Docker", goal: "Fix compose" });
         headingExtension(pi as any);
         const ctx = makeMockCtx();
         mockCompleteSimple.mockClear();
+        mockCompleteSimple.mockImplementation(() =>
+            Promise.resolve({
+                role: "assistant",
+                content: [{ type: "text", text: '{"result": "Searched the compose file"}' }],
+                api: "openai-completions",
+                provider: "openai",
+                model: "test-model",
+                usage: {
+                    input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+                    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                },
+                stopReason: "stop",
+                timestamp: Date.now(),
+            } as any),
+        );
         pi.handlers.turn_end[0](
             {
                 message: { content: "Let me search" },
@@ -825,8 +840,13 @@ describe("headingExtension", () => {
             ctx,
         );
         await new Promise((r) => setTimeout(r, 50));
-        // No API call should have been made for achievement summarize
-        expect(mockCompleteSimple.mock.calls.length).toBe(0);
+        // One summarize call for the in-progress line
+        expect(mockCompleteSimple.mock.calls.length).toBe(1);
+        // Rendered as working text (no checkmark), achievement widget untouched
+        expect(
+            ctx.workingMessageCalls.some((m) => m === "Searched the compose file"),
+        ).toBe(true);
+        expect(ctx.widgetCalls.every((w) => !w.lines)).toBe(true);
     });
 
     test("turn_end does nothing when hasUI is false", () => {
@@ -1240,6 +1260,6 @@ describe("headingExtension", () => {
         await new Promise((r) => setTimeout(r, 50));
         const entries = readDebugLog(1);
         expect(entries.length).toBe(1);
-        expect(entries[0].error).toContain("skipped-achievement");
+        expect(entries[0].achievementResponse ?? entries[0].extractedText).toBeDefined();
     });
 });
