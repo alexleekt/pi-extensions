@@ -12,15 +12,23 @@ The packed-import smoke test verifies that the npm artifact contains every trans
 
 ## Local extension setup
 
-```text
-~/.pi/agent/extensions/pi-heading -> ~/git/pi-extensions/packages/pi-heading
-~/.pi/agent/node_modules -> ~/git/pi-extensions/node_modules
-```
-
-After retargeting a symlink, clear Pi's jiti cache if `/reload` still uses stale code:
+Pi discovers symlinked extension directories directly — no `pi install` or settings registration. Point the extension directory at this package:
 
 ```bash
-rm -rf /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/.cache/jiti/
+ln -s ~/Projects/pi-extensions/packages/pi-heading ~/.pi/agent/extensions/pi-heading
+```
+
+Notes from the current working setup (2026-08):
+
+- If `~/.pi/agent/extensions/pi-heading` already exists as a real directory holding only `config.json`, copy that `config.json` into the package directory first (`config.json` is gitignored there), then replace the directory with the symlink. The extension reads its config from `getAgentDir()/extensions/pi-heading/config.json`, which resolves through the symlink to the package dir.
+- Dependencies resolve from the monorepo root `node_modules` (npm workspaces hoist peers like `@earendil-works/pi-coding-agent` there). Do not expect `packages/pi-heading/node_modules`; a package-level `npm install` is unnecessary.
+- Because the symlink points at the source tree, every commit here is live — no reinstall step. New code loads on the next `pi` start; `/reload` in a running session.
+
+After retargeting the symlink, clear Pi's jiti cache if `/reload` still uses stale code:
+
+```bash
+# mise-installed pi on Linux:
+rm -rf ~/.local/share/mise/installs/node/$(node -v | sed 's/v//')/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/.cache/jiti/
 ```
 
 ## Manual checks
