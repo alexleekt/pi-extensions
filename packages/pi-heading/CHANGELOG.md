@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `/heading-model` lists Pi's scoped models instead of the full registry, labeling the dialog source and matching selections by `provider/id`.
 - Provider errors returned as `stopReason: "error"` assistant messages are now treated as hard failures instead of empty summaries, surfacing outages instead of silently dropping headings.
 - `openai-codex-responses` no longer receives `temperature: 0` (HTTP 400) and is grouped with `openai-responses` for temperature support.
 - Empty summaries from thinking models no longer masquerade as successes; they fall through to the next candidate.
