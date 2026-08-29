@@ -65,7 +65,7 @@ pi-bump uses a two-tier continue strategy:
 
 1. **Invisible tier** (default): Sends `customType` message with `display: false`. The `context` handler replaces the marker with `"Continue"` for the LLM. This is silent and clean.
 
-2. **Visible tier** (escalation): When loop detection fires (same tool calls or exact text duplicate across the last two assistant responses), the *next* continue sends a real visible user message with a randomized nudge from `NUDGE_MESSAGES`. This gives the LLM genuine user input to break the pattern.
+2. **Visible tier** (escalation): When loop detection fires (same tool calls or exact text duplicate across the last two assistant responses), the *next* continue sends a real visible user message — exactly `"Keep going."` (`NUDGE_MESSAGES` is kept as an export for backwards compatibility). This gives the LLM genuine user input to break the pattern.
 
 **State per session:**
 - `lastFingerprints: [prev, last]` — tracks the last two assistant response fingerprints
