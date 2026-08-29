@@ -78,7 +78,7 @@ The workspace `package-lock.json` resolves `@earendil-works/pi-coding-agent` bec
 4. Run `npm test` if the package has tests
 4. **If you changed webview code** (`webview/src/`), run `npm run build` in the affected package to regenerate `dist/index.html`
 5. **Validate agent configs** — Run `agnix validate .` after modifying any `AGENT.md`, `AGENTS.md`, `claude.md`, or `SKILL.md` file. This validates skills, MCP servers, hooks, memory, and plugins across Claude Code, Cursor, Codex, and Kiro targets.
-6. Review `PUBLISH.md` before any release-related changes
+6. Review `PUBLISH.md` before any release-related changes. Releases use a branch and pull request; never push directly to protected `main`.
 
 ## Build Artifacts (Runtime-Critical)
 
@@ -140,4 +140,5 @@ Use the quest log as the journal outline. Use vent entries for the "prevention" 
 - No per-package `package-lock.json` — root lockfile only
 - No per-package `.github/workflows/` — CI lives at root
 - Release tags: always scoped (`@alexleekt/pi-bump@0.3.0`), never bare `v0.3.0`
+- Release commits must land through a pull request before pushing the package tag; wait for all required CI checks before merging.
 - Biome checks extension code only — webviews have their own build toolchains and are excluded
