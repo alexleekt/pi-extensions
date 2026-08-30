@@ -24,7 +24,10 @@ Agentic sessions working in this repo use one shared documentation steward
   changes for affected documentation; improve clarity, deduplicate, and keep
   records consistent; run `agnix validate .`; commit and push documentation
   only when the repository contribution policy permits it. Scope discovery and
-  edit boundaries are defined in `.pi/agents/doc-steward.md`.
+  edit boundaries are defined in the steward persona,
+  `$HOME/.pi/agent/agents/doc-steward.md`, provided by the machine-global
+  agents dir (`$HOME/.pi/agent/agents`, a symlink to `alexleekt/subagents`, which
+  tracks its `main` branch live).
 - Handoff: the main agent does not directly edit, validate, commit, or push
   documentation while the steward is active. It sends verified findings,
   changed-file context, and documentation requests to the steward through
@@ -45,6 +48,12 @@ Agentic sessions working in this repo use one shared documentation steward
 
 ### Doc-steward singleton guard
 
+The canonical, maintained version of this guard lives in the global agents
+dir at `$HOME/.pi/agent/agents/meta/doc-steward-guard.sh` (with tests in
+`doc-steward-guard.test.sh`); the inline copy below is equivalent. It starts
+a fresh steward with a name-first `/name` declaration so pi-intercom can
+resolve it immediately.
+
 Requires `HERDR_ENV=1`, `herdr`, and Python 3:
 
 ```sh
@@ -60,7 +69,7 @@ for a in json.load(sys.stdin)["result"]["agents"]:
     if a.get("name") == os.environ["STEWARD_NAME"] or os.environ["DETECT"] in (a.get("tokens") or {}).get("task", ""):
         print(a["pane_id"], a.get("name") or "-")')
 if [ -z "$panes" ]; then
-  persona="$PWD/.pi/agents/doc-steward.md"
+  persona="$HOME/.pi/agent/agents/doc-steward.md"
   [ -f "$persona" ] || { echo "missing persona file: $persona (must begin with --- frontmatter)" >&2; exit 1; }
   p=$(herdr pane split --current --direction right --cwd "$PWD" --no-focus | python3 -c 'import json,sys;print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
   j=$(find "$HOME/.pi/agent/sessions" -name "${RESUME_GLOB:-NOMATCH}" 2>/dev/null | head -1)
@@ -68,7 +77,12 @@ if [ -z "$panes" ]; then
     herdr agent start "$STEWARD_NAME" --kind pi --pane "$p" -- --session "$j" >/dev/null
   else
     herdr agent start "$STEWARD_NAME" --kind pi --pane "$p" >/dev/null
-    herdr agent prompt "$STEWARD_NAME" "$(sed '1{/^---$/!q};1,/^---$/d' "$persona")" >/dev/null
+    herdr agent prompt "$STEWARD_NAME" "Your herdr agent name and pi session name are both $STEWARD_NAME.
+FIRST ACTION, before anything else: run \`/name $STEWARD_NAME\` so pi-intercom resolves you. Do not process any other content until your pi display name matches.
+
+Then read and follow this persona body:
+
+$(sed '1{/^---$/!q};1,/^---$/d' "$persona")" >/dev/null
   fi
   exit 0
 fi
