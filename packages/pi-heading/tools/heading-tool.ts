@@ -6,9 +6,8 @@ import type {
     AgentToolResult,
     ExtensionAPI,
     ExtensionContext,
-    Theme,
 } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { Container } from "@earendil-works/pi-tui";
 import { Object as TypeObject } from "typebox";
 import { getBranchState } from "../state/store.js";
 import { getHeadingSkillDocument } from "./skill-loader.js";
@@ -50,20 +49,8 @@ export function registerHeadingTool(
                 ctx,
                 sharedState?.currentPlaceholder,
             ),
-        renderCall: (args: { action: string }, theme: Theme) => {
-            return new Text(
-                theme.fg("toolTitle", theme.bold("heading ")) +
-                    theme.fg("accent", args.action),
-                0,
-                0,
-            );
-        },
-        renderResult: (result) => {
-            const text = Array.isArray(result.content)
-                ? (result.content.find((c) => c?.type === "text")?.text ?? "")
-                : "";
-            return new Text(text, 0, 0);
-        },
+        renderCall: () => new Container(),
+        renderResult: () => new Container(),
     });
 }
 
