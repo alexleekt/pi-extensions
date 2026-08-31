@@ -37,19 +37,13 @@ After linking, a green checkmark should appear next to the linked repository.
 
 ## How It Works
 
-When you run:
+Releases follow the `publish` skill at `.agents/skills/publish/SKILL.md`: a release branch and pull request, and the scoped tag (`@alexleekt/<pkg>@<version>`) is pushed only after the release PR merges. That tag push then:
 
-```bash
-just release pi-bump 0.3.0
-```
-
-1. `npm version` bumps the version
-2. Git commit + tag (`@alexleekt/pi-bump@0.3.0`) + push
-3. GitHub Actions triggers `publish.yml`
-4. `setup-node` with `registry-url` enables npm OIDC auth
-5. `npm publish --provenance` uses the GitHub-issued OIDC token
-6. npm verifies the token against the linked repository
-7. Package publishes with provenance attestation
+1. Triggers GitHub Actions workflow `publish.yml` on the merged release commit
+2. `setup-node` with `registry-url` enables npm OIDC auth
+3. `npm publish --provenance` uses the GitHub-issued OIDC token
+4. npm verifies the token against the linked repository
+5. Package publishes with provenance attestation
 
 ## Provenance
 
