@@ -130,7 +130,8 @@ Some files at the root level are shared across all packages:
 | `tsconfig.base.json` | Base TypeScript config | Changes affect all packages — ask first |
 | `biome.json` | Linting rules | Changes affect all packages — ask first |
 | `justfile` | Task automation | Changes affect all packages — ask first |
-| `PUBLISH.md` | Release workflow | Package-specific release instructions live in each package's `AGENT.md` |
+
+Release workflow: see the `publish` skill at `.agents/skills/publish/SKILL.md`. Package-specific release instructions live in each package's `AGENT.md`.
 
 ### Package-specific rules
 
@@ -163,7 +164,7 @@ The workspace `package-lock.json` resolves `@earendil-works/pi-coding-agent` bec
 4. Run `npm test` if the package has tests
 4. **If you changed webview code** (`webview/src/`), run `npm run build` in the affected package to regenerate `dist/index.html`
 5. **Validate agent configs** — Run `agnix validate .` after modifying any `AGENT.md`, `AGENTS.md`, `claude.md`, or `SKILL.md` file. This validates skills, MCP servers, hooks, memory, and plugins across Claude Code, Cursor, Codex, and Kiro targets.
-6. Review `PUBLISH.md` before any release-related changes. Releases use a branch and pull request; never push directly to protected `main`.
+6. Before any release-related changes, follow the `publish` skill at `.agents/skills/publish/SKILL.md`. Releases use a branch and pull request; never push directly to protected `main`.
 
 ## Build Artifacts (Runtime-Critical)
 
