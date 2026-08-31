@@ -77,11 +77,7 @@ rm -rf /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modul
 
 ## Releasing
 
-Follow the **`publish` skill** (`.agents/skills/publish/SKILL.md`). In short:
-
-```bash
-.agents/skills/publish/SKILL.md   # read it, then invoke the skill
-```
+Follow the **`publish` skill** at `.agents/skills/publish/SKILL.md`.
 
 Releases run through a release branch and pull request — `main` is protected, and the publish tag is pushed only after the release PR merges. The legacy `just release` and `just publish` recipes have been removed; the `publish` skill owns the flow.
 
