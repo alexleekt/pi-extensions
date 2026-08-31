@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-31
+
+### Changed
+
+- The `heading` tool is silent in the transcript: tool calls and results render as empty components, so heading checks no longer add visible rows to the chat.
+
 ### Fixed
 
 - Pack-smoke temporary installs now ignore inherited npm `allow-scripts` configuration, avoiding npm 12's `EALLOWSCRIPTS` rejection.
@@ -23,8 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Goal extraction receives the previous achievement as low-weight context with turn-based decay, so vague follow-ups ("continue", "also") anchor to what was just completed; the latest message always wins.
 - Token-budget floor (512–1024, clamped to the model's `maxTokens`) so thinking models cannot starve the answer.
 - Fallback-loop test coverage: hard-failure, empty-result, all-empty, mixed-failure, auth-failure, and abort paths.
-
-### Changed
 
 ### Changed
 
