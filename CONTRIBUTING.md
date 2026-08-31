@@ -77,13 +77,11 @@ rm -rf /opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/node_modul
 
 ## Releasing
 
-```bash
-just release pi-bump 0.3.0
-```
+Follow the **`publish` skill** at `.agents/skills/publish/SKILL.md`.
 
-This bumps version, commits, tags (`@alexleekt/pi-bump@0.3.0`), and pushes — triggering `.github/workflows/publish.yml`.
+Releases run through a release branch and pull request — `main` is protected, and the publish tag is pushed only after the release PR merges. The legacy `just release` and `just publish` recipes have been removed; the `publish` skill owns the flow.
 
-**Before releasing, consult [`PUBLISH.md`](./PUBLISH.md)** for the pre-release checklist and troubleshooting. Key checks:
+Key checks:
 - `repository.url` is set in `package.json` (required for Trusted Publishing provenance)
 - Package is already bootstrapped on npm if it's a first-time publish
 - `npm run typecheck` passes
