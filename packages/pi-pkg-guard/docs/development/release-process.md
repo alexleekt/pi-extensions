@@ -34,20 +34,14 @@ The legacy `just release` recipe in the package justfile has been removed; it ta
 
 ## Manual Release Steps
 
-For the tag step outside the skill (version bump, changelog, and merge happen on the release branch first):
+If the tag step is done by hand instead of via the publish skill, the version bump, changelog, and release PR are still required first. Tag the commit merged to `main`, never an unmerged local checkout:
 
 ```bash
-# 1. Update version in package.json
-vim package.json
+# 1. Update the local main to the merged release commit
+git switch main
+git pull --ff-only origin main
 
-# 2. Update CHANGELOG.md
-vim CHANGELOG.md
-
-# 3. Commit changes
-git add -A
-git commit -m "chore(release): v0.3.0"
-
-# 4. Create and push tag
+# 2. Tag the merged release commit and push the tag
 git tag -a "@alexleekt/pi-pkg-guard@0.3.0" -m "Release @alexleekt/pi-pkg-guard@0.3.0"
 git push origin "@alexleekt/pi-pkg-guard@0.3.0"
 ```
