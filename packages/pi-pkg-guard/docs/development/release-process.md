@@ -21,7 +21,7 @@ git tag -a "@alexleekt/pi-pkg-guard@0.3.0" -m "Release @alexleekt/pi-pkg-guard@0
 git push origin "@alexleekt/pi-pkg-guard@0.3.0"
 ```
 
-The legacy `just release` recipe in the package justfile predates branch protection and is not the supported path; it tags the local checkout without a merged release PR.
+The legacy `just release` recipe in the package justfile has been removed; it tagged the local checkout without a merged release PR.
 
 ### What Happens Automatically
 
