@@ -114,6 +114,8 @@ The extension registers a `heading` tool:
 
 The tool's prompt metadata asks the agent to check the current session goal before changing direction.
 
+The tool is silent in the transcript: both the call and the result render as empty components, so heading checks never add visible rows to the chat.
+
 ## Event bus integration
 
 Other extensions can subscribe without importing pi-heading:
