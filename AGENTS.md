@@ -13,11 +13,12 @@
 Agentic sessions working in this repo use one shared documentation steward
 (the "doc-steward"):
 
-- At the start of every task, run the steward singleton guard below verbatim
-  via your bash tool. It guarantees exactly one steward: closes accidental
-  duplicates, renames the survivor, and starts or resumes the canonical
-  steward if none exists. If it reports a steward is running, address findings
-  to the project-scoped `doc-steward` through intercom. Do not start steward panes manually.
+- At the start of every task, run the steward singleton guard (see
+  "Doc-steward singleton guard" below) via your bash tool. It guarantees exactly
+  one steward: closes accidental duplicates, renames the survivor, and starts
+  or resumes the canonical steward if none exists. If it reports a steward is
+  running, address findings to the project-scoped `doc-steward` through
+  intercom. Do not start steward panes manually.
 - Naming: the herdr pane name alone is not enough for intercom resolution — the
   steward must also run `/name <project>-doc-steward` so its pi session display name matches.
 - Role: receive verified findings from all sessions through intercom; inspect
@@ -48,50 +49,29 @@ Agentic sessions working in this repo use one shared documentation steward
 
 ### Doc-steward singleton guard
 
-The canonical, maintained version of this guard lives in the global agents
-dir at `$HOME/.pi/agent/agents/meta/doc-steward-guard.sh` (with tests in
-`doc-steward-guard.test.sh`); the inline copy below is equivalent. It starts
-a fresh steward with a name-first `/name` declaration so pi-intercom can
-resolve it immediately.
+The canonical guard is the generic singleton guard in the global agents dir:
+`$HOME/.pi/agent/agents/meta/singleton-subagent-guard.sh` (tests:
+`singleton-subagent-guard.test.sh`). Invoke it with the role as its only
+argument; the instance name is derived as `<project>-<role>`. It closes
+accidental duplicates, renames the survivor, and starts a fresh steward with
+a name-first `/name` declaration so pi-intercom can resolve it immediately.
 
-Requires `HERDR_ENV=1`, `herdr`, and Python 3:
+Requires `HERDR_ENV=1`, `herdr`, and Python 3. Run it from the project root
+at the start of every task:
 
 ```sh
 # === doc-steward singleton guard (requires HERDR_ENV=1) ===
-# Pin this to the doc-steward's pi session JSONL filename to resume after crashes.
-# Empty means always start fresh.
+# To resume the steward's conversation after a crash, export RESUME_GLOB
+# pinned to its pi session JSONL filename before calling the guard.
+# Empty (default) means always start fresh.
 RESUME_GLOB=''
-STEWARD_NAME="$(basename "$PWD")-doc-steward"
-DETECT='shared documentation steward'   # must appear in the persona body
-panes=$(herdr agent list | STEWARD_NAME="$STEWARD_NAME" DETECT="$DETECT" python3 -c '
-import json, os, sys
-for a in json.load(sys.stdin)["result"]["agents"]:
-    if a.get("name") == os.environ["STEWARD_NAME"] or os.environ["DETECT"] in (a.get("tokens") or {}).get("task", ""):
-        print(a["pane_id"], a.get("name") or "-")')
-if [ -z "$panes" ]; then
-  persona="$HOME/.pi/agent/agents/doc-steward.md"
-  [ -f "$persona" ] || { echo "missing persona file: $persona (must begin with --- frontmatter)" >&2; exit 1; }
-  p=$(herdr pane split --current --direction right --cwd "$PWD" --no-focus | python3 -c 'import json,sys;print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
-  j=$(find "$HOME/.pi/agent/sessions" -name "${RESUME_GLOB:-NOMATCH}" 2>/dev/null | head -1)
-  if [ -n "$j" ]; then
-    herdr agent start "$STEWARD_NAME" --kind pi --pane "$p" -- --session "$j" >/dev/null
-  else
-    herdr agent start "$STEWARD_NAME" --kind pi --pane "$p" >/dev/null
-    herdr agent prompt "$STEWARD_NAME" "Your herdr agent name and pi session name are both $STEWARD_NAME.
-FIRST ACTION, before anything else: run \`/name $STEWARD_NAME\` so pi-intercom resolves you. Do not process any other content until your pi display name matches.
-
-Then read and follow this persona body:
-
-$(sed '1{/^---$/!q};1,/^---$/d' "$persona")" >/dev/null
-  fi
-  exit 0
-fi
-keep=$(grep "$STEWARD_NAME" <<<"$panes" | head -1 | cut -d' ' -f1)
-keep=${keep:-$(head -1 <<<"$panes" | cut -d' ' -f1)}
-while read -r id name; do [ "$id" = "$keep" ] || herdr pane close "$id"; done <<<"$panes"
-herdr agent rename "$keep" "$STEWARD_NAME"
-herdr pane rename "$keep" "$STEWARD_NAME"
+$HOME/.pi/agent/agents/meta/singleton-subagent-guard.sh doc-steward
 ```
+
+Reference the guard by its canonical path instead of copying it inline:
+an inline copy in AGENTS.md already drifted from upstream once (the per-role
+`doc-steward-guard.sh` was replaced by the generic
+`singleton-subagent-guard.sh <role>` in the subagents repo on 2026-08-31).
 
 ## Working in This Monorepo
 
