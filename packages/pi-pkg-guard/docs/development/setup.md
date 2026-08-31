@@ -61,7 +61,8 @@ ls -la ~/.pi/agent/extensions/pi-pkg-guard
 | `just fix` | Fix auto-fixable issues |
 | `just typecheck` | TypeScript type checking only |
 | `just dev-status` | Check development mode status |
-| `just release` | Create a release |
+
+Releases are handled by the `publish` skill (`.agents/skills/publish/SKILL.md`), not a just recipe — see [Release Process](./release-process.md).
 
 ---
 

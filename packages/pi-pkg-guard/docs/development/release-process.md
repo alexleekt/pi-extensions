@@ -10,15 +10,18 @@ This project uses **GitHub Actions with Trusted Publishing** (OIDC-based) for au
 
 ### Creating a Release
 
-```bash
-# Using just (recommended) - auto-detects version from package.json
-just release
+Follow the **`publish` skill** at `.agents/skills/publish/SKILL.md`. In short:
 
-# Or specify version explicitly
-just release 0.3.0
+1. Bump the version in `package.json` and update `CHANGELOG.md` on a release branch.
+2. Open a release pull request and wait for all required checks.
+3. After the PR merges, tag the merged commit and push the tag:
+
+```bash
+git tag -a "@alexleekt/pi-pkg-guard@0.3.0" -m "Release @alexleekt/pi-pkg-guard@0.3.0"
+git push origin "@alexleekt/pi-pkg-guard@0.3.0"
 ```
 
-This creates and pushes a git tag, triggering the release workflow.
+The legacy `just release` recipe in the package justfile predates branch protection and is not the supported path; it tags the local checkout without a merged release PR.
 
 ### What Happens Automatically
 
@@ -31,7 +34,7 @@ This creates and pushes a git tag, triggering the release workflow.
 
 ## Manual Release Steps
 
-If not using `just release`:
+For the tag step outside the skill (version bump, changelog, and merge happen on the release branch first):
 
 ```bash
 # 1. Update version in package.json
