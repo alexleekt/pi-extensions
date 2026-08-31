@@ -83,7 +83,7 @@ Follow the **`publish` skill** (`.agents/skills/publish/SKILL.md`). In short:
 .agents/skills/publish/SKILL.md   # read it, then invoke the skill
 ```
 
-Releases run through a release branch and pull request — `main` is protected, and the publish tag is pushed only after the release PR merges. The legacy `just release <pkg> <version>` recipe (direct push to `main` + tag) is deprecated and must not be used.
+Releases run through a release branch and pull request — `main` is protected, and the publish tag is pushed only after the release PR merges. The legacy `just release` and `just publish` recipes have been removed; the `publish` skill owns the flow.
 
 Key checks:
 - `repository.url` is set in `package.json` (required for Trusted Publishing provenance)
