@@ -1,6 +1,6 @@
 {
     "name": "@alexleekt/pi-heading",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "description": "Know where you are at a glance. One-line session heading widget for the Pi agent.",
     "type": "module",
     "main": "index.ts",

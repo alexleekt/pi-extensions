@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Alex Lee
 
 import { beforeEach, describe, expect, test } from "bun:test";
-import { Text } from "@earendil-works/pi-tui";
+import { Container } from "@earendil-works/pi-tui";
 import { clearState, setState } from "../state/store.js";
 import { registerHeadingTool } from "./heading-tool.js";
 
@@ -107,15 +107,15 @@ describe("heading tool", () => {
         expect(result.content[0].text).toContain("Unknown action");
     });
 
-    test("renderCall returns a Text component", () => {
+    test("renderCall returns an empty Container", () => {
         const pi = makeMockPi();
         registerHeadingTool(pi as any);
         const tool = pi.tools[0];
         const component = tool.renderCall({ action: "get" }, theme, undefined);
-        expect(component).toBeInstanceOf(Text);
+        expect(component).toBeInstanceOf(Container);
     });
 
-    test("renderResult returns a Text component", () => {
+    test("renderResult returns an empty Container", () => {
         const pi = makeMockPi();
         registerHeadingTool(pi as any);
         const tool = pi.tools[0];
@@ -128,6 +128,6 @@ describe("heading tool", () => {
             theme,
             undefined,
         );
-        expect(result).toBeInstanceOf(Text);
+        expect(result).toBeInstanceOf(Container);
     });
 });
