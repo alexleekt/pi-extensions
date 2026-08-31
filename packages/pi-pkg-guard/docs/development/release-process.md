@@ -10,15 +10,18 @@ This project uses **GitHub Actions with Trusted Publishing** (OIDC-based) for au
 
 ### Creating a Release
 
-```bash
-# Using just (recommended) - auto-detects version from package.json
-just release
+Follow the **`publish` skill** at `.agents/skills/publish/SKILL.md`. In short:
 
-# Or specify version explicitly
-just release 0.3.0
+1. Bump the version in `package.json` and update `CHANGELOG.md` on a release branch.
+2. Open a release pull request and wait for all required checks.
+3. After the PR merges, tag the merged commit and push the tag:
+
+```bash
+git tag -a "@alexleekt/pi-pkg-guard@0.3.0" -m "Release @alexleekt/pi-pkg-guard@0.3.0"
+git push origin "@alexleekt/pi-pkg-guard@0.3.0"
 ```
 
-This creates and pushes a git tag, triggering the release workflow.
+The legacy `just release` recipe in the package justfile has been removed; it tagged the local checkout without a merged release PR.
 
 ### What Happens Automatically
 
@@ -31,20 +34,14 @@ This creates and pushes a git tag, triggering the release workflow.
 
 ## Manual Release Steps
 
-If not using `just release`:
+If the tag step is done by hand instead of via the publish skill, the version bump, changelog, and release PR are still required first. Tag the commit merged to `main`, never an unmerged local checkout:
 
 ```bash
-# 1. Update version in package.json
-vim package.json
+# 1. Update the local main to the merged release commit
+git switch main
+git pull --ff-only origin main
 
-# 2. Update CHANGELOG.md
-vim CHANGELOG.md
-
-# 3. Commit changes
-git add -A
-git commit -m "chore(release): v0.3.0"
-
-# 4. Create and push tag
+# 2. Tag the merged release commit and push the tag
 git tag -a "@alexleekt/pi-pkg-guard@0.3.0" -m "Release @alexleekt/pi-pkg-guard@0.3.0"
 git push origin "@alexleekt/pi-pkg-guard@0.3.0"
 ```

@@ -109,8 +109,9 @@ npm install
 
 just test      # Run tests
 just check     # Run all checks
-just release   # Create release
 ```
+
+Releases follow the `publish` skill at `.agents/skills/publish/SKILL.md` (branch + PR flow; the scoped tag is pushed only after the release PR merges).
 
 See [Contributing Guide](docs/development/contributing.md) for details.
 
@@ -120,9 +121,7 @@ See [Contributing Guide](docs/development/contributing.md) for details.
 
 This project uses **GitHub Actions with Trusted Publishing** (OIDC) for automated npm releases:
 
-```bash
-just release        # Auto-detects version from package.json
-```
+Follow the **`publish` skill** at `.agents/skills/publish/SKILL.md`: bump the version on a release branch, open a PR, and push the scoped tag (`@alexleekt/pi-pkg-guard@<version>`) only after the release PR merges. The tag push triggers the publish workflow.
 
 See full details in [Release Process](docs/development/release-process.md).
 
