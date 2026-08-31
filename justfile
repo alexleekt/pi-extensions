@@ -107,21 +107,9 @@ ci: ci-shared
         just ci-package "$pkg"
     done
 
-# Publish a package (usage: just publish pi-bump)
-publish pkg:
-    cd packages/{{pkg}} && npm publish --access public
-
-# Bootstrap a NEW package on npm (first-time publish from local machine)
+# Bootstrap a NEW package on npm (first-time publish from local machine).
+# Regular releases: use the publish skill (.agents/skills/publish/SKILL.md).
 # Usage: just bootstrap pi-shared
 # Requires: npm login (local auth) + Trusted Publishing setup on npmjs.com after
 bootstrap pkg:
     cd packages/{{pkg}} && npm publish --access public
-
-# Release a package: bump version, commit, tag, push (triggers publish.yml)
-# Usage: just release pi-bump 0.3.0
-release pkg version:
-    cd packages/{{pkg}} && npm version --no-git-tag-version {{version}}
-    git add packages/{{pkg}}/package.json package-lock.json
-    git commit -m "chore({{pkg}}): release v{{version}}"
-    git tag "@alexleekt/{{pkg}}@{{version}}"
-    git push origin main "@alexleekt/{{pkg}}@{{version}}"
