@@ -61,7 +61,7 @@ The read-only `patch_status` agent tool exists today. `/patch apply` landed in P
 3. Classify via reverse `git apply --check`:
    - package hash matches the recorded pristine base → `clean`;
    - same version, patch present (reverse-applies) → `applied`;
-   - version mismatch is always `drifted`, even if the old patch still reverse-applies;
+   - version mismatch with a reverse-applying old patch is `possibly-unneeded` (the status action offers Disable); otherwise it is `drifted` and the status action offers Rebase;
    - unresolvable errors → `failed`.
 
 Note: `applied` proves the patch itself is present, not that the whole tree is identical to the recorded post-patch state — unrelated files may have drifted independently.
@@ -130,9 +130,9 @@ If Pi later exposes a stable package-update lifecycle event, use it to trigger t
 
 ### Phase 5: quality-of-life — deferred
 
-- Patch grouping.
+- Grouped `/patch status` output by actionability is implemented; richer patch grouping remains deferred.
 - Upstream issue/PR tracking beyond the manifest field.
-- Patch health summary in the Pi footer or status output.
+- Patch health summary in the Pi footer remains deferred; `/patch status` now provides a grouped health/status summary.
 - Export/import of the patch registry.
 - Optional repository-backed patch storage (the `create-patch.mjs` patches-root override is the seed).
 

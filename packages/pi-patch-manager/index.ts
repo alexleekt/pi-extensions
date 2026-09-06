@@ -82,6 +82,7 @@ export type PatchStatus =
     | "clean"
     | "applied"
     | "drifted"
+    | "possibly-unneeded"
     | "failed";
 
 function fail(message: string): never {
@@ -409,8 +410,14 @@ export async function getPatchStatus(
         // Patch file must exist and stay inside its patch directory (no symlink escapes).
         const patchPath = await resolvePatchPath(pkg.patchDir, manifest.patch);
         const current = await hashPackage(pkg.root);
-        // A different version is drift, even if the old patch still reverse-applies.
-        if (pkg.version !== manifest.baseVersion) return "drifted";
+        if (pkg.version !== manifest.baseVersion) {
+            try {
+                await gitDryRun(patchPath, pkg.root, true);
+                return "possibly-unneeded";
+            } catch {
+                return "drifted";
+            }
+        }
         if (current === manifest.baseHash) return "clean";
         // Same version but different content: the patch may or may not be present.
         try {
@@ -508,6 +515,11 @@ export async function applyPatch(
                     pkg.version !== manifest.baseVersion
                         ? `${pkg.name} is ${pkg.version} but the patch targets ${manifest.baseVersion}; rebase required. Package untouched.`
                         : `Package content drifted from the recorded base hash; rebase required. Package untouched.`,
+            };
+        case "possibly-unneeded":
+            return {
+                outcome: "rejected",
+                message: `The patch is present on different-version ${pkg.name}@${pkg.version}; review it and disable it if upstream now includes the change. Package untouched.`,
             };
         case "failed":
             return {
@@ -1213,7 +1225,7 @@ export async function rebasePatch(
     }
 }
 
-interface Entry {
+export interface Entry {
     manifest: Manifest;
     dir: string;
     status: PatchStatus;
@@ -1276,6 +1288,137 @@ async function registry(agentDir: string, roots: string[]): Promise<Entry[]> {
 function output(ctx: ExtensionCommandContext, text: string): void {
     ctx.ui.notify(text, "info");
 }
+
+const STATUS_GROUPS: Array<{
+    title: string;
+    includes: (entry: Entry) => boolean;
+}> = [
+    {
+        title: "⚠ NEEDS REBASE",
+        includes: (entry) =>
+            entry.manifest.enabled && entry.status === "drifted",
+    },
+    {
+        title: "? POSSIBLY NO LONGER NEEDED",
+        includes: (entry) =>
+            entry.manifest.enabled && entry.status === "possibly-unneeded",
+    },
+    {
+        title: "! FAILED OR MISSING",
+        includes: (entry) => ["failed", "missing"].includes(entry.status),
+    },
+    {
+        title: "READY TO APPLY",
+        includes: (entry) => entry.manifest.enabled && entry.status === "clean",
+    },
+    {
+        title: "HEALTHY",
+        includes: (entry) =>
+            entry.manifest.enabled && entry.status === "applied",
+    },
+    {
+        title: "DISABLED",
+        includes: (entry) =>
+            !entry.manifest.enabled && entry.status !== "failed",
+    },
+];
+
+function statusLine(entry: Entry): string {
+    return `${entry.manifest.id || entry.dir}: ${entry.status}${entry.package ? ` (${entry.package.version})` : ""}${entry.error ? ` — ${entry.error}` : ""}`;
+}
+
+export function formatStatus(entries: Entry[]): string {
+    const groups = STATUS_GROUPS.map(({ title, includes }) => ({
+        title,
+        entries: entries.filter(includes),
+    })).filter((group) => group.entries.length);
+    return (
+        groups
+            .map(
+                (group) =>
+                    `${group.title} (${group.entries.length})\n${group.entries.map((entry) => `  ${statusLine(entry)}`).join("\n")}`,
+            )
+            .join("\n\n") || "No patches found."
+    );
+}
+
+async function disablePatch(entry: Entry): Promise<void> {
+    const manifestPath = join(entry.dir, "manifest.json");
+    // Write via a random temp directory inside the patch dir, then rename:
+    // unpredictable path defeats symlink pre-planting, rename is atomic on the same filesystem.
+    const tempDir = await mkdtemp(join(entry.dir, ".disable-"));
+    try {
+        const temp = join(tempDir, "manifest.json");
+        await writeFile(
+            temp,
+            `${JSON.stringify({ ...entry.manifest, enabled: false }, null, 4)}\n`,
+            { mode: 0o600 },
+        );
+        await rename(temp, manifestPath);
+    } finally {
+        await rm(tempDir, { recursive: true, force: true });
+    }
+}
+
+type RebaseRunner = (
+    entry: Entry,
+    pkg: PackageInfo,
+    ctx: ExtensionContext,
+) => Promise<RebaseResult>;
+
+export async function runStatusActionMenu(
+    entries: Entry[],
+    ctx: ExtensionCommandContext,
+    patchesRoot: string,
+    rebase: RebaseRunner = rebasePatch,
+): Promise<void> {
+    const actions: Array<{
+        label: string;
+        kind: "rebase" | "disable";
+        item: Entry;
+    }> = [];
+    for (const item of entries) {
+        const itemId = item.manifest.id || item.dir;
+        const location = relative(patchesRoot, item.dir);
+        if (item.manifest.enabled && item.status === "drifted")
+            actions.push({
+                label: `Rebase ${itemId} [${location}]`,
+                kind: "rebase",
+                item,
+            });
+        if (item.manifest.enabled && item.status === "possibly-unneeded")
+            actions.push({
+                label: `Disable ${itemId} [${location}]`,
+                kind: "disable",
+                item,
+            });
+    }
+    if (!actions.length) return;
+    const choice = await ctx.ui.select("Patch action", [
+        ...actions.map((action) => action.label),
+        "Done",
+    ]);
+    const action = actions.find((candidate) => candidate.label === choice);
+    if (!action) return;
+    if (action.kind === "disable") {
+        await disablePatch(action.item);
+        return output(ctx, `Disabled patch ${action.item.manifest.id}.`);
+    }
+    if (!action.item.package)
+        return output(
+            ctx,
+            `Package '${action.item.manifest.package}' was not found; nothing changed.`,
+        );
+    const result = await rebase(action.item, action.item.package, ctx);
+    output(
+        ctx,
+        result.message +
+            (result.validation
+                ? `\nvalidation ${result.validation.ok ? "passed" : "FAILED"}: ${result.validation.output || "(no output)"}`
+                : ""),
+    );
+}
+
 function describe(entry: Entry): string {
     const m = entry.manifest;
     return [
@@ -1332,11 +1475,12 @@ export default async function patchManager(pi: ExtensionAPI) {
                 );
 
             if (sub === "status") {
-                const lines = entries.map(
-                    (x) =>
-                        `${x.manifest.id || x.dir}: ${x.status}${x.package ? ` (${x.package.version})` : ""}${x.error ? ` — ${x.error}` : ""}`,
+                output(ctx, formatStatus(entries));
+                return runStatusActionMenu(
+                    entries,
+                    ctx,
+                    join(agentDir, "patches"),
                 );
-                return output(ctx, lines.join("\n") || "No patches found.");
             }
 
             if (sub === "explain")
@@ -1352,21 +1496,7 @@ export default async function patchManager(pi: ExtensionAPI) {
                     return output(ctx, `Patch '${id || ""}' was not found.`);
                 if (!entry.manifest.enabled)
                     return output(ctx, `Patch ${id} is already disabled.`);
-                const manifestPath = join(entry.dir, "manifest.json");
-                // Write via a random temp directory inside the patch dir, then rename:
-                // unpredictable path defeats symlink pre-planting, rename is atomic on the same filesystem.
-                const tempDir = await mkdtemp(join(entry.dir, ".disable-"));
-                try {
-                    const temp = join(tempDir, "manifest.json");
-                    await writeFile(
-                        temp,
-                        `${JSON.stringify({ ...entry.manifest, enabled: false }, null, 4)}\n`,
-                        { mode: 0o600 },
-                    );
-                    await rename(temp, manifestPath);
-                } finally {
-                    await rm(tempDir, { recursive: true, force: true });
-                }
+                await disablePatch(entry);
                 return output(ctx, `Disabled patch ${id}.`);
             }
 
