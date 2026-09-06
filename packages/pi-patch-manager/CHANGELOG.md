@@ -4,6 +4,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-06
+
+- `/patch status` now separates version drift whose old patch still reverse-applies as `possibly-unneeded`, groups statuses into actionable sections, and offers Disable for possibly-unneeded patches or Rebase for drifted patches.
 - Rebase transactions made crash-safe and roll-back-safe: `baseHash` now always describes the pristine (patch-removed) package — a successful rebase previously recorded the patched live-tree hash as the base and then mis-reported status; it now hashes the staging copy after removing the old patch and before applying the candidate, and reports `applied` on the live tree / `clean` on a pristine reinstall.
 - Every post-approval failure (including registry-commit and manifest-rename failures) routes through a tracked rollback that restores the old patch, verifies the restored tree against the recorded pre-rebase hash, and reports primary and rollback errors together when restoration fails.
 - Registry consistency (manifest bytes, patch bytes, resolved patch path) is now checked immediately after approval and before history or package mutation, in addition to the post-apply second guard.

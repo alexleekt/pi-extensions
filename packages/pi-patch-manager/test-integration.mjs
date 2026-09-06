@@ -16,12 +16,14 @@ import { promisify } from "node:util";
 import {
     applyPatch,
     discoverPatchDirs,
+    formatStatus,
     getPatchStatus,
     hashPackage,
     readManifest,
     rebasePatch,
     resolvePackage,
     resolvePatchPath,
+    runStatusActionMenu,
 } from "./index.ts";
 
 const execFileAsync = promisify(execFile);
@@ -266,7 +268,7 @@ try {
     // baseHash deliberately doesn't match (placeholder "a".repeat(64)), version matches →
     // same-version content difference, reverse dry-run of the fake patch fails → drifted.
     assert.equal(await getPatchStatus(manifest, demoPkg), "drifted");
-    // Version mismatch is always drifted, regardless of patch state.
+    // Version mismatch without the old patch present requires a rebase.
     const driftedManifest = { ...manifest, baseVersion: "0.9.0" };
     assert.equal(await getPatchStatus(driftedManifest, demoPkg), "drifted");
     // Missing package → missing.
@@ -313,6 +315,88 @@ try {
         "applied",
         `expected applied, got ${appliedStatus}`,
     );
+    assert.equal(
+        await getPatchStatus(
+            { ...appliedManifest, baseVersion: "0.9.0" },
+            appliedPkg,
+        ),
+        "possibly-unneeded",
+        "a patch present on a newer package may now be supplied upstream",
+    );
+    const statusSummary = formatStatus([
+        {
+            manifest: { ...appliedManifest, baseVersion: "0.9.0" },
+            dir: patchDir,
+            package: appliedPkg,
+            status: "possibly-unneeded",
+        },
+        {
+            manifest: driftedManifest,
+            dir: patchDir,
+            package: demoPkg,
+            status: "drifted",
+        },
+    ]);
+    assert.match(statusSummary, /⚠ NEEDS REBASE \(1\)[\s\S]*demo: drifted/);
+    assert.match(
+        statusSummary,
+        /\? POSSIBLY NO LONGER NEEDED \(1\)[\s\S]*applied: possibly-unneeded/,
+    );
+    const failedSummary = formatStatus([
+        {
+            manifest: { ...manifest, enabled: false },
+            dir: join(patches, "invalid"),
+            status: "failed",
+            error: "bad manifest",
+        },
+    ]);
+    assert.match(failedSummary, /! FAILED OR MISSING \(1\)/);
+    assert.doesNotMatch(failedSummary, /DISABLED/);
+
+    // Duplicate IDs remain uniquely selectable because menu labels include their directory.
+    const actionRoot = join(root, "action-patches");
+    const actionA = join(actionRoot, "one");
+    const actionB = join(actionRoot, "two");
+    await mkdir(actionA, { recursive: true });
+    await mkdir(actionB, { recursive: true });
+    const duplicateManifest = { ...appliedManifest, id: "duplicate" };
+    await writeFile(
+        join(actionA, "manifest.json"),
+        JSON.stringify(duplicateManifest),
+    );
+    await writeFile(
+        join(actionB, "manifest.json"),
+        JSON.stringify(duplicateManifest),
+    );
+    const actionEntries = [actionA, actionB].map((dir) => ({
+        manifest: duplicateManifest,
+        dir,
+        package: appliedPkg,
+        status: "possibly-unneeded",
+    }));
+    const notifications = [];
+    await runStatusActionMenu(
+        actionEntries,
+        {
+            ui: {
+                select: async (_title, options) =>
+                    options.find((option) => option.includes("[two]")),
+                notify: (text) => notifications.push(text),
+            },
+        },
+        actionRoot,
+    );
+    assert.equal(
+        JSON.parse(await readFile(join(actionA, "manifest.json"), "utf8"))
+            .enabled,
+        true,
+    );
+    assert.equal(
+        JSON.parse(await readFile(join(actionB, "manifest.json"), "utf8"))
+            .enabled,
+        false,
+    );
+    assert.deepEqual(notifications, ["Disabled patch duplicate."]);
     // After restoring the pristine file, the package is clean again.
     await writeFile(join(appliedRoot, "lib", "a.js"), "export const a = 1;\n");
     assert.equal(await getPatchStatus(appliedManifest, appliedPkg), "clean");
@@ -444,13 +528,14 @@ try {
         (await applyPatch(applyManifest, applyPkg)).outcome,
         "already-applied",
     );
-    // Version drift is refused.
+    // A patch still present after a version update may now be supplied upstream.
     const r3 = await applyPatch(
         { ...applyManifest, baseVersion: "0.9.0" },
         applyPkg,
     );
     assert.equal(r3.outcome, "rejected");
-    assert.match(r3.message, /rebase required/);
+    assert.match(r3.message, /different-version/);
+    assert.match(r3.message, /disable it if upstream now includes the change/);
     // A patch file that exists but does not apply cleanly leaves the package untouched.
     await makeApplyPackage();
     await writeFile(

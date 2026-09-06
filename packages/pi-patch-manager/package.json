@@ -1,6 +1,6 @@
 {
     "name": "@alexleekt/pi-patch-manager",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "Safe inspection and management of Git patches for Pi packages.",
     "type": "module",
     "license": "MIT",
@@ -48,7 +48,7 @@
         "typebox": "*"
     },
     "devDependencies": {
-        "@earendil-works/pi-coding-agent": "0.84.4",
+        "@earendil-works/pi-coding-agent": "0.85.1",
         "typescript": "^5.9.3"
     },
     "scripts": {
